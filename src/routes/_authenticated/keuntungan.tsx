@@ -280,8 +280,21 @@ function KeuntunganPage() {
 }
 
 function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; labelHeader: string; formatLabel: (k: string) => string }) {
+  const totals = rows.reduce(
+    (acc, r) => ({ revenue: acc.revenue + r.revenue, cost: acc.cost + r.cost, profit: acc.profit + r.profit, count: acc.count + r.count }),
+    { revenue: 0, cost: 0, profit: 0, count: 0 },
+  );
+  const totalMargin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0;
   return (
     <Card className="overflow-hidden">
+      {rows.length > 0 && (
+        <div className="grid gap-3 border-b bg-muted/40 p-3 sm:grid-cols-4">
+          <SummaryItem label="Total Omset" value={formatRupiah(totals.revenue)} />
+          <SummaryItem label="Total Modal" value={formatRupiah(totals.cost)} muted />
+          <SummaryItem label="Total Keuntungan" value={formatRupiah(totals.profit)} accent />
+          <SummaryItem label="Margin Rata-rata" value={`${totalMargin.toFixed(1)}%`} />
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
@@ -311,11 +324,32 @@ function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; label
               );
             })}
           </tbody>
+          {rows.length > 0 && (
+            <tfoot className="bg-muted/60 font-semibold">
+              <tr className="border-t">
+                <td className="p-3">TOTAL</td>
+                <td className="p-3 text-right">{formatRupiah(totals.revenue)}</td>
+                <td className="p-3 text-right text-muted-foreground">{formatRupiah(totals.cost)}</td>
+                <td className="p-3 text-right text-primary">{formatRupiah(totals.profit)}</td>
+                <td className="p-3 text-right">{totalMargin.toFixed(1)}%</td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </Card>
   );
 }
+
+function SummaryItem({ label, value, accent, muted }: { label: string; value: string; accent?: boolean; muted?: boolean }) {
+  return (
+    <div>
+      <div className="text-xs uppercase text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-lg font-bold ${accent ? "text-primary" : muted ? "text-muted-foreground" : ""}`}>{value}</div>
+    </div>
+  );
+}
+
 
 function StatCard({
   icon, label, value, sub, tone,
