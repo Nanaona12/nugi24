@@ -109,6 +109,7 @@ function AdminPage() {
                               <Play className="h-3.5 w-3.5" />
                             </Button>
                           )}
+                          <RecordPaymentDialog tenant={t} onSaved={invalidate} />
                           <ManageTenantDialog tenant={t} onSaved={invalidate} />
                           <Button size="sm" variant="destructive" title="Hapus" onClick={() => { if (confirm(`Hapus toko "${t.name}"? Semua data akan hilang.`)) del.mutate(t.id); }}>
                             <Trash2 className="h-3.5 w-3.5" />
