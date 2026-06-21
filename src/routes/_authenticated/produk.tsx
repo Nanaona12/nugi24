@@ -61,6 +61,7 @@ function ProdukPage() {
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
