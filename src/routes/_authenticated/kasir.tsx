@@ -166,8 +166,10 @@ function KasirPage() {
   };
 
   const checkout = async () => {
-    const paidNum = Number(paid.replace(/[^\d]/g, ""));
+    const paidNum = paymentMethod === "qris" ? totals.total : Number(paid.replace(/[^\d]/g, ""));
     if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
+    const phoneClean = customerPhone.replace(/[^\d]/g, "");
+    if (sendWa && phoneClean.length < 8) { toast.error("Nomor HP tidak valid"); return; }
     setSubmitting(true);
     const { data: userData } = await supabase.auth.getUser();
     const cashierId = userData.user?.id;
@@ -181,7 +183,9 @@ function KasirPage() {
         paid: paidNum,
         change_amount: change,
         item_count: totals.items,
-      })
+        payment_method: paymentMethod,
+        customer_phone: sendWa && phoneClean ? phoneClean : null,
+      } as any)
       .select()
       .single();
     if (txErr || !tx) { toast.error(txErr?.message || "Gagal menyimpan"); setSubmitting(false); return; }
@@ -215,8 +219,19 @@ function KasirPage() {
         return supabase.from("products").update({ stock: Math.max(0, p.stock - used) }).eq("id", pid);
       }),
     );
-    setLastReceipt({ id: tx.id, total: totals.total, paid: paidNum, change, items: cart, at: new Date() });
+    const receipt = {
+      id: tx.id,
+      total: totals.total,
+      paid: paidNum,
+      change,
+      items: cart,
+      at: new Date(),
+      paymentMethod,
+      customerPhone: sendWa && phoneClean ? phoneClean : null,
+    };
+    setLastReceipt(receipt);
     setCart([]); setPaid(""); setPayOpen(false); setSubmitting(false);
+    setSendWa(false); setCustomerPhone(""); setPaymentMethod("cash");
     loadProducts();
   };
 
