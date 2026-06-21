@@ -53,6 +53,83 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_order_items: {
+        Row: {
+          id: string
+          po_id: string
+          product_code: string
+          product_id: string | null
+          product_name: string
+          qty: number
+          subtotal: number
+          unit_cost: number
+        }
+        Insert: {
+          id?: string
+          po_id: string
+          product_code: string
+          product_id?: string | null
+          product_name: string
+          qty: number
+          subtotal?: number
+          unit_cost?: number
+        }
+        Update: {
+          id?: string
+          po_id?: string
+          product_code?: string
+          product_id?: string | null
+          product_name?: string
+          qty?: number
+          subtotal?: number
+          unit_cost?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_order_items_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_orders: {
+        Row: {
+          created_at: string
+          id: string
+          item_count: number
+          notes: string | null
+          status: string
+          supplier: string
+          total: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_count?: number
+          notes?: string | null
+          status?: string
+          supplier: string
+          total?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_count?: number
+          notes?: string | null
+          status?: string
+          supplier?: string
+          total?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transaction_items: {
         Row: {
           id: string

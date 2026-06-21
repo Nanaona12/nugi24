@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Receipt, Eye } from "lucide-react";
+import { Receipt, Eye, Trash2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/riwayat")({
   component: RiwayatPage,
@@ -37,23 +38,47 @@ function RiwayatPage() {
   const [selected, setSelected] = useState<Tx | null>(null);
   const [items, setItems] = useState<TxItem[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (error) toast.error(error.message);
-      else setTxs((data || []) as Tx[]);
-    })();
-  }, []);
+  const load = async () => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) toast.error(error.message);
+    else setTxs((data || []) as Tx[]);
+  };
+
+  useEffect(() => { load(); }, []);
 
   const openDetail = async (tx: Tx) => {
     setSelected(tx);
     const { data } = await supabase.from("transaction_items").select("*").eq("transaction_id", tx.id);
     setItems((data || []) as TxItem[]);
   };
+
+  const removeTx = async (tx: Tx, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!confirm(`Hapus transaksi #${tx.id.slice(0, 8)}?`)) return;
+    const { error: e1 } = await supabase.from("transaction_items").delete().eq("transaction_id", tx.id);
+    if (e1) return toast.error(e1.message);
+    const { error: e2 } = await supabase.from("transactions").delete().eq("id", tx.id);
+    if (e2) return toast.error(e2.message);
+    toast.success("Transaksi dihapus");
+    if (selected?.id === tx.id) setSelected(null);
+    load();
+  };
+
+  const clearAll = async () => {
+    if (!confirm("Hapus SEMUA riwayat transaksi? Tindakan ini tidak bisa dibatalkan.")) return;
+    const { error: e1 } = await supabase.from("transaction_items").delete().not("id", "is", null);
+    if (e1) return toast.error(e1.message);
+    const { error: e2 } = await supabase.from("transactions").delete().not("id", "is", null);
+    if (e2) return toast.error(e2.message);
+    toast.success("Riwayat dibersihkan");
+    setSelected(null);
+    load();
+  };
+
 
   const todayTotal = txs
     .filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString())
@@ -66,6 +91,14 @@ function RiwayatPage() {
         <Stat label="Transaksi Hari Ini" value={String(txs.filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString()).length)} />
         <Stat label="Total Transaksi" value={String(txs.length)} />
       </div>
+      {txs.length > 0 && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={clearAll} className="text-destructive hover:text-destructive">
+            <Trash2 className="mr-2 h-4 w-4" /> Hapus Semua Riwayat
+          </Button>
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -98,10 +131,16 @@ function RiwayatPage() {
                     <td className="p-3 text-right">{formatRupiah(Number(t.paid))}</td>
                     <td className="p-3 text-right">{formatRupiah(Number(t.change_amount))}</td>
                     <td className="p-3">
-                      <Button size="sm" variant="ghost" onClick={() => openDetail(t)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openDetail(t)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={(e) => removeTx(t, e)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
+
                   </tr>
                 ))
               )}
