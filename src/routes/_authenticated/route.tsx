@@ -62,8 +62,7 @@ function AuthedLayout() {
             <NavLink to="/po" icon={<ClipboardList className="h-4 w-4" />} label="PO" />
             <NavLink to="/riwayat" icon={<Receipt className="h-4 w-4" />} label="Riwayat" />
             <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
-
-
+            <NavLink to="/cek-koneksi" icon={<Wifi className="h-4 w-4" />} label="Koneksi" />
           </nav>
           <div className="hidden text-xs text-sidebar-foreground/70 sm:block">{user.email}</div>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-sidebar-foreground hover:bg-sidebar-accent">
