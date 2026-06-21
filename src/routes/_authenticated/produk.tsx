@@ -312,8 +312,9 @@ function ProdukPage() {
           <DialogHeader>
             <DialogTitle>Preview Import Excel</DialogTitle>
             <DialogDescription>
-              {importPreview.length} baris terdeteksi. Produk dengan kode sama akan diperbarui (upsert).
+              {importPreview.length} baris terdeteksi. Kode kosong akan dibuat otomatis. Produk dengan kode sama akan diperbarui.
             </DialogDescription>
+
           </DialogHeader>
           <div className="max-h-96 overflow-auto rounded border">
             <table className="w-full text-xs">
