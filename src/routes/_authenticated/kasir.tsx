@@ -8,9 +8,11 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X } from "lucide-react";
+import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor } from "@/lib/product-pricing";
 
 export const Route = createFileRoute("/_authenticated/kasir")({
   component: KasirPage,
@@ -28,21 +30,22 @@ type Product = {
   stock: number;
 };
 
-
 type CartLine = {
+  key: string;          // product.id + unit.name (unique per row)
   product: Product;
-  qty: number;
+  unit: ProductUnit;
+  qty: number;          // dalam unit ini
 };
 
-function getLinePrice(p: Product, qty: number) {
-  if (p.wholesale_price && p.wholesale_min_qty && qty >= p.wholesale_min_qty) {
-    return { price: Number(p.wholesale_price), wholesale: true };
-  }
-  return { price: Number(p.price), wholesale: false };
+function getUnits(p: Product, map: Record<string, ProductUnit[]>): ProductUnit[] {
+  const arr = map[p.id];
+  if (arr && arr.length > 0) return arr;
+  return [fallbackUnitFromProduct(p)];
 }
 
 function KasirPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [paid, setPaid] = useState("");
@@ -53,8 +56,15 @@ function KasirPage() {
 
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
-    if (error) toast.error(error.message);
-    else setProducts((data || []) as Product[]);
+    if (error) { toast.error(error.message); return; }
+    const prods = (data || []) as Product[];
+    setProducts(prods);
+    try {
+      const map = await loadUnitsForProducts(prods.map((p) => p.id));
+      setUnitsByProduct(map);
+    } catch (e: any) {
+      toast.error("Gagal memuat satuan: " + e.message);
+    }
   };
 
   useEffect(() => {
@@ -74,31 +84,44 @@ function KasirPage() {
     let total = 0;
     let items = 0;
     for (const l of cart) {
-      const { price } = getLinePrice(l.product, l.qty);
+      const { price } = tierPriceFor(l.unit, l.qty);
       total += price * l.qty;
-      items += l.qty;
+      items += l.qty * l.unit.conversion;
     }
     return { total, items };
   }, [cart]);
 
   const addToCart = (p: Product) => {
+    const units = getUnits(p, unitsByProduct);
+    const baseUnit = units.find((u) => u.is_base) || units[0];
     setCart((c) => {
-      const idx = c.findIndex((x) => x.product.id === p.id);
+      const idx = c.findIndex((x) => x.product.id === p.id && x.unit.name === baseUnit.name);
       if (idx >= 0) {
         const copy = [...c];
         copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 };
         return copy;
       }
-      return [...c, { product: p, qty: 1 }];
+      return [...c, { key: `${p.id}:${baseUnit.name}`, product: p, unit: baseUnit, qty: 1 }];
     });
   };
 
-  const setQty = (id: string, qty: number) => {
-    if (qty <= 0) return setCart((c) => c.filter((l) => l.product.id !== id));
-    setCart((c) => c.map((l) => (l.product.id === id ? { ...l, qty } : l)));
+  const setQty = (key: string, qty: number) => {
+    if (qty <= 0) return setCart((c) => c.filter((l) => l.key !== key));
+    setCart((c) => c.map((l) => (l.key === key ? { ...l, qty } : l)));
   };
 
-  const removeLine = (id: string) => setCart((c) => c.filter((l) => l.product.id !== id));
+  const changeUnit = (key: string, unitName: string) => {
+    setCart((c) =>
+      c.map((l) => {
+        if (l.key !== key) return l;
+        const units = getUnits(l.product, unitsByProduct);
+        const u = units.find((x) => x.name === unitName) || l.unit;
+        return { ...l, unit: u, key: `${l.product.id}:${u.name}` };
+      }),
+    );
+  };
+
+  const removeLine = (key: string) => setCart((c) => c.filter((l) => l.key !== key));
 
   const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && filtered.length > 0) {
@@ -139,32 +162,36 @@ function KasirPage() {
       return;
     }
     const items = cart.map((l) => {
-      const { price, wholesale } = getLinePrice(l.product, l.qty);
+      const { price, tier } = tierPriceFor(l.unit, l.qty);
+      const baseQty = l.qty * l.unit.conversion;
       return {
         transaction_id: tx.id,
         product_id: l.product.id,
         product_code: l.product.code,
         product_name: l.product.name,
-        qty: l.qty,
-        unit_price: price,
+        qty: baseQty,
+        unit_price: price / l.unit.conversion, // harga per unit dasar (untuk laporan)
         unit_cost: Number(l.product.cost_price || 0),
-        is_wholesale: wholesale,
+        is_wholesale: !!(tier && tier.min_qty > 1),
         subtotal: price * l.qty,
+        unit_name: l.unit.name,
+        unit_qty: l.qty,
+        unit_conversion: l.unit.conversion,
       };
     });
-    const { error: itErr } = await supabase.from("transaction_items").insert(items);
+    const { error: itErr } = await supabase.from("transaction_items").insert(items as any);
 
     if (itErr) {
       toast.error(itErr.message);
       setSubmitting(false);
       return;
     }
-    // decrement stock
+    // decrement stock (dalam unit dasar)
     await Promise.all(
       cart.map((l) =>
         supabase
           .from("products")
-          .update({ stock: Math.max(0, l.product.stock - l.qty) })
+          .update({ stock: Math.max(0, l.product.stock - l.qty * l.unit.conversion) })
           .eq("id", l.product.id),
       ),
     );
@@ -198,25 +225,30 @@ function KasirPage() {
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-              {filtered.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => addToCart(p)}
-                  className="group flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
-                >
-                  <div className="mb-1 line-clamp-2 text-sm font-medium">{p.name}</div>
-                  <div className="text-xs text-muted-foreground">{p.code}</div>
-                  <div className="mt-2 flex w-full items-center justify-between">
-                    <div className="text-sm font-semibold text-primary">{formatRupiah(p.price)}</div>
-                    <Badge variant="secondary" className="text-[10px]">stok {p.stock}</Badge>
-                  </div>
-                  {p.wholesale_price && p.wholesale_min_qty ? (
-                    <div className="mt-1 text-[11px] text-muted-foreground">
-                      Grosir ≥ {p.wholesale_min_qty}: {formatRupiah(Number(p.wholesale_price))}
+              {filtered.map((p) => {
+                const units = getUnits(p, unitsByProduct);
+                const baseUnit = units.find((u) => u.is_base) || units[0];
+                const { price: basePrice } = tierPriceFor(baseUnit, 1);
+                return (
+                  <button
+                    key={p.id}
+                    onClick={() => addToCart(p)}
+                    className="group flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
+                  >
+                    <div className="mb-1 line-clamp-2 text-sm font-medium">{p.name}</div>
+                    <div className="text-xs text-muted-foreground">{p.code}</div>
+                    <div className="mt-2 flex w-full items-center justify-between">
+                      <div className="text-sm font-semibold text-primary">{formatRupiah(basePrice)}<span className="text-[10px] text-muted-foreground">/{baseUnit.name}</span></div>
+                      <Badge variant="secondary" className="text-[10px]">stok {p.stock}</Badge>
                     </div>
-                  ) : null}
-                </button>
-              ))}
+                    {units.length > 1 && (
+                      <div className="mt-1 text-[10px] text-muted-foreground">
+                        {units.length} satuan tersedia
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </ScrollArea>
@@ -240,34 +272,51 @@ function KasirPage() {
           ) : (
             <ul className="space-y-2">
               {cart.map((l) => {
-                const { price, wholesale } = getLinePrice(l.product, l.qty);
+                const allUnits = getUnits(l.product, unitsByProduct);
+                const { price, tier } = tierPriceFor(l.unit, l.qty);
+                const isTierGrosir = !!(tier && tier.min_qty > 1);
                 return (
-                  <li key={l.product.id} className="rounded-lg border p-3">
+                  <li key={l.key} className="rounded-lg border p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
                         <div className="truncate text-sm font-medium">{l.product.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {formatRupiah(price)} {wholesale && <span className="text-success">• grosir</span>}
+                          {formatRupiah(price)} / {l.unit.name}
+                          {isTierGrosir && <span className="ml-1 text-success">• grosir ≥{tier!.min_qty}</span>}
                         </div>
                       </div>
-                      <button onClick={() => removeLine(l.product.id)} className="text-muted-foreground hover:text-destructive">
+                      <button onClick={() => removeLine(l.key)} className="text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
-                    <div className="mt-2 flex items-center justify-between">
+                    <div className="mt-2 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1">
-                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.product.id, l.qty - 1)}>
+                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.key, l.qty - 1)}>
                           <Minus className="h-3 w-3" />
                         </Button>
                         <Input
-                          className="h-7 w-14 text-center"
+                          className="h-7 w-12 text-center"
                           type="number"
                           value={l.qty}
-                          onChange={(e) => setQty(l.product.id, parseInt(e.target.value || "0", 10))}
+                          onChange={(e) => setQty(l.key, parseInt(e.target.value || "0", 10))}
                         />
-                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.product.id, l.qty + 1)}>
+                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.key, l.qty + 1)}>
                           <Plus className="h-3 w-3" />
                         </Button>
+                        {allUnits.length > 1 && (
+                          <Select value={l.unit.name} onValueChange={(v) => changeUnit(l.key, v)}>
+                            <SelectTrigger className="h-7 w-[88px] text-xs ml-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allUnits.map((u) => (
+                                <SelectItem key={u.name} value={u.name} className="text-xs">
+                                  {u.name}{u.conversion > 1 ? ` (${u.conversion})` : ""}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                       <div className="text-sm font-semibold">{formatRupiah(price * l.qty)}</div>
                     </div>
@@ -354,10 +403,10 @@ function KasirPage() {
               </div>
               <ul className="divide-y rounded-md border">
                 {lastReceipt.items.map((l) => {
-                  const { price } = getLinePrice(l.product, l.qty);
+                  const { price } = tierPriceFor(l.unit, l.qty);
                   return (
-                    <li key={l.product.id} className="flex justify-between p-2">
-                      <span>{l.product.name} × {l.qty}</span>
+                    <li key={l.key} className="flex justify-between p-2">
+                      <span>{l.product.name} × {l.qty} {l.unit.name}</span>
                       <span>{formatRupiah(price * l.qty)}</span>
                     </li>
                   );
