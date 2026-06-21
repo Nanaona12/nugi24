@@ -33,6 +33,7 @@ function LanggananPage() {
   const { data, isLoading } = useQuery({ queryKey: ["billing"], queryFn: () => getBilling() });
   const [snapReady, setSnapReady] = useState(false);
   const [tenantForm, setTenantForm] = useState({ name: "", phone: "", address: "" });
+  const [couponCode, setCouponCode] = useState("");
 
   useEffect(() => {
     if (data?.tenant) setTenantForm({
@@ -55,9 +56,15 @@ function LanggananPage() {
   }, [data?.midtransClientKey, data?.midtransIsProduction]);
 
   const payMut = useMutation({
-    mutationFn: async () => createPay(),
-    onSuccess: (res) => {
-      if (window.snap && snapReady) {
+    mutationFn: async () => createPay({ data: { coupon_code: couponCode.trim() || undefined } }),
+    onSuccess: (res: any) => {
+      if (res.free) {
+        toast.success("Aktivasi berhasil dengan kupon 100%!");
+        setCouponCode("");
+        qc.invalidateQueries({ queryKey: ["billing"] });
+        return;
+      }
+      if (window.snap && snapReady && res.token) {
         window.snap.pay(res.token, {
           onSuccess: () => { toast.success("Pembayaran sukses!"); qc.invalidateQueries({ queryKey: ["billing"] }); },
           onPending: () => { toast.info("Menunggu pembayaran..."); qc.invalidateQueries({ queryKey: ["billing"] }); },
