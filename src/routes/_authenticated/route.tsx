@@ -28,18 +28,28 @@ function AuthedLayout() {
       }
       setUser({ id: data.user.id, email: data.user.email ?? null });
 
-      const { data: tenant } = await supabase
-        .from("tenants")
-        .select("id")
-        .eq("owner_user_id", data.user.id)
-        .maybeSingle();
-      if (tenant) {
-        const [{ data: s }, { data: roles }] = await Promise.all([
-          supabase.from("subscriptions").select("status, current_period_end").eq("tenant_id", tenant.id).maybeSingle(),
-          supabase.from("user_roles").select("role").eq("user_id", data.user.id),
-        ]);
-        const isSuperAdmin = (roles ?? []).some((r) => r.role === "super_admin");
-        if (s) setSub({ status: s.status, current_period_end: s.current_period_end, isSuperAdmin });
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id);
+      const isSuperAdmin = (roles ?? []).some((r) => r.role === "super_admin");
+
+      if (isSuperAdmin) {
+        setSub({ status: "active", current_period_end: "2999-12-31", isSuperAdmin: true });
+      } else {
+        const { data: tenant } = await supabase
+          .from("tenants")
+          .select("id")
+          .eq("owner_user_id", data.user.id)
+          .maybeSingle();
+        if (tenant) {
+          const { data: s } = await supabase
+            .from("subscriptions")
+            .select("status, current_period_end")
+            .eq("tenant_id", tenant.id)
+            .maybeSingle();
+          if (s) setSub({ status: s.status, current_period_end: s.current_period_end, isSuperAdmin: false });
+        }
       }
       setChecking(false);
     })();
@@ -50,12 +60,19 @@ function AuthedLayout() {
     return () => { mounted = false; authSub.subscription.unsubscribe(); };
   }, [router]);
 
-  // Gate: redirect to /langganan if expired and not already there/admin
+  // Super admin: lock down to /admin area only (no kasir/produk access)
   useEffect(() => {
-    if (!sub) return;
+    if (!sub?.isSuperAdmin) return;
+    if (!pathname.startsWith("/admin")) {
+      router.navigate({ to: "/admin", replace: true });
+    }
+  }, [sub, pathname, router]);
+
+  // Tenant gate: redirect to /langganan if expired
+  useEffect(() => {
+    if (!sub || sub.isSuperAdmin) return;
     const expired = new Date(sub.current_period_end) < new Date();
-    const onAllowed = pathname.startsWith("/langganan") || pathname.startsWith("/admin");
-    if (expired && !onAllowed && !sub.isSuperAdmin) {
+    if (expired && !pathname.startsWith("/langganan")) {
       router.navigate({ to: "/langganan", replace: true });
     }
   }, [sub, pathname, router]);
