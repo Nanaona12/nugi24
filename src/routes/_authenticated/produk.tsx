@@ -558,6 +558,10 @@ function FormField({ label, value, onChange, type = "text", placeholder }: { lab
       <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   );
+}
+
+
+
 
 
 function UnitsEditor({ units, onChange }: { units: ProductUnit[]; onChange: (u: ProductUnit[]) => void }) {
