@@ -85,6 +85,7 @@ function AuthPage() {
             <Button className="w-full" onClick={signIn} disabled={loading}>
               {loading ? "Memproses..." : "Masuk"}
             </Button>
+            <ForgotPasswordLink defaultEmail={email} />
           </TabsContent>
           <TabsContent value="signup" className="space-y-4 pt-4">
             <Field label="Nama Toko" value={shopName} onChange={setShopName} />
@@ -108,6 +109,46 @@ function Field({ label, value, onChange, type = "text" }: { label: string; value
     <div className="space-y-1.5">
       <Label>{label}</Label>
       <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+    </div>
+  );
+}
+
+function ForgotPasswordLink({ defaultEmail }: { defaultEmail: string }) {
+  const [open, setOpen] = useState(false);
+  const [email, setEmail] = useState(defaultEmail);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => { setEmail(defaultEmail); }, [defaultEmail]);
+
+  const send = async () => {
+    if (!email.trim()) { toast.error("Masukkan email Anda"); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+    setLoading(false);
+    if (error) toast.error(error.message);
+    else { toast.success("Link reset password telah dikirim. Cek email Anda."); setOpen(false); }
+  };
+
+  if (!open) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} className="block w-full text-center text-xs text-primary hover:underline">
+        Lupa kata sandi?
+      </button>
+    );
+  }
+
+  return (
+    <div className="space-y-2 rounded-md border bg-muted/40 p-3">
+      <Label className="text-xs">Email untuk reset password</Label>
+      <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@anda.com" />
+      <div className="flex gap-2">
+        <Button size="sm" onClick={send} disabled={loading} className="flex-1">
+          {loading ? "Mengirim..." : "Kirim Link Reset"}
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => setOpen(false)}>Batal</Button>
+      </div>
     </div>
   );
 }
