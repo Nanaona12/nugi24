@@ -85,6 +85,7 @@ function AuthPage() {
             <Button className="w-full" onClick={signIn} disabled={loading}>
               {loading ? "Memproses..." : "Masuk"}
             </Button>
+            <ForgotPasswordLink defaultEmail={email} />
           </TabsContent>
           <TabsContent value="signup" className="space-y-4 pt-4">
             <Field label="Nama Toko" value={shopName} onChange={setShopName} />
