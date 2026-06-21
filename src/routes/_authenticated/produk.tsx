@@ -378,11 +378,13 @@ function normalizeRow(r: Record<string, any>) {
   const code = String(get("kode", "code", "sku", "kode barang") ?? "").trim();
   const name = String(get("nama", "name", "nama barang", "product") ?? "").trim();
   const category = String(get("kategori", "category") ?? "").trim() || null;
-  const price = parseNumber(get("harga", "price", "harga jual"));
+  const price = parseNumber(get("harga", "harga jual", "price"));
+  const cost_price = parseNumber(get("harga modal", "modal", "cost", "cost price", "hpp"));
   const wholesaleRaw = get("harga grosir", "grosir", "wholesale", "wholesale price");
   const wholesale_price = wholesaleRaw === "" || wholesaleRaw == null ? null : parseNumber(wholesaleRaw);
   const minRaw = get("min grosir", "minimum grosir", "min qty", "min", "wholesale min qty");
   const wholesale_min_qty = minRaw === "" || minRaw == null ? null : parseInt(String(minRaw), 10) || null;
   const stock = parseInt(String(get("stok", "stock", "qty") || "0"), 10) || 0;
-  return { code, name, category, price, wholesale_price, wholesale_min_qty, stock };
+  return { code, name, category, price, cost_price, wholesale_price, wholesale_min_qty, stock };
 }
+
