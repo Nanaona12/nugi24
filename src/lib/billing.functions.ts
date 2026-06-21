@@ -210,3 +210,82 @@ export const adminGetTenantStats = createServerFn({ method: "GET" })
     return { products: products ?? 0, transactions: transactions ?? 0, revenue };
   });
 
+export const adminCreateTenant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { email: string; password: string; shop_name: string; phone?: string; address?: string; trial_days?: number }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: created, error: createErr } = await supabaseAdmin.auth.admin.createUser({
+      email: data.email.trim().toLowerCase(),
+      password: data.password,
+      email_confirm: true,
+      user_metadata: { shop_name: data.shop_name.trim() },
+    });
+    if (createErr || !created?.user) throw new Error(createErr?.message ?? "Gagal membuat user");
+
+    // Wait briefly for trigger to insert tenant/subscription, then update extras.
+    let tenantId: string | null = null;
+    for (let i = 0; i < 5; i++) {
+      const { data: t } = await supabaseAdmin
+        .from("tenants").select("id").eq("owner_user_id", created.user.id).maybeSingle();
+      if (t) { tenantId = t.id; break; }
+      await new Promise((r) => setTimeout(r, 200));
+    }
+    if (!tenantId) throw new Error("Tenant tidak terbuat (trigger gagal)");
+
+    if (data.phone || data.address) {
+      await supabaseAdmin.from("tenants").update({
+        phone: data.phone ?? null, address: data.address ?? null,
+      }).eq("id", tenantId);
+    }
+    if (typeof data.trial_days === "number" && data.trial_days > 0) {
+      const end = new Date(); end.setDate(end.getDate() + data.trial_days);
+      await supabaseAdmin.from("subscriptions").update({
+        status: "trialing", current_period_end: end.toISOString(),
+      }).eq("tenant_id", tenantId);
+    }
+    return { ok: true, tenant_id: tenantId };
+  });
+
+export const adminRecordPayment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { tenant_id: string; amount: number; payment_type: string; extend_days: number; note?: string }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const orderId = `MAN-${data.tenant_id.slice(0, 8)}-${Date.now()}`;
+    const { error: payErr } = await supabaseAdmin.from("payments").insert({
+      tenant_id: data.tenant_id,
+      amount: data.amount,
+      status: "paid",
+      payment_type: data.payment_type,
+      midtrans_order_id: orderId,
+      paid_at: new Date().toISOString(),
+      raw_response: { manual: true, note: data.note ?? null, recorded_by: context.userId },
+    });
+    if (payErr) throw new Error(payErr.message);
+
+    if (data.extend_days > 0) {
+      const { data: sub } = await supabaseAdmin
+        .from("subscriptions").select("current_period_end").eq("tenant_id", data.tenant_id).maybeSingle();
+      const base = sub && new Date(sub.current_period_end) > new Date() ? new Date(sub.current_period_end) : new Date();
+      base.setDate(base.getDate() + data.extend_days);
+      await supabaseAdmin.from("subscriptions").update({
+        status: "active", current_period_end: base.toISOString(),
+      }).eq("tenant_id", data.tenant_id);
+    }
+    return { ok: true };
+  });
+
+export const changeMyPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { new_password: string }) => d)
+  .handler(async ({ data, context }) => {
+    if (!data.new_password || data.new_password.length < 6) throw new Error("Password minimal 6 karakter");
+    const { error } = await context.supabase.auth.updateUser({ password: data.new_password });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+

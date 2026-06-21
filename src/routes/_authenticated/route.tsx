@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useRouter, useRouterState } from "@tanst
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield } from "lucide-react";
+import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -110,6 +110,7 @@ function AuthedLayout() {
                 <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
                 <NavLink to="/cek-koneksi" icon={<Wifi className="h-4 w-4" />} label="Koneksi" />
                 <NavLink to="/langganan" icon={<CreditCard className="h-4 w-4" />} label="Langganan" />
+                <NavLink to="/pengaturan" icon={<Settings className="h-4 w-4" />} label="Pengaturan" />
               </>
             )}
           </nav>
