@@ -89,9 +89,7 @@ function KasirPage() {
   const [sendingWa, setSendingWa] = useState(false);
   const [modePicker, setModePicker] = useState<Product | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const sendWaFn = useServerFn(sendFonnteWa);
   const sendWaImgFn = useServerFn(sendFonnteWaImage);
-  const [receiptImg, setReceiptImg] = useState<string | null>(null);
 
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
