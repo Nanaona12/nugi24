@@ -169,6 +169,59 @@ function KeuntunganPage() {
         </Card>
       )}
 
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b bg-muted/40 p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <PackageX className="h-4 w-4 text-destructive" />
+            Produk Habis / Stok Menipis
+            <Badge variant="secondary">{lowStock.length}</Badge>
+          </div>
+          <Button asChild size="sm" variant="default">
+            <Link to="/po"><ShoppingCart className="mr-1 h-4 w-4" />Buat PO</Link>
+          </Button>
+        </div>
+        {lowStock.length === 0 ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            Semua produk masih memiliki stok aman (&gt; {LOW_STOCK_THRESHOLD}).
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="p-3">Kode</th>
+                  <th className="p-3">Nama Produk</th>
+                  <th className="p-3">Kategori</th>
+                  <th className="p-3 text-right">Sisa Stok</th>
+                  <th className="p-3 text-right">Harga</th>
+                  <th className="p-3 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lowStock.map((p) => (
+                  <tr key={p.id} className="border-t hover:bg-muted/40">
+                    <td className="p-3 font-mono text-xs">{p.code}</td>
+                    <td className="p-3 font-medium">{p.name}</td>
+                    <td className="p-3 text-muted-foreground">{p.category || "-"}</td>
+                    <td className="p-3 text-right font-semibold">{p.stock}</td>
+                    <td className="p-3 text-right">{formatRupiah(Number(p.price))}</td>
+                    <td className="p-3 text-right">
+                      {p.stock <= 0 ? (
+                        <Badge variant="destructive">Habis</Badge>
+                      ) : (
+                        <Badge variant="secondary">Menipis</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+
+
       <Tabs defaultValue="daily">
         <TabsList>
           <TabsTrigger value="daily">Per Hari</TabsTrigger>
