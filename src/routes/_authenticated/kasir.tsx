@@ -238,6 +238,43 @@ function KasirPage() {
       customerPhone: sendWa && phoneClean ? phoneClean : null,
     };
     setLastReceipt(receipt);
+    // generate struk gambar
+    try {
+      const imgItems: ReceiptItem[] = cart.map((l) => {
+        const c = computeLine(l);
+        let detail = "";
+        if (l.mode === "grosiran") {
+          const parts: string[] = [];
+          if (c.packs > 0) parts.push(`${c.packs} ${l.unit.name} × ${formatRupiah(c.packPrice)}`);
+          if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
+          detail = parts.join(" + ");
+        } else {
+          detail = `${l.qty} × ${formatRupiah(c.ecerPrice)}`;
+        }
+        return {
+          name: l.product.name,
+          qty: l.qty,
+          unit: l.baseUnit.name,
+          isWholesale: l.mode === "grosiran",
+          detail,
+          subtotal: c.total,
+        };
+      });
+      const { dataUrl } = renderReceiptPng({
+        storeName: "Nugi Vidy 24",
+        storeNote: "Terima kasih atas kunjungan Anda",
+        txId: tx.id,
+        at: receipt.at,
+        items: imgItems,
+        total: receipt.total,
+        paid: receipt.paid,
+        change: receipt.change,
+        paymentMethod: receipt.paymentMethod,
+      });
+      setReceiptImg(dataUrl);
+    } catch (e) {
+      setReceiptImg(null);
+    }
     setCart([]); setPaid(""); setPayOpen(false); setSubmitting(false);
     setSendWa(false); setCustomerPhone(""); setPaymentMethod("cash");
     loadProducts();
