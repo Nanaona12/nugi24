@@ -450,20 +450,22 @@ function ProdukPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit Produk" : "Tambah Produk"}</DialogTitle>
+            <DialogDescription>
+              Atur info dasar, satuan (pcs/slove/dus), dan tingkatan harga grosir.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Kode (otomatis jika kosong)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="Biarkan kosong → BRG0001" />
             <FormField label="Nama *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
-            <FormField label="Stok" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
+            <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
             <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
-            <FormField label="Harga Jual" value={form.price} onChange={(v) => setForm({ ...form, price: v })} type="number" />
-            <FormField label="Harga Grosir" value={form.wholesale_price} onChange={(v) => setForm({ ...form, wholesale_price: v })} type="number" />
-            <FormField label="Min Qty Grosir" value={form.wholesale_min_qty} onChange={(v) => setForm({ ...form, wholesale_min_qty: v })} type="number" />
           </div>
+
+          <UnitsEditor units={formUnits} onChange={setFormUnits} />
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Batal</Button>
