@@ -260,7 +260,7 @@ function KasirPage() {
         };
       });
       const { dataUrl } = renderReceiptPng({
-        storeName: "Nugi Vidy 24",
+        storeName: "Dagang Pintar",
         storeNote: "Terima kasih atas kunjungan Anda",
         txId: tx.id,
         at: receipt.at,
@@ -593,7 +593,7 @@ function KasirPage() {
                       const r = lastReceipt;
                       const base64 = receiptImg.split(",")[1] || "";
                       const caption =
-                        `*Nugi Vidy 24*\n` +
+                        `*Dagang Pintar*\n` +
                         `Struk #${r.id.slice(0, 8)}\n` +
                         `Total: ${formatRupiah(r.total)} (${r.paymentMethod.toUpperCase()})\n` +
                         `Terima kasih sudah berbelanja 🙏`;

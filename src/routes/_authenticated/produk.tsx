@@ -317,7 +317,7 @@ function ProdukPage() {
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Produk");
-    XLSX.writeFile(wb, "template-produk-nugividy24.xlsx");
+    XLSX.writeFile(wb, "template-produk-dagang-pintar.xlsx");
   };
 
 
