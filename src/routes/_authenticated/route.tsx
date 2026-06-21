@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -82,13 +83,18 @@ function AuthedLayout() {
   const handleLogout = async () => {
     try {
       await queryClient.cancelQueries();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Logout error:", error);
+        toast.error("Gagal keluar: " + error.message);
+        return;
+      }
       queryClient.clear();
-      await supabase.auth.signOut();
-    } catch (e) {
+      try { localStorage.removeItem("sb-auth-token"); } catch {}
+      router.navigate({ to: "/auth", replace: true });
+    } catch (e: any) {
       console.error("Logout error:", e);
-    } finally {
-      try { localStorage.clear(); } catch {}
-      window.location.href = "/auth";
+      toast.error("Gagal keluar. Coba lagi.");
     }
   };
 
