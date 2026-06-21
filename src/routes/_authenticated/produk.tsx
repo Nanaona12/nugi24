@@ -22,6 +22,7 @@ type Product = {
   name: string;
   category: string | null;
   price: number;
+  cost_price: number;
   wholesale_price: number | null;
   wholesale_min_qty: number | null;
   stock: number;
@@ -33,6 +34,7 @@ type ProductForm = {
   name: string;
   category: string;
   price: string;
+  cost_price: string;
   wholesale_price: string;
   wholesale_min_qty: string;
   stock: string;
@@ -43,10 +45,12 @@ const emptyForm: ProductForm = {
   name: "",
   category: "",
   price: "",
+  cost_price: "",
   wholesale_price: "",
   wholesale_min_qty: "",
   stock: "0",
 };
+
 
 function ProdukPage() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -80,6 +84,7 @@ function ProdukPage() {
       name: p.name,
       category: p.category || "",
       price: String(p.price),
+      cost_price: p.cost_price ? String(p.cost_price) : "",
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: String(p.stock),
@@ -88,15 +93,25 @@ function ProdukPage() {
   };
 
   const saveForm = async () => {
-    if (!form.code.trim() || !form.name.trim()) {
-      toast.error("Kode dan nama wajib diisi");
+    if (!form.name.trim()) {
+      toast.error("Nama wajib diisi");
       return;
     }
+    let code = form.code.trim();
+    if (!code) {
+      const { data, error } = await supabase.rpc("next_product_code");
+      if (error || !data) {
+        toast.error("Gagal generate kode otomatis: " + (error?.message || ""));
+        return;
+      }
+      code = String(data);
+    }
     const payload = {
-      code: form.code.trim(),
+      code,
       name: form.name.trim(),
       category: form.category.trim() || null,
       price: parseNumber(form.price),
+      cost_price: parseNumber(form.cost_price),
       wholesale_price: form.wholesale_price ? parseNumber(form.wholesale_price) : null,
       wholesale_min_qty: form.wholesale_min_qty ? parseInt(form.wholesale_min_qty, 10) : null,
       stock: parseInt(form.stock || "0", 10),
@@ -104,11 +119,14 @@ function ProdukPage() {
     const { error } = form.id
       ? await supabase.from("products").update(payload).eq("id", form.id)
       : await supabase.from("products").insert(payload);
-    if (error) toast.error(error.message);
-    else {
+    if (error) {
+      if (error.code === "23505") toast.error(`Kode "${code}" sudah dipakai produk lain`);
+      else toast.error(error.message);
+    } else {
       toast.success("Disimpan");
       setEditOpen(false);
       load();
+
     }
   };
 
@@ -139,17 +157,26 @@ function ProdukPage() {
   };
 
   const confirmImport = async () => {
-    const valid = importPreview.filter((r) => r.code && r.name);
-    if (valid.length === 0) {
-      toast.error("Tidak ada baris valid (butuh kolom Kode & Nama)");
+    const named = importPreview.filter((r) => r.name);
+    if (named.length === 0) {
+      toast.error("Tidak ada baris valid (butuh kolom Nama)");
       return;
     }
     setImporting(true);
-    const { error } = await supabase.from("products").upsert(valid, { onConflict: "code" });
+    // Auto-generate code for rows missing one
+    const rows = await Promise.all(
+      named.map(async (r) => {
+        if (r.code) return r;
+        const { data } = await supabase.rpc("next_product_code");
+        return { ...r, code: data ? String(data) : "" };
+      }),
+    );
+    const final = rows.filter((r) => r.code);
+    const { error } = await supabase.from("products").upsert(final, { onConflict: "code" });
     setImporting(false);
     if (error) toast.error(error.message);
     else {
-      toast.success(`${valid.length} produk diimport`);
+      toast.success(`${final.length} produk diimport`);
       setImportOpen(false);
       setImportPreview([]);
       load();
@@ -158,13 +185,14 @@ function ProdukPage() {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { Kode: "BRG001", Nama: "Beras 5kg", Kategori: "Sembako", Harga: 65000, "Harga Grosir": 62000, "Min Grosir": 5, Stok: 50 },
-      { Kode: "BRG002", Nama: "Minyak Goreng 1L", Kategori: "Sembako", Harga: 18000, "Harga Grosir": 17000, "Min Grosir": 12, Stok: 30 },
+      { Kode: "", Nama: "Beras 5kg", Kategori: "Sembako", "Harga Modal": 58000, Harga: 65000, "Harga Grosir": 62000, "Min Grosir": 5, Stok: 50 },
+      { Kode: "", Nama: "Minyak Goreng 1L", Kategori: "Sembako", "Harga Modal": 15000, Harga: 18000, "Harga Grosir": 17000, "Min Grosir": 12, Stok: 30 },
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Produk");
     XLSX.writeFile(wb, "template-produk-warung.xlsx");
   };
+
 
   return (
     <div className="space-y-4">
@@ -261,15 +289,16 @@ function ProdukPage() {
             <DialogTitle>{form.id ? "Edit Produk" : "Tambah Produk"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
-            <FormField label="Kode *" value={form.code} onChange={(v) => setForm({ ...form, code: v })} />
+            <FormField label="Kode (otomatis jika kosong)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="Biarkan kosong → BRG0001" />
             <FormField label="Nama *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
             <FormField label="Stok" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
-            <FormField label="Harga" value={form.price} onChange={(v) => setForm({ ...form, price: v })} type="number" />
-            <div />
+            <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
+            <FormField label="Harga Jual" value={form.price} onChange={(v) => setForm({ ...form, price: v })} type="number" />
             <FormField label="Harga Grosir" value={form.wholesale_price} onChange={(v) => setForm({ ...form, wholesale_price: v })} type="number" />
             <FormField label="Min Qty Grosir" value={form.wholesale_min_qty} onChange={(v) => setForm({ ...form, wholesale_min_qty: v })} type="number" />
           </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Batal</Button>
             <Button onClick={saveForm}>Simpan</Button>
@@ -283,8 +312,9 @@ function ProdukPage() {
           <DialogHeader>
             <DialogTitle>Preview Import Excel</DialogTitle>
             <DialogDescription>
-              {importPreview.length} baris terdeteksi. Produk dengan kode sama akan diperbarui (upsert).
+              {importPreview.length} baris terdeteksi. Kode kosong akan dibuat otomatis. Produk dengan kode sama akan diperbarui.
             </DialogDescription>
+
           </DialogHeader>
           <div className="max-h-96 overflow-auto rounded border">
             <table className="w-full text-xs">
@@ -293,6 +323,7 @@ function ProdukPage() {
                   <th className="p-2">Kode</th>
                   <th className="p-2">Nama</th>
                   <th className="p-2">Kategori</th>
+                  <th className="p-2 text-right">Modal</th>
                   <th className="p-2 text-right">Harga</th>
                   <th className="p-2 text-right">Grosir</th>
                   <th className="p-2 text-right">Min</th>
@@ -301,24 +332,27 @@ function ProdukPage() {
               </thead>
               <tbody>
                 {importPreview.map((r, i) => (
-                  <tr key={i} className={`border-t ${!r.code || !r.name ? "bg-destructive/10" : ""}`}>
-                    <td className="p-2 font-mono">{r.code || <span className="text-destructive">kosong</span>}</td>
+                  <tr key={i} className={`border-t ${!r.name ? "bg-destructive/10" : ""}`}>
+                    <td className="p-2 font-mono">{r.code || <span className="text-muted-foreground italic">otomatis</span>}</td>
                     <td className="p-2">{r.name || <span className="text-destructive">kosong</span>}</td>
                     <td className="p-2">{r.category}</td>
+                    <td className="p-2 text-right">{r.cost_price || ""}</td>
                     <td className="p-2 text-right">{r.price}</td>
                     <td className="p-2 text-right">{r.wholesale_price ?? ""}</td>
                     <td className="p-2 text-right">{r.wholesale_min_qty ?? ""}</td>
                     <td className="p-2 text-right">{r.stock}</td>
                   </tr>
                 ))}
+
               </tbody>
             </table>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setImportOpen(false)}>Batal</Button>
             <Button onClick={confirmImport} disabled={importing}>
-              {importing ? "Mengimport..." : `Import ${importPreview.filter((r) => r.code && r.name).length} produk`}
+              {importing ? "Mengimport..." : `Import ${importPreview.filter((r) => r.name).length} produk`}
             </Button>
+
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -326,14 +360,15 @@ function ProdukPage() {
   );
 }
 
-function FormField({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+function FormField({ label, value, onChange, type = "text", placeholder }: { label: string; value: string; onChange: (v: string) => void; type?: string; placeholder?: string }) {
   return (
     <div className="space-y-1.5">
       <Label className="text-xs">{label}</Label>
-      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   );
 }
+
 
 // Map flexible column names (Indonesian/English) → DB columns
 function normalizeRow(r: Record<string, any>) {
@@ -348,11 +383,13 @@ function normalizeRow(r: Record<string, any>) {
   const code = String(get("kode", "code", "sku", "kode barang") ?? "").trim();
   const name = String(get("nama", "name", "nama barang", "product") ?? "").trim();
   const category = String(get("kategori", "category") ?? "").trim() || null;
-  const price = parseNumber(get("harga", "price", "harga jual"));
+  const price = parseNumber(get("harga", "harga jual", "price"));
+  const cost_price = parseNumber(get("harga modal", "modal", "cost", "cost price", "hpp"));
   const wholesaleRaw = get("harga grosir", "grosir", "wholesale", "wholesale price");
   const wholesale_price = wholesaleRaw === "" || wholesaleRaw == null ? null : parseNumber(wholesaleRaw);
   const minRaw = get("min grosir", "minimum grosir", "min qty", "min", "wholesale min qty");
   const wholesale_min_qty = minRaw === "" || minRaw == null ? null : parseInt(String(minRaw), 10) || null;
   const stock = parseInt(String(get("stok", "stock", "qty") || "0"), 10) || 0;
-  return { code, name, category, price, wholesale_price, wholesale_min_qty, stock };
+  return { code, name, category, price, cost_price, wholesale_price, wholesale_min_qty, stock };
 }
+

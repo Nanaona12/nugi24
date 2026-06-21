@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           category: string | null
           code: string
+          cost_price: number
           created_at: string
           id: string
           name: string
@@ -30,6 +31,7 @@ export type Database = {
         Insert: {
           category?: string | null
           code: string
+          cost_price?: number
           created_at?: string
           id?: string
           name: string
@@ -42,6 +44,7 @@ export type Database = {
         Update: {
           category?: string | null
           code?: string
+          cost_price?: number
           created_at?: string
           id?: string
           name?: string
@@ -140,6 +143,7 @@ export type Database = {
           qty: number
           subtotal: number
           transaction_id: string
+          unit_cost: number
           unit_price: number
         }
         Insert: {
@@ -151,6 +155,7 @@ export type Database = {
           qty: number
           subtotal: number
           transaction_id: string
+          unit_cost?: number
           unit_price: number
         }
         Update: {
@@ -162,6 +167,7 @@ export type Database = {
           qty?: number
           subtotal?: number
           transaction_id?: string
+          unit_cost?: number
           unit_price?: number
         }
         Relationships: [
@@ -216,7 +222,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      next_product_code: { Args: never; Returns: string }
     }
     Enums: {
       [_ in never]: never

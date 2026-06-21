@@ -22,10 +22,12 @@ type Product = {
   name: string;
   category: string | null;
   price: number;
+  cost_price: number;
   wholesale_price: number | null;
   wholesale_min_qty: number | null;
   stock: number;
 };
+
 
 type CartLine = {
   product: Product;
@@ -145,11 +147,13 @@ function KasirPage() {
         product_name: l.product.name,
         qty: l.qty,
         unit_price: price,
+        unit_cost: Number(l.product.cost_price || 0),
         is_wholesale: wholesale,
         subtotal: price * l.qty,
       };
     });
     const { error: itErr } = await supabase.from("transaction_items").insert(items);
+
     if (itErr) {
       toast.error(itErr.message);
       setSubmitting(false);

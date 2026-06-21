@@ -2,7 +2,7 @@ import { createFileRoute, Outlet, Link, useRouter } from "@tanstack/react-router
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList } from "lucide-react";
+import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -61,6 +61,8 @@ function AuthedLayout() {
             <NavLink to="/produk" icon={<Package className="h-4 w-4" />} label="Produk" />
             <NavLink to="/po" icon={<ClipboardList className="h-4 w-4" />} label="PO" />
             <NavLink to="/riwayat" icon={<Receipt className="h-4 w-4" />} label="Riwayat" />
+            <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
+
 
           </nav>
           <div className="hidden text-xs text-sidebar-foreground/70 sm:block">{user.email}</div>
