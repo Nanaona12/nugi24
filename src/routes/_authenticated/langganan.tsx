@@ -113,6 +113,15 @@ function LanggananPage() {
           <div className="rounded-lg border bg-accent/30 p-4">
             <div className="text-sm text-muted-foreground">Paket Basic</div>
             <div className="text-3xl font-bold">{formatRupiah(14900)}<span className="text-base font-normal text-muted-foreground"> / bulan</span></div>
+            <div className="mt-3 space-y-2">
+              <Label className="text-xs">Kode Kupon (opsional)</Label>
+              <Input
+                placeholder="Contoh: PROMO50"
+                value={couponCode}
+                onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                className="uppercase"
+              />
+            </div>
             <Button className="mt-3" onClick={() => payMut.mutate()} disabled={payMut.isPending || !snapReady}>
               <CreditCard className="mr-2 h-4 w-4" />
               {payMut.isPending ? "Memproses..." : expired ? "Bayar Sekarang" : "Perpanjang 30 Hari"}
