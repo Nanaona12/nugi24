@@ -42,20 +42,17 @@ function LanggananPage() {
     });
   }, [data?.tenant]);
 
-  // Load Midtrans Snap script
   useEffect(() => {
-    const clientKey = import.meta.env.VITE_MIDTRANS_CLIENT_KEY;
-    const isProd = clientKey && !String(clientKey).startsWith("SB-Mid-client-");
-    const src = isProd
-      ? "https://app.midtrans.com/snap/snap.js"
-      : "https://app.sandbox.midtrans.com/snap/snap.js";
+    if (!data?.midtransClientKey) return;
+    const isProd = data.midtransIsProduction;
+    const src = isProd ? "https://app.midtrans.com/snap/snap.js" : "https://app.sandbox.midtrans.com/snap/snap.js";
     if (document.querySelector(`script[src="${src}"]`)) { setSnapReady(true); return; }
     const s = document.createElement("script");
     s.src = src;
-    s.setAttribute("data-client-key", clientKey ?? "");
+    s.setAttribute("data-client-key", data.midtransClientKey);
     s.onload = () => setSnapReady(true);
     document.body.appendChild(s);
-  }, []);
+  }, [data?.midtransClientKey, data?.midtransIsProduction]);
 
   const payMut = useMutation({
     mutationFn: async () => createPay(),
