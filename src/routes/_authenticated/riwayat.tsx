@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Receipt, Eye } from "lucide-react";
+import { Receipt, Eye, Trash2 } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/riwayat")({
   component: RiwayatPage,
