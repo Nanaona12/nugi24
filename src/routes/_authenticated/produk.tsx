@@ -143,12 +143,18 @@ function ProdukPage() {
   };
 
   const removeAll = async () => {
-    if (products.length === 0) return;
-    if (!confirm(`Yakin hapus SEMUA ${products.length} produk? Tindakan ini tidak bisa dibatalkan.`)) return;
-    if (!confirm("Konfirmasi sekali lagi: hapus semua produk?")) return;
-    const { error } = await supabase.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    setDeletingAll(true);
+    const { error, count } = await supabase
+      .from("products")
+      .delete({ count: "exact" })
+      .not("id", "is", null);
+    setDeletingAll(false);
+    setConfirmDeleteAll(false);
     if (error) toast.error(error.message);
-    else { toast.success("Semua produk dihapus"); load(); }
+    else {
+      toast.success(`${count ?? 0} produk dihapus`);
+      load();
+    }
   };
 
   const handleScan = async (code: string) => {
