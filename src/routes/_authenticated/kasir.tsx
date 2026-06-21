@@ -11,9 +11,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check } from "lucide-react";
+import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check, Loader2 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor, PriceTier } from "@/lib/product-pricing";
+import { useServerFn } from "@tanstack/react-start";
+import { sendFonnteWa } from "@/lib/fonnte.functions";
 
 export const Route = createFileRoute("/_authenticated/kasir")({
   component: KasirPage,
@@ -83,8 +85,10 @@ function KasirPage() {
   const [customerPhone, setCustomerPhone] = useState("");
   const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date; paymentMethod: "cash" | "qris"; customerPhone: string | null }>(null);
   const [copied, setCopied] = useState(false);
+  const [sendingWa, setSendingWa] = useState(false);
   const [modePicker, setModePicker] = useState<Product | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const sendWaFn = useServerFn(sendFonnteWa);
 
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
@@ -545,7 +549,8 @@ function KasirPage() {
                 <div className="flex gap-2">
                   <Button
                     className="flex-1"
-                    onClick={() => {
+                    disabled={sendingWa}
+                    onClick={async () => {
                       const r = lastReceipt;
                       const lines = r.items.map((l) => {
                         const c = computeLine(l);
@@ -560,15 +565,27 @@ function KasirPage() {
                         `Bayar (${r.paymentMethod.toUpperCase()}): ${formatRupiah(r.paid)}\n` +
                         `Kembali: ${formatRupiah(r.change)}\n\n` +
                         `Terima kasih sudah berbelanja 🙏`;
-                      const phone = r.customerPhone!.replace(/^\+/, "").replace(/^0/, "62");
-                      const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-                      const newTab = window.open(url, "_blank");
-                      if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
-                        window.location.href = url;
+                      setSendingWa(true);
+                      try {
+                        const res = await sendWaFn({ data: { target: r.customerPhone!, message: msg } });
+                        if (res.ok) {
+                          toast.success("E-struk terkirim via WhatsApp");
+                        } else {
+                          toast.error("Fonnte gagal: " + res.error + ". Membuka wa.me…");
+                          const phone = r.customerPhone!.replace(/[^\d]/g, "").replace(/^0/, "62");
+                          const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                          const newTab = window.open(url, "_blank");
+                          if (!newTab) window.location.href = url;
+                        }
+                      } catch (e: any) {
+                        toast.error("Gagal kirim: " + (e?.message || "unknown"));
+                      } finally {
+                        setSendingWa(false);
                       }
                     }}
                   >
-                    📲 Buka WhatsApp
+                    {sendingWa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {sendingWa ? "Mengirim…" : "📲 Kirim via WhatsApp"}
                   </Button>
                   <Button
                     variant="outline"
