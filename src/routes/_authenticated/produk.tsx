@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah, parseNumber } from "@/lib/format";
-import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash } from "lucide-react";
+import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash, Package, X as XIcon } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ProductUnit, loadUnitsForProducts, replaceProductUnits, fallbackUnitFromProduct } from "@/lib/product-pricing";
 
 export const Route = createFileRoute("/_authenticated/produk")({
   component: ProdukPage,
@@ -56,6 +57,7 @@ const emptyForm: ProductForm = {
 
 function ProdukPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [query, setQuery] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -63,6 +65,7 @@ function ProdukPage() {
   const [importing, setImporting] = useState(false);
   const [importMode, setImportMode] = useState<"upsert" | "update_only">("upsert");
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [formUnits, setFormUnits] = useState<ProductUnit[]>([]);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
@@ -70,8 +73,15 @@ function ProdukPage() {
 
   const load = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
-    if (error) toast.error(error.message);
-    else setProducts((data || []) as Product[]);
+    if (error) { toast.error(error.message); return; }
+    const prods = (data || []) as Product[];
+    setProducts(prods);
+    try {
+      const map = await loadUnitsForProducts(prods.map((p) => p.id));
+      setUnitsByProduct(map);
+    } catch (e: any) {
+      toast.error("Gagal memuat satuan: " + e.message);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -82,7 +92,16 @@ function ProdukPage() {
     return p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q);
   });
 
-  const openNew = () => { setForm(emptyForm); setEditOpen(true); };
+  const defaultUnitsFor = (p?: Product): ProductUnit[] => {
+    if (p) {
+      const existing = unitsByProduct[p.id];
+      if (existing && existing.length > 0) return existing.map((u) => ({ ...u, tiers: [...u.tiers] }));
+      return [fallbackUnitFromProduct(p)];
+    }
+    return [{ name: "pcs", conversion: 1, sort_order: 0, is_base: true, tiers: [{ min_qty: 1, price: 0 }] }];
+  };
+
+  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setEditOpen(true); };
   const openEdit = (p: Product) => {
     setForm({
       id: p.id,
@@ -95,6 +114,7 @@ function ProdukPage() {
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: String(p.stock),
     });
+    setFormUnits(defaultUnitsFor(p));
     setEditOpen(true);
   };
 
@@ -122,18 +142,47 @@ function ProdukPage() {
       wholesale_min_qty: form.wholesale_min_qty ? parseInt(form.wholesale_min_qty, 10) : null,
       stock: parseInt(form.stock || "0", 10),
     };
-    const { error } = form.id
-      ? await supabase.from("products").update(payload).eq("id", form.id)
-      : await supabase.from("products").insert(payload);
-    if (error) {
-      if (error.code === "23505") toast.error(`Kode "${code}" sudah dipakai produk lain`);
-      else toast.error(error.message);
-    } else {
-      toast.success("Disimpan");
-      setEditOpen(false);
-      load();
-
+    // Validasi satuan
+    const cleanUnits = formUnits
+      .map((u) => ({ ...u, tiers: u.tiers.filter((t) => t.min_qty > 0 && t.price >= 0) }))
+      .filter((u) => u.name.trim() && u.tiers.length > 0);
+    if (cleanUnits.length === 0) {
+      toast.error("Minimal 1 satuan dengan 1 tingkatan harga");
+      return;
     }
+    // Pastikan satu base unit
+    if (!cleanUnits.some((u) => u.is_base)) cleanUnits[0].is_base = true;
+    // Sinkronkan kolom legacy products.price = harga tier terkecil pada base unit
+    const baseUnit = cleanUnits.find((u) => u.is_base) || cleanUnits[0];
+    const baseTier1 = [...baseUnit.tiers].sort((a, b) => a.min_qty - b.min_qty)[0];
+    const basePrice = baseTier1.price;
+    payload.price = basePrice;
+
+    let prodId = form.id;
+    if (form.id) {
+      const { error } = await supabase.from("products").update(payload).eq("id", form.id);
+      if (error) {
+        if (error.code === "23505") toast.error(`Kode "${code}" sudah dipakai produk lain`);
+        else toast.error(error.message);
+        return;
+      }
+    } else {
+      const { data: inserted, error } = await supabase.from("products").insert(payload).select().single();
+      if (error || !inserted) {
+        if (error?.code === "23505") toast.error(`Kode "${code}" sudah dipakai produk lain`);
+        else toast.error(error?.message || "Gagal simpan");
+        return;
+      }
+      prodId = inserted.id;
+    }
+    try {
+      await replaceProductUnits(prodId!, cleanUnits);
+    } catch (e: any) {
+      toast.error("Produk tersimpan tapi satuan gagal: " + e.message);
+    }
+    toast.success("Disimpan");
+    setEditOpen(false);
+    load();
   };
 
   const remove = async (p: Product) => {
@@ -371,14 +420,26 @@ function ProdukPage() {
                     <td className="p-3">{p.category && <Badge variant="secondary">{p.category}</Badge>}</td>
                     <td className="p-3 text-right">{formatRupiah(p.price)}</td>
                     <td className="p-3 text-right text-xs">
-                      {p.wholesale_price && p.wholesale_min_qty ? (
-                        <>
-                          {formatRupiah(Number(p.wholesale_price))}
-                          <div className="text-muted-foreground">≥ {p.wholesale_min_qty}</div>
-                        </>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      {(() => {
+                        const us = unitsByProduct[p.id];
+                        if (us && us.length > 0) {
+                          const totalTiers = us.reduce((s, u) => s + u.tiers.length, 0);
+                          return (
+                            <div>
+                              <div className="font-medium">{us.map((u) => u.name).join(" / ")}</div>
+                              <div className="text-muted-foreground">{totalTiers} tingkat harga</div>
+                            </div>
+                          );
+                        }
+                        return p.wholesale_price && p.wholesale_min_qty ? (
+                          <>
+                            {formatRupiah(Number(p.wholesale_price))}
+                            <div className="text-muted-foreground">≥ {p.wholesale_min_qty}</div>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        );
+                      })()}
                     </td>
                     <td className="p-3 text-right">{p.stock}</td>
                     <td className="p-3">
@@ -401,20 +462,22 @@ function ProdukPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit Produk" : "Tambah Produk"}</DialogTitle>
+            <DialogDescription>
+              Atur info dasar, satuan (pcs/slove/dus), dan tingkatan harga grosir.
+            </DialogDescription>
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Kode (otomatis jika kosong)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="Biarkan kosong → BRG0001" />
             <FormField label="Nama *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
-            <FormField label="Stok" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
+            <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
             <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
-            <FormField label="Harga Jual" value={form.price} onChange={(v) => setForm({ ...form, price: v })} type="number" />
-            <FormField label="Harga Grosir" value={form.wholesale_price} onChange={(v) => setForm({ ...form, wholesale_price: v })} type="number" />
-            <FormField label="Min Qty Grosir" value={form.wholesale_min_qty} onChange={(v) => setForm({ ...form, wholesale_min_qty: v })} type="number" />
           </div>
+
+          <UnitsEditor units={formUnits} onChange={setFormUnits} />
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Batal</Button>
@@ -508,6 +571,96 @@ function FormField({ label, value, onChange, type = "text", placeholder }: { lab
     </div>
   );
 }
+
+
+
+
+
+function UnitsEditor({ units, onChange }: { units: ProductUnit[]; onChange: (u: ProductUnit[]) => void }) {
+  const update = (i: number, patch: Partial<ProductUnit>) => {
+    const copy = units.map((u, idx) => (idx === i ? { ...u, ...patch } : u));
+    if (patch.is_base) copy.forEach((u, idx) => { if (idx !== i) u.is_base = false; });
+    onChange(copy);
+  };
+  const updateTier = (ui: number, ti: number, patch: Partial<{ min_qty: number; price: number }>) => {
+    const copy = units.map((u, idx) => {
+      if (idx !== ui) return u;
+      const tiers = u.tiers.map((t, j) => (j === ti ? { ...t, ...patch } : t));
+      return { ...u, tiers };
+    });
+    onChange(copy);
+  };
+  const addUnit = () => {
+    onChange([...units, { name: "", conversion: 1, sort_order: units.length, is_base: units.length === 0, tiers: [{ min_qty: 1, price: 0 }] }]);
+  };
+  const removeUnit = (i: number) => {
+    const copy = units.filter((_, idx) => idx !== i);
+    if (!copy.some((u) => u.is_base) && copy[0]) copy[0].is_base = true;
+    onChange(copy);
+  };
+  const addTier = (ui: number) => {
+    const u = units[ui];
+    const lastMin = u.tiers.length > 0 ? Math.max(...u.tiers.map((t) => t.min_qty)) : 0;
+    update(ui, { tiers: [...u.tiers, { min_qty: lastMin + 1, price: 0 }] });
+  };
+  const removeTier = (ui: number, ti: number) => {
+    const u = units[ui];
+    update(ui, { tiers: u.tiers.filter((_, j) => j !== ti) });
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-sm font-semibold flex items-center gap-1.5"><Package className="h-4 w-4" /> Satuan & Tingkatan Harga</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">Buat satuan (mis. pcs, slove=10pcs, dus=60pcs). Tiap satuan boleh punya beberapa harga sesuai jumlah beli.</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={addUnit}>
+          <Plus className="mr-1 h-3.5 w-3.5" /> Satuan
+        </Button>
+      </div>
+      {units.length === 0 && <p className="text-xs text-muted-foreground italic">Belum ada satuan.</p>}
+      {units.map((u, ui) => (
+        <div key={ui} className="space-y-2 rounded-md border bg-card p-2.5">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex-1 min-w-[100px]">
+              <Label className="text-[10px] uppercase">Nama Satuan</Label>
+              <Input value={u.name} onChange={(e) => update(ui, { name: e.target.value })} placeholder="pcs / slove / dus" className="h-8" />
+            </div>
+            <div className="w-24">
+              <Label className="text-[10px] uppercase">= ... unit dasar</Label>
+              <Input type="number" min={1} value={u.conversion} onChange={(e) => update(ui, { conversion: parseInt(e.target.value || "1", 10) })} className="h-8" />
+            </div>
+            <label className="flex items-center gap-1 text-xs cursor-pointer">
+              <input type="radio" checked={u.is_base} onChange={() => update(ui, { is_base: true })} /> Dasar
+            </label>
+            <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeUnit(ui)}>
+              <XIcon className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="space-y-1.5 pl-2 border-l-2 border-primary/30">
+            {u.tiers.map((t, ti) => (
+              <div key={ti} className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">≥</span>
+                <Input type="number" min={1} value={t.min_qty} onChange={(e) => updateTier(ui, ti, { min_qty: parseInt(e.target.value || "1", 10) })} className="h-8 w-20" />
+                <span className="text-muted-foreground">{u.name || "satuan"} →</span>
+                <Input type="number" min={0} value={t.price} onChange={(e) => updateTier(ui, ti, { price: parseNumber(e.target.value) })} className="h-8 flex-1" placeholder="Harga" />
+                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeTier(ui, ti)}>
+                  <XIcon className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => addTier(ui)}>
+              <Plus className="mr-1 h-3 w-3" /> Tingkat harga
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+
 
 
 // Map flexible column names (Indonesian/English) → DB columns

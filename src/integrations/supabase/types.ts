@@ -14,6 +14,85 @@ export type Database = {
   }
   public: {
     Tables: {
+      product_price_tiers: {
+        Row: {
+          created_at: string
+          id: string
+          min_qty: number
+          price: number
+          product_unit_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          min_qty?: number
+          price: number
+          product_unit_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          min_qty?: number
+          price?: number
+          product_unit_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_price_tiers_product_unit_id_fkey"
+            columns: ["product_unit_id"]
+            isOneToOne: false
+            referencedRelation: "product_units"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_units: {
+        Row: {
+          conversion: number
+          created_at: string
+          id: string
+          is_base: boolean
+          name: string
+          product_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          conversion?: number
+          created_at?: string
+          id?: string
+          is_base?: boolean
+          name: string
+          product_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          conversion?: number
+          created_at?: string
+          id?: string
+          is_base?: boolean
+          name?: string
+          product_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_units_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       products: {
         Row: {
           category: string | null
@@ -143,8 +222,11 @@ export type Database = {
           qty: number
           subtotal: number
           transaction_id: string
+          unit_conversion: number | null
           unit_cost: number
+          unit_name: string | null
           unit_price: number
+          unit_qty: number | null
         }
         Insert: {
           id?: string
@@ -155,8 +237,11 @@ export type Database = {
           qty: number
           subtotal: number
           transaction_id: string
+          unit_conversion?: number | null
           unit_cost?: number
+          unit_name?: string | null
           unit_price: number
+          unit_qty?: number | null
         }
         Update: {
           id?: string
@@ -167,8 +252,11 @@ export type Database = {
           qty?: number
           subtotal?: number
           transaction_id?: string
+          unit_conversion?: number | null
           unit_cost?: number
+          unit_name?: string | null
           unit_price?: number
+          unit_qty?: number | null
         }
         Relationships: [
           {
