@@ -79,24 +79,34 @@ function AuthPage() {
             <TabsTrigger value="signin">Masuk</TabsTrigger>
             <TabsTrigger value="signup">Daftar</TabsTrigger>
           </TabsList>
-          <TabsContent value="signin" className="space-y-4 pt-4">
-            <Field label="Email" value={email} onChange={setEmail} type="email" />
-            <Field label="Kata Sandi" value={password} onChange={setPassword} type="password" />
-            <Button className="w-full" onClick={signIn} disabled={loading}>
-              {loading ? "Memproses..." : "Masuk"}
-            </Button>
-            <ForgotPasswordLink defaultEmail={email} />
+          <TabsContent value="signin" className="pt-4">
+            <form
+              className="space-y-4"
+              onSubmit={(e) => { e.preventDefault(); if (!loading) signIn(); }}
+            >
+              <Field label="Email" value={email} onChange={setEmail} type="email" />
+              <Field label="Kata Sandi" value={password} onChange={setPassword} type="password" />
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Memproses..." : "Masuk"}
+              </Button>
+              <ForgotPasswordLink defaultEmail={email} />
+            </form>
           </TabsContent>
-          <TabsContent value="signup" className="space-y-4 pt-4">
-            <Field label="Nama Toko" value={shopName} onChange={setShopName} />
-            <Field label="Email" value={email} onChange={setEmail} type="email" />
-            <Field label="Kata Sandi (min. 6)" value={password} onChange={setPassword} type="password" />
-            <Button className="w-full" onClick={signUp} disabled={loading}>
-              {loading ? "Memproses..." : "Daftar — 7 Hari Gratis"}
-            </Button>
-            <p className="text-center text-xs text-muted-foreground">
-              Setelah trial: Rp 14.900/bulan
-            </p>
+          <TabsContent value="signup" className="pt-4">
+            <form
+              className="space-y-4"
+              onSubmit={(e) => { e.preventDefault(); if (!loading) signUp(); }}
+            >
+              <Field label="Nama Toko" value={shopName} onChange={setShopName} />
+              <Field label="Email" value={email} onChange={setEmail} type="email" />
+              <Field label="Kata Sandi (min. 6)" value={password} onChange={setPassword} type="password" />
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Memproses..." : "Daftar — 7 Hari Gratis"}
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                Setelah trial: Rp 14.900/bulan
+              </p>
+            </form>
           </TabsContent>
         </Tabs>
       </div>
