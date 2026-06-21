@@ -11,8 +11,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Package, ShoppingBag } from "lucide-react";
-import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor } from "@/lib/product-pricing";
+import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X } from "lucide-react";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor, PriceTier } from "@/lib/product-pricing";
 
 export const Route = createFileRoute("/_authenticated/kasir")({
   component: KasirPage,
