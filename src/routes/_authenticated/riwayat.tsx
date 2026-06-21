@@ -38,23 +38,47 @@ function RiwayatPage() {
   const [selected, setSelected] = useState<Tx | null>(null);
   const [items, setItems] = useState<TxItem[]>([]);
 
-  useEffect(() => {
-    (async () => {
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("*")
-        .order("created_at", { ascending: false })
-        .limit(200);
-      if (error) toast.error(error.message);
-      else setTxs((data || []) as Tx[]);
-    })();
-  }, []);
+  const load = async () => {
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .limit(200);
+    if (error) toast.error(error.message);
+    else setTxs((data || []) as Tx[]);
+  };
+
+  useEffect(() => { load(); }, []);
 
   const openDetail = async (tx: Tx) => {
     setSelected(tx);
     const { data } = await supabase.from("transaction_items").select("*").eq("transaction_id", tx.id);
     setItems((data || []) as TxItem[]);
   };
+
+  const removeTx = async (tx: Tx, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!confirm(`Hapus transaksi #${tx.id.slice(0, 8)}?`)) return;
+    const { error: e1 } = await supabase.from("transaction_items").delete().eq("transaction_id", tx.id);
+    if (e1) return toast.error(e1.message);
+    const { error: e2 } = await supabase.from("transactions").delete().eq("id", tx.id);
+    if (e2) return toast.error(e2.message);
+    toast.success("Transaksi dihapus");
+    if (selected?.id === tx.id) setSelected(null);
+    load();
+  };
+
+  const clearAll = async () => {
+    if (!confirm("Hapus SEMUA riwayat transaksi? Tindakan ini tidak bisa dibatalkan.")) return;
+    const { error: e1 } = await supabase.from("transaction_items").delete().not("id", "is", null);
+    if (e1) return toast.error(e1.message);
+    const { error: e2 } = await supabase.from("transactions").delete().not("id", "is", null);
+    if (e2) return toast.error(e2.message);
+    toast.success("Riwayat dibersihkan");
+    setSelected(null);
+    load();
+  };
+
 
   const todayTotal = txs
     .filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString())
