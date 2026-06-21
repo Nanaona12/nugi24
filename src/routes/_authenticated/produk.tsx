@@ -350,8 +350,9 @@ function ProdukPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setImportOpen(false)}>Batal</Button>
             <Button onClick={confirmImport} disabled={importing}>
-              {importing ? "Mengimport..." : `Import ${importPreview.filter((r) => r.code && r.name).length} produk`}
+              {importing ? "Mengimport..." : `Import ${importPreview.filter((r) => r.name).length} produk`}
             </Button>
+
           </DialogFooter>
         </DialogContent>
       </Dialog>
