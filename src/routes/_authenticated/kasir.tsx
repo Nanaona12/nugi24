@@ -119,13 +119,6 @@ function KasirPage() {
   }, [cart]);
 
   const onPickProduct = (p: Product) => {
-    const units = getUnits(p, unitsByProduct);
-    const grosirUnits = units.filter((u) => u.conversion > 1);
-    if (grosirUnits.length === 0) {
-      // tidak ada grosir → langsung eceran
-      addEceran(p);
-      return;
-    }
     setModePicker(p);
   };
 
@@ -143,20 +136,6 @@ function KasirPage() {
     setModePicker(null);
   };
 
-  const addGrosir = (p: Product, grosirUnit: ProductUnit) => {
-    const units = getUnits(p, unitsByProduct);
-    const base = units.find((u) => u.is_base) || units[0];
-    const key = `${p.id}:grosir:${grosirUnit.name}`;
-    setCart((c) => {
-      const idx = c.findIndex((x) => x.key === key);
-      if (idx >= 0) {
-        const copy = [...c]; copy[idx] = { ...copy[idx], qty: copy[idx].qty + grosirUnit.conversion }; return copy;
-      }
-      // mulai dengan 1 pak
-      return [...c, { key, product: p, mode: "grosiran", unit: grosirUnit, baseUnit: base, qty: grosirUnit.conversion }];
-    });
-    setModePicker(null);
-  };
 
   const setQty = (key: string, qty: number) => {
     if (qty <= 0) return setCart((c) => c.filter((l) => l.key !== key));
