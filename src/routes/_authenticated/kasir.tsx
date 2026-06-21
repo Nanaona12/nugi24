@@ -6,12 +6,12 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X } from "lucide-react";
+import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Package, ShoppingBag } from "lucide-react";
 import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor } from "@/lib/product-pricing";
 
 export const Route = createFileRoute("/_authenticated/kasir")({
@@ -30,17 +30,43 @@ type Product = {
   stock: number;
 };
 
+type SaleMode = "eceran" | "grosiran";
+
 type CartLine = {
-  key: string;          // product.id + unit.name (unique per row)
+  key: string;
   product: Product;
-  unit: ProductUnit;
-  qty: number;          // dalam unit ini
+  mode: SaleMode;
+  // Eceran: unit = base unit, qty = jumlah pcs
+  // Grosiran: unit = grosir unit (conv>1), qty = jumlah pcs total (auto split pak + sisa eceran)
+  unit: ProductUnit;          // unit grosir untuk mode grosiran; base unit untuk eceran
+  baseUnit: ProductUnit;      // selalu unit dasar (untuk harga eceran sisa)
+  qty: number;                // dalam pcs (unit dasar)
 };
 
 function getUnits(p: Product, map: Record<string, ProductUnit[]>): ProductUnit[] {
   const arr = map[p.id];
   if (arr && arr.length > 0) return arr;
   return [fallbackUnitFromProduct(p)];
+}
+
+/** Hitung subtotal & rincian untuk satu line. */
+function computeLine(l: CartLine): { total: number; packs: number; remainder: number; packPrice: number; ecerPrice: number } {
+  const ecerPrice = tierPriceFor(l.baseUnit, 1).price;
+  if (l.mode === "eceran") {
+    return { total: ecerPrice * l.qty, packs: 0, remainder: l.qty, packPrice: 0, ecerPrice };
+  }
+  const conv = Math.max(1, l.unit.conversion);
+  // pack price = harga 1 pak grosir (tier qty=1 di unit grosir)
+  const packPrice = tierPriceFor(l.unit, 1).price;
+  const packs = Math.floor(l.qty / conv);
+  const remainder = l.qty - packs * conv;
+  return {
+    total: packs * packPrice + remainder * ecerPrice,
+    packs,
+    remainder,
+    packPrice,
+    ecerPrice,
+  };
 }
 
 function KasirPage() {
@@ -52,6 +78,7 @@ function KasirPage() {
   const [payOpen, setPayOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date }>(null);
+  const [modePicker, setModePicker] = useState<Product | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const loadProducts = async () => {
@@ -84,25 +111,50 @@ function KasirPage() {
     let total = 0;
     let items = 0;
     for (const l of cart) {
-      const { price } = tierPriceFor(l.unit, l.qty);
-      total += price * l.qty;
-      items += l.qty * l.unit.conversion;
+      total += computeLine(l).total;
+      items += l.qty;
     }
     return { total, items };
   }, [cart]);
 
-  const addToCart = (p: Product) => {
+  const onPickProduct = (p: Product) => {
     const units = getUnits(p, unitsByProduct);
-    const baseUnit = units.find((u) => u.is_base) || units[0];
+    const grosirUnits = units.filter((u) => u.conversion > 1);
+    if (grosirUnits.length === 0) {
+      // tidak ada grosir → langsung eceran
+      addEceran(p);
+      return;
+    }
+    setModePicker(p);
+  };
+
+  const addEceran = (p: Product) => {
+    const units = getUnits(p, unitsByProduct);
+    const base = units.find((u) => u.is_base) || units[0];
+    const key = `${p.id}:eceran`;
     setCart((c) => {
-      const idx = c.findIndex((x) => x.product.id === p.id && x.unit.name === baseUnit.name);
+      const idx = c.findIndex((x) => x.key === key);
       if (idx >= 0) {
-        const copy = [...c];
-        copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 };
-        return copy;
+        const copy = [...c]; copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 }; return copy;
       }
-      return [...c, { key: `${p.id}:${baseUnit.name}`, product: p, unit: baseUnit, qty: 1 }];
+      return [...c, { key, product: p, mode: "eceran", unit: base, baseUnit: base, qty: 1 }];
     });
+    setModePicker(null);
+  };
+
+  const addGrosir = (p: Product, grosirUnit: ProductUnit) => {
+    const units = getUnits(p, unitsByProduct);
+    const base = units.find((u) => u.is_base) || units[0];
+    const key = `${p.id}:grosir:${grosirUnit.name}`;
+    setCart((c) => {
+      const idx = c.findIndex((x) => x.key === key);
+      if (idx >= 0) {
+        const copy = [...c]; copy[idx] = { ...copy[idx], qty: copy[idx].qty + grosirUnit.conversion }; return copy;
+      }
+      // mulai dengan 1 pak
+      return [...c, { key, product: p, mode: "grosiran", unit: grosirUnit, baseUnit: base, qty: grosirUnit.conversion }];
+    });
+    setModePicker(null);
   };
 
   const setQty = (key: string, qty: number) => {
@@ -110,13 +162,13 @@ function KasirPage() {
     setCart((c) => c.map((l) => (l.key === key ? { ...l, qty } : l)));
   };
 
-  const changeUnit = (key: string, unitName: string) => {
+  const changeGrosirUnit = (key: string, unitName: string) => {
     setCart((c) =>
       c.map((l) => {
         if (l.key !== key) return l;
         const units = getUnits(l.product, unitsByProduct);
         const u = units.find((x) => x.name === unitName) || l.unit;
-        return { ...l, unit: u, key: `${l.product.id}:${u.name}` };
+        return { ...l, unit: u, key: `${l.product.id}:grosir:${u.name}` };
       }),
     );
   };
@@ -125,25 +177,18 @@ function KasirPage() {
 
   const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter" && filtered.length > 0) {
-      addToCart(filtered[0]);
+      onPickProduct(filtered[0]);
       setQuery("");
     }
   };
 
   const checkout = async () => {
     const paidNum = Number(paid.replace(/[^\d]/g, ""));
-    if (paidNum < totals.total) {
-      toast.error("Uang dibayar kurang");
-      return;
-    }
+    if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
     setSubmitting(true);
     const { data: userData } = await supabase.auth.getUser();
     const cashierId = userData.user?.id;
-    if (!cashierId) {
-      toast.error("Sesi habis");
-      setSubmitting(false);
-      return;
-    }
+    if (!cashierId) { toast.error("Sesi habis"); setSubmitting(false); return; }
     const change = paidNum - totals.total;
     const { data: tx, error: txErr } = await supabase
       .from("transactions")
@@ -156,50 +201,39 @@ function KasirPage() {
       })
       .select()
       .single();
-    if (txErr || !tx) {
-      toast.error(txErr?.message || "Gagal menyimpan");
-      setSubmitting(false);
-      return;
-    }
+    if (txErr || !tx) { toast.error(txErr?.message || "Gagal menyimpan"); setSubmitting(false); return; }
     const items = cart.map((l) => {
-      const { price, tier } = tierPriceFor(l.unit, l.qty);
-      const baseQty = l.qty * l.unit.conversion;
+      const c = computeLine(l);
+      const avgUnitPrice = l.qty > 0 ? c.total / l.qty : 0;
       return {
         transaction_id: tx.id,
         product_id: l.product.id,
         product_code: l.product.code,
         product_name: l.product.name,
-        qty: baseQty,
-        unit_price: price / l.unit.conversion, // harga per unit dasar (untuk laporan)
+        qty: l.qty,
+        unit_price: avgUnitPrice,
         unit_cost: Number(l.product.cost_price || 0),
-        is_wholesale: !!(tier && tier.min_qty > 1),
-        subtotal: price * l.qty,
-        unit_name: l.unit.name,
+        is_wholesale: l.mode === "grosiran",
+        subtotal: c.total,
+        unit_name: l.mode === "grosiran" ? `${l.unit.name}+pcs` : l.baseUnit.name,
         unit_qty: l.qty,
-        unit_conversion: l.unit.conversion,
+        unit_conversion: 1,
       };
     });
     const { error: itErr } = await supabase.from("transaction_items").insert(items as any);
-
-    if (itErr) {
-      toast.error(itErr.message);
-      setSubmitting(false);
-      return;
-    }
-    // decrement stock (dalam unit dasar)
+    if (itErr) { toast.error(itErr.message); setSubmitting(false); return; }
+    // gabung pengurangan stok per produk
+    const stockMap = new Map<string, number>();
+    for (const l of cart) stockMap.set(l.product.id, (stockMap.get(l.product.id) || 0) + l.qty);
     await Promise.all(
-      cart.map((l) =>
-        supabase
-          .from("products")
-          .update({ stock: Math.max(0, l.product.stock - l.qty * l.unit.conversion) })
-          .eq("id", l.product.id),
-      ),
+      Array.from(stockMap.entries()).map(([pid, used]) => {
+        const p = products.find((x) => x.id === pid);
+        if (!p) return Promise.resolve();
+        return supabase.from("products").update({ stock: Math.max(0, p.stock - used) }).eq("id", pid);
+      }),
     );
     setLastReceipt({ id: tx.id, total: totals.total, paid: paidNum, change, items: cart, at: new Date() });
-    setCart([]);
-    setPaid("");
-    setPayOpen(false);
-    setSubmitting(false);
+    setCart([]); setPaid(""); setPayOpen(false); setSubmitting(false);
     loadProducts();
   };
 
@@ -211,7 +245,7 @@ function KasirPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             ref={searchRef}
-            placeholder="Cari nama atau scan kode barang... (Enter = tambah pertama)"
+            placeholder="Cari nama atau scan kode barang... (Enter = pilih pertama)"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleSearchKey}
@@ -227,24 +261,23 @@ function KasirPage() {
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
               {filtered.map((p) => {
                 const units = getUnits(p, unitsByProduct);
-                const baseUnit = units.find((u) => u.is_base) || units[0];
-                const { price: basePrice } = tierPriceFor(baseUnit, 1);
+                const base = units.find((u) => u.is_base) || units[0];
+                const ecer = tierPriceFor(base, 1).price;
+                const grosirCount = units.filter((u) => u.conversion > 1).length;
                 return (
                   <button
                     key={p.id}
-                    onClick={() => addToCart(p)}
+                    onClick={() => onPickProduct(p)}
                     className="group flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
                   >
                     <div className="mb-1 line-clamp-2 text-sm font-medium">{p.name}</div>
                     <div className="text-xs text-muted-foreground">{p.code}</div>
                     <div className="mt-2 flex w-full items-center justify-between">
-                      <div className="text-sm font-semibold text-primary">{formatRupiah(basePrice)}<span className="text-[10px] text-muted-foreground">/{baseUnit.name}</span></div>
+                      <div className="text-sm font-semibold text-primary">{formatRupiah(ecer)}<span className="text-[10px] text-muted-foreground">/{base.name}</span></div>
                       <Badge variant="secondary" className="text-[10px]">stok {p.stock}</Badge>
                     </div>
-                    {units.length > 1 && (
-                      <div className="mt-1 text-[10px] text-muted-foreground">
-                        {units.length} satuan tersedia
-                      </div>
+                    {grosirCount > 0 && (
+                      <div className="mt-1 text-[10px] text-success">tersedia grosir</div>
                     )}
                   </button>
                 );
@@ -272,18 +305,30 @@ function KasirPage() {
           ) : (
             <ul className="space-y-2">
               {cart.map((l) => {
+                const c = computeLine(l);
                 const allUnits = getUnits(l.product, unitsByProduct);
-                const { price, tier } = tierPriceFor(l.unit, l.qty);
-                const isTierGrosir = !!(tier && tier.min_qty > 1);
+                const grosirUnits = allUnits.filter((u) => u.conversion > 1);
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
                     <div className="flex items-start justify-between gap-2">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-medium">{l.product.name}</div>
-                        <div className="text-xs text-muted-foreground">
-                          {formatRupiah(price)} / {l.unit.name}
-                          {isTierGrosir && <span className="ml-1 text-success">• grosir ≥{tier!.min_qty}</span>}
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={l.mode === "grosiran" ? "default" : "secondary"} className="text-[10px]">
+                            {l.mode === "grosiran" ? "Grosir" : "Eceran"}
+                          </Badge>
+                          <span className="truncate text-sm font-medium">{l.product.name}</span>
                         </div>
+                        {l.mode === "eceran" ? (
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {formatRupiah(c.ecerPrice)} / {l.baseUnit.name}
+                          </div>
+                        ) : (
+                          <div className="mt-0.5 text-xs text-muted-foreground">
+                            {c.packs > 0 && <>{c.packs} {l.unit.name} × {formatRupiah(c.packPrice)}</>}
+                            {c.packs > 0 && c.remainder > 0 && <span> + </span>}
+                            {c.remainder > 0 && <>{c.remainder} {l.baseUnit.name} × {formatRupiah(c.ecerPrice)}</>}
+                          </div>
+                        )}
                       </div>
                       <button onClick={() => removeLine(l.key)} className="text-muted-foreground hover:text-destructive">
                         <Trash2 className="h-4 w-4" />
@@ -295,7 +340,7 @@ function KasirPage() {
                           <Minus className="h-3 w-3" />
                         </Button>
                         <Input
-                          className="h-7 w-12 text-center"
+                          className="h-7 w-14 text-center"
                           type="number"
                           value={l.qty}
                           onChange={(e) => setQty(l.key, parseInt(e.target.value || "0", 10))}
@@ -303,22 +348,23 @@ function KasirPage() {
                         <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.key, l.qty + 1)}>
                           <Plus className="h-3 w-3" />
                         </Button>
-                        {allUnits.length > 1 && (
-                          <Select value={l.unit.name} onValueChange={(v) => changeUnit(l.key, v)}>
-                            <SelectTrigger className="h-7 w-[88px] text-xs ml-1">
+                        <span className="ml-1 text-xs text-muted-foreground">{l.baseUnit.name}</span>
+                        {l.mode === "grosiran" && grosirUnits.length > 1 && (
+                          <Select value={l.unit.name} onValueChange={(v) => changeGrosirUnit(l.key, v)}>
+                            <SelectTrigger className="h-7 w-[90px] text-xs ml-1">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              {allUnits.map((u) => (
+                              {grosirUnits.map((u) => (
                                 <SelectItem key={u.name} value={u.name} className="text-xs">
-                                  {u.name}{u.conversion > 1 ? ` (${u.conversion})` : ""}
+                                  {u.name} ({u.conversion})
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         )}
                       </div>
-                      <div className="text-sm font-semibold">{formatRupiah(price * l.qty)}</div>
+                      <div className="text-sm font-semibold">{formatRupiah(c.total)}</div>
                     </div>
                   </li>
                 );
@@ -333,15 +379,68 @@ function KasirPage() {
             <span>Total</span>
             <span className="text-primary">{formatRupiah(totals.total)}</span>
           </div>
-          <Button
-            className="h-12 w-full text-base"
-            disabled={cart.length === 0}
-            onClick={() => setPayOpen(true)}
-          >
+          <Button className="h-12 w-full text-base" disabled={cart.length === 0} onClick={() => setPayOpen(true)}>
             Bayar
           </Button>
         </div>
       </Card>
+
+      {/* Mode picker dialog */}
+      <Dialog open={!!modePicker} onOpenChange={(o) => !o && setModePicker(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{modePicker?.name}</DialogTitle>
+            <DialogDescription>Pilih jenis penjualan</DialogDescription>
+          </DialogHeader>
+          {modePicker && (() => {
+            const units = getUnits(modePicker, unitsByProduct);
+            const base = units.find((u) => u.is_base) || units[0];
+            const ecer = tierPriceFor(base, 1).price;
+            const grosirUnits = units.filter((u) => u.conversion > 1);
+            return (
+              <div className="space-y-2">
+                <button
+                  onClick={() => addEceran(modePicker)}
+                  className="flex w-full items-center justify-between rounded-lg border p-3 text-left hover:border-primary"
+                >
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="h-4 w-4 text-muted-foreground" />
+                    <div>
+                      <div className="font-medium">Eceran</div>
+                      <div className="text-xs text-muted-foreground">{formatRupiah(ecer)} / {base.name}</div>
+                    </div>
+                  </div>
+                  <Badge variant="secondary">+</Badge>
+                </button>
+                {grosirUnits.map((u) => {
+                  const packPrice = tierPriceFor(u, 1).price;
+                  return (
+                    <button
+                      key={u.name}
+                      onClick={() => addGrosir(modePicker, u)}
+                      className="flex w-full items-center justify-between rounded-lg border p-3 text-left hover:border-primary"
+                    >
+                      <div className="flex items-center gap-2">
+                        <Package className="h-4 w-4 text-primary" />
+                        <div>
+                          <div className="font-medium">Grosir per {u.name}</div>
+                          <div className="text-xs text-muted-foreground">
+                            1 {u.name} = {u.conversion} {base.name} · {formatRupiah(packPrice)}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">
+                            Sisa di luar kelipatan dihitung eceran {formatRupiah(ecer)}/{base.name}
+                          </div>
+                        </div>
+                      </div>
+                      <Badge>+</Badge>
+                    </button>
+                  );
+                })}
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
 
       {/* Payment dialog */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
@@ -403,11 +502,14 @@ function KasirPage() {
               </div>
               <ul className="divide-y rounded-md border">
                 {lastReceipt.items.map((l) => {
-                  const { price } = tierPriceFor(l.unit, l.qty);
+                  const c = computeLine(l);
                   return (
                     <li key={l.key} className="flex justify-between p-2">
-                      <span>{l.product.name} × {l.qty} {l.unit.name}</span>
-                      <span>{formatRupiah(price * l.qty)}</span>
+                      <span>
+                        {l.product.name} × {l.qty} {l.baseUnit.name}
+                        {l.mode === "grosiran" && <span className="text-xs text-muted-foreground"> (grosir)</span>}
+                      </span>
+                      <span>{formatRupiah(c.total)}</span>
                     </li>
                   );
                 })}
