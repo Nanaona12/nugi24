@@ -131,10 +131,16 @@ function RiwayatPage() {
                     <td className="p-3 text-right">{formatRupiah(Number(t.paid))}</td>
                     <td className="p-3 text-right">{formatRupiah(Number(t.change_amount))}</td>
                     <td className="p-3">
-                      <Button size="sm" variant="ghost" onClick={() => openDetail(t)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openDetail(t)}>
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={(e) => removeTx(t, e)} className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </td>
+
                   </tr>
                 ))
               )}
