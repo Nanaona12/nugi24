@@ -323,6 +323,7 @@ function ProdukPage() {
                   <th className="p-2">Kode</th>
                   <th className="p-2">Nama</th>
                   <th className="p-2">Kategori</th>
+                  <th className="p-2 text-right">Modal</th>
                   <th className="p-2 text-right">Harga</th>
                   <th className="p-2 text-right">Grosir</th>
                   <th className="p-2 text-right">Min</th>
@@ -331,16 +332,18 @@ function ProdukPage() {
               </thead>
               <tbody>
                 {importPreview.map((r, i) => (
-                  <tr key={i} className={`border-t ${!r.code || !r.name ? "bg-destructive/10" : ""}`}>
-                    <td className="p-2 font-mono">{r.code || <span className="text-destructive">kosong</span>}</td>
+                  <tr key={i} className={`border-t ${!r.name ? "bg-destructive/10" : ""}`}>
+                    <td className="p-2 font-mono">{r.code || <span className="text-muted-foreground italic">otomatis</span>}</td>
                     <td className="p-2">{r.name || <span className="text-destructive">kosong</span>}</td>
                     <td className="p-2">{r.category}</td>
+                    <td className="p-2 text-right">{r.cost_price || ""}</td>
                     <td className="p-2 text-right">{r.price}</td>
                     <td className="p-2 text-right">{r.wholesale_price ?? ""}</td>
                     <td className="p-2 text-right">{r.wholesale_min_qty ?? ""}</td>
                     <td className="p-2 text-right">{r.stock}</td>
                   </tr>
                 ))}
+
               </tbody>
             </table>
           </div>
