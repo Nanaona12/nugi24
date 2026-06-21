@@ -270,10 +270,31 @@ function ProdukPage() {
         <Button onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" /> Tambah
         </Button>
-        <Button variant="destructive" onClick={removeAll} disabled={products.length === 0}>
-          <Trash className="mr-2 h-4 w-4" /> Hapus Semua
+        <Button variant="destructive" onClick={() => setConfirmDeleteAll(true)} disabled={products.length === 0}>
+          <Trash className="mr-2 h-4 w-4" /> Hapus Semua ({products.length})
         </Button>
       </div>
+
+      <AlertDialog open={confirmDeleteAll} onOpenChange={setConfirmDeleteAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus semua {products.length} produk?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak bisa dibatalkan. Semua produk akan dihapus permanen dari database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingAll}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); removeAll(); }}
+              disabled={deletingAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingAll ? "Menghapus..." : "Ya, Hapus Semua"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BarcodeScanner
         open={scanMode !== null}
