@@ -270,7 +270,7 @@ function Footer() {
   return (
     <footer className="border-t bg-muted/30">
       <div className="mx-auto max-w-6xl px-4 py-8 text-center text-sm text-muted-foreground">
-        © {new Date().getFullYear()} Nugi24. Aplikasi kasir untuk UMKM Indonesia.
+        © {new Date().getFullYear()} Dagang Pintar. Aplikasi kasir untuk UMKM Indonesia.
       </div>
     </footer>
   );
