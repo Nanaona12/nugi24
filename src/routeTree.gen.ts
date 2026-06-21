@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated/produk'
 import { Route as AuthenticatedPoRouteImport } from './routes/_authenticated/po'
+import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authenticated/keuntungan'
 import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
 
 const AuthRoute = AuthRouteImport.update({
@@ -46,6 +47,11 @@ const AuthenticatedPoRoute = AuthenticatedPoRouteImport.update({
   path: '/po',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedKeuntunganRoute = AuthenticatedKeuntunganRouteImport.update({
+  id: '/keuntungan',
+  path: '/keuntungan',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedKasirRoute = AuthenticatedKasirRouteImport.update({
   id: '/kasir',
   path: '/kasir',
@@ -56,6 +62,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/kasir': typeof AuthenticatedKasirRoute
+  '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
@@ -64,6 +71,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/kasir': typeof AuthenticatedKasirRoute
+  '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
@@ -74,21 +82,30 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/kasir': typeof AuthenticatedKasirRoute
+  '/_authenticated/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/_authenticated/po': typeof AuthenticatedPoRoute
   '/_authenticated/produk': typeof AuthenticatedProdukRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/kasir' | '/po' | '/produk' | '/riwayat'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/kasir'
+    | '/keuntungan'
+    | '/po'
+    | '/produk'
+    | '/riwayat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/kasir' | '/po' | '/produk' | '/riwayat'
+  to: '/' | '/auth' | '/kasir' | '/keuntungan' | '/po' | '/produk' | '/riwayat'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/kasir'
+    | '/_authenticated/keuntungan'
     | '/_authenticated/po'
     | '/_authenticated/produk'
     | '/_authenticated/riwayat'
@@ -144,6 +161,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/keuntungan': {
+      id: '/_authenticated/keuntungan'
+      path: '/keuntungan'
+      fullPath: '/keuntungan'
+      preLoaderRoute: typeof AuthenticatedKeuntunganRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kasir': {
       id: '/_authenticated/kasir'
       path: '/kasir'
@@ -156,6 +180,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedKasirRoute: typeof AuthenticatedKasirRoute
+  AuthenticatedKeuntunganRoute: typeof AuthenticatedKeuntunganRoute
   AuthenticatedPoRoute: typeof AuthenticatedPoRoute
   AuthenticatedProdukRoute: typeof AuthenticatedProdukRoute
   AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
@@ -163,6 +188,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKasirRoute: AuthenticatedKasirRoute,
+  AuthenticatedKeuntunganRoute: AuthenticatedKeuntunganRoute,
   AuthenticatedPoRoute: AuthenticatedPoRoute,
   AuthenticatedProdukRoute: AuthenticatedProdukRoute,
   AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
