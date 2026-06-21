@@ -424,29 +424,80 @@ function KasirPage() {
               <div className="text-sm text-muted-foreground">Total Belanja</div>
               <div className="text-3xl font-bold text-primary">{formatRupiah(totals.total)}</div>
             </div>
+
             <div>
-              <Label>Uang Diterima</Label>
-              <Input
-                autoFocus
-                inputMode="numeric"
-                value={paid}
-                onChange={(e) => setPaid(e.target.value.replace(/[^\d]/g, ""))}
-                placeholder="0"
-                className="mt-1 h-12 text-2xl"
-              />
-              <div className="mt-2 flex flex-wrap gap-1">
-                {[totals.total, 50000, 100000, 200000].map((n, i) => (
-                  <Button key={i} variant="outline" size="sm" onClick={() => setPaid(String(n))}>
-                    {formatRupiah(n)}
-                  </Button>
-                ))}
+              <Label className="mb-1.5 block">Metode Pembayaran</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <Button
+                  type="button"
+                  variant={paymentMethod === "cash" ? "default" : "outline"}
+                  onClick={() => setPaymentMethod("cash")}
+                >
+                  💵 Cash
+                </Button>
+                <Button
+                  type="button"
+                  variant={paymentMethod === "qris" ? "default" : "outline"}
+                  onClick={() => { setPaymentMethod("qris"); setPaid(String(totals.total)); }}
+                >
+                  📱 QRIS
+                </Button>
               </div>
             </div>
-            <div className="flex items-center justify-between rounded-lg border p-3">
-              <span className="text-sm">Kembalian</span>
-              <span className="text-lg font-semibold">
-                {formatRupiah(Math.max(0, Number(paid || 0) - totals.total))}
-              </span>
+
+            {paymentMethod === "cash" && (
+              <div>
+                <Label>Uang Diterima</Label>
+                <Input
+                  autoFocus
+                  inputMode="numeric"
+                  value={paid}
+                  onChange={(e) => setPaid(e.target.value.replace(/[^\d]/g, ""))}
+                  placeholder="0"
+                  className="mt-1 h-12 text-2xl"
+                />
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {[totals.total, 50000, 100000, 200000].map((n, i) => (
+                    <Button key={i} variant="outline" size="sm" onClick={() => setPaid(String(n))}>
+                      {formatRupiah(n)}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {paymentMethod === "cash" && (
+              <div className="flex items-center justify-between rounded-lg border p-3">
+                <span className="text-sm">Kembalian</span>
+                <span className="text-lg font-semibold">
+                  {formatRupiah(Math.max(0, Number(paid || 0) - totals.total))}
+                </span>
+              </div>
+            )}
+
+            <div className="space-y-2 rounded-lg border p-3">
+              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                <input
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={sendWa}
+                  onChange={(e) => setSendWa(e.target.checked)}
+                />
+                Kirim e-struk via WhatsApp
+              </label>
+              {sendWa && (
+                <div>
+                  <Input
+                    inputMode="numeric"
+                    placeholder="08xxxxxxxxxx"
+                    value={customerPhone}
+                    onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ""))}
+                  />
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    Setelah selesai, WhatsApp akan terbuka dengan struk siap kirim.
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           <DialogFooter>
@@ -468,8 +519,9 @@ function KasirPage() {
           </DialogHeader>
           {lastReceipt && (
             <div className="space-y-3 text-sm">
-              <div className="text-xs text-muted-foreground">
-                {lastReceipt.at.toLocaleString("id-ID")} • #{lastReceipt.id.slice(0, 8)}
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{lastReceipt.at.toLocaleString("id-ID")} • #{lastReceipt.id.slice(0, 8)}</span>
+                <Badge variant="secondary" className="uppercase">{lastReceipt.paymentMethod}</Badge>
               </div>
               <ul className="divide-y rounded-md border">
                 {lastReceipt.items.map((l) => {
@@ -488,6 +540,31 @@ function KasirPage() {
               <Row label="Total" value={formatRupiah(lastReceipt.total)} bold />
               <Row label="Dibayar" value={formatRupiah(lastReceipt.paid)} />
               <Row label="Kembali" value={formatRupiah(lastReceipt.change)} bold />
+              {lastReceipt.customerPhone && (
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    const r = lastReceipt;
+                    const lines = r.items.map((l) => {
+                      const c = computeLine(l);
+                      return `• ${l.product.name} x${l.qty} ${l.baseUnit.name} = ${formatRupiah(c.total)}`;
+                    }).join("\n");
+                    const msg =
+                      `*Nugi Vidy 24*\n` +
+                      `Struk #${r.id.slice(0, 8)}\n` +
+                      `${r.at.toLocaleString("id-ID")}\n\n` +
+                      `${lines}\n\n` +
+                      `Total: ${formatRupiah(r.total)}\n` +
+                      `Bayar (${r.paymentMethod.toUpperCase()}): ${formatRupiah(r.paid)}\n` +
+                      `Kembali: ${formatRupiah(r.change)}\n\n` +
+                      `Terima kasih sudah berbelanja 🙏`;
+                    const phone = r.customerPhone!.replace(/^\+/, "").replace(/^0/, "62");
+                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
+                  }}
+                >
+                  📲 Kirim Struk ke WhatsApp ({lastReceipt.customerPhone})
+                </Button>
+              )}
             </div>
           )}
           <DialogFooter>
