@@ -127,5 +127,3 @@ function NavLink({ to, icon, label }: { to: string; icon: React.ReactNode; label
   );
 }
 
-// silence unused warning for Badge if tree-shaken
-export const _ = Badge;
