@@ -28,18 +28,28 @@ function AuthedLayout() {
       }
       setUser({ id: data.user.id, email: data.user.email ?? null });
 
-      const { data: tenant } = await supabase
-        .from("tenants")
-        .select("id")
-        .eq("owner_user_id", data.user.id)
-        .maybeSingle();
-      if (tenant) {
-        const [{ data: s }, { data: roles }] = await Promise.all([
-          supabase.from("subscriptions").select("status, current_period_end").eq("tenant_id", tenant.id).maybeSingle(),
-          supabase.from("user_roles").select("role").eq("user_id", data.user.id),
-        ]);
-        const isSuperAdmin = (roles ?? []).some((r) => r.role === "super_admin");
-        if (s) setSub({ status: s.status, current_period_end: s.current_period_end, isSuperAdmin });
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", data.user.id);
+      const isSuperAdmin = (roles ?? []).some((r) => r.role === "super_admin");
+
+      if (isSuperAdmin) {
+        setSub({ status: "active", current_period_end: "2999-12-31", isSuperAdmin: true });
+      } else {
+        const { data: tenant } = await supabase
+          .from("tenants")
+          .select("id")
+          .eq("owner_user_id", data.user.id)
+          .maybeSingle();
+        if (tenant) {
+          const { data: s } = await supabase
+            .from("subscriptions")
+            .select("status, current_period_end")
+            .eq("tenant_id", tenant.id)
+            .maybeSingle();
+          if (s) setSub({ status: s.status, current_period_end: s.current_period_end, isSuperAdmin: false });
+        }
       }
       setChecking(false);
     })();
@@ -50,12 +60,19 @@ function AuthedLayout() {
     return () => { mounted = false; authSub.subscription.unsubscribe(); };
   }, [router]);
 
-  // Gate: redirect to /langganan if expired and not already there/admin
+  // Super admin: lock down to /admin area only (no kasir/produk access)
   useEffect(() => {
-    if (!sub) return;
+    if (!sub?.isSuperAdmin) return;
+    if (!pathname.startsWith("/admin")) {
+      router.navigate({ to: "/admin", replace: true });
+    }
+  }, [sub, pathname, router]);
+
+  // Tenant gate: redirect to /langganan if expired
+  useEffect(() => {
+    if (!sub || sub.isSuperAdmin) return;
     const expired = new Date(sub.current_period_end) < new Date();
-    const onAllowed = pathname.startsWith("/langganan") || pathname.startsWith("/admin");
-    if (expired && !onAllowed && !sub.isSuperAdmin) {
+    if (expired && !pathname.startsWith("/langganan")) {
       router.navigate({ to: "/langganan", replace: true });
     }
   }, [sub, pathname, router]);
@@ -82,22 +99,30 @@ function AuthedLayout() {
             <span className="hidden sm:inline">Nugi Vidy 24</span>
           </div>
           <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
-            <NavLink to="/kasir" icon={<ShoppingCart className="h-4 w-4" />} label="Kasir" />
-            <NavLink to="/produk" icon={<Package className="h-4 w-4" />} label="Produk" />
-            <NavLink to="/po" icon={<ClipboardList className="h-4 w-4" />} label="PO" />
-            <NavLink to="/riwayat" icon={<Receipt className="h-4 w-4" />} label="Riwayat" />
-            <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
-            <NavLink to="/cek-koneksi" icon={<Wifi className="h-4 w-4" />} label="Koneksi" />
-            <NavLink to="/langganan" icon={<CreditCard className="h-4 w-4" />} label="Langganan" />
-            {sub?.isSuperAdmin && <NavLink to="/admin" icon={<Shield className="h-4 w-4" />} label="Admin" />}
+            {sub?.isSuperAdmin ? (
+              <NavLink to="/admin" icon={<Shield className="h-4 w-4" />} label="Admin" />
+            ) : (
+              <>
+                <NavLink to="/kasir" icon={<ShoppingCart className="h-4 w-4" />} label="Kasir" />
+                <NavLink to="/produk" icon={<Package className="h-4 w-4" />} label="Produk" />
+                <NavLink to="/po" icon={<ClipboardList className="h-4 w-4" />} label="PO" />
+                <NavLink to="/riwayat" icon={<Receipt className="h-4 w-4" />} label="Riwayat" />
+                <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
+                <NavLink to="/cek-koneksi" icon={<Wifi className="h-4 w-4" />} label="Koneksi" />
+                <NavLink to="/langganan" icon={<CreditCard className="h-4 w-4" />} label="Langganan" />
+              </>
+            )}
           </nav>
-          <div className="hidden text-xs text-sidebar-foreground/70 sm:block">{user.email}</div>
+          <div className="hidden text-xs text-sidebar-foreground/70 sm:block">
+            {sub?.isSuperAdmin && <span className="mr-2 rounded bg-primary px-2 py-0.5 text-primary-foreground">SUPER ADMIN</span>}
+            {user.email}
+          </div>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-sidebar-foreground hover:bg-sidebar-accent">
             <LogOut className="h-4 w-4" />
             <span className="ml-1 hidden sm:inline">Keluar</span>
           </Button>
         </div>
-        {(showTrialBanner || expired) && (
+        {!sub?.isSuperAdmin && (showTrialBanner || expired) && (
           <div className={`px-4 py-2 text-center text-sm ${expired ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white"}`}>
             {expired ? (
               <>Langganan Anda berakhir. <Link to="/langganan" className="underline font-semibold">Perpanjang sekarang</Link></>

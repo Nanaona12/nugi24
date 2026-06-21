@@ -118,7 +118,7 @@ export const listAllTenants = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: tenants } = await supabaseAdmin
       .from("tenants")
-      .select("id, name, phone, owner_user_id, created_at, subscriptions(status, current_period_end)")
+      .select("id, name, phone, address, owner_user_id, created_at, subscriptions(status, current_period_end)")
       .order("created_at", { ascending: false });
 
     const { data: pays } = await supabaseAdmin
@@ -129,3 +129,84 @@ export const listAllTenants = createServerFn({ method: "GET" })
 
     return { tenants: tenants ?? [], recentPayments: pays ?? [] };
   });
+
+async function assertSuperAdmin(ctx: { supabase: any; userId: string }) {
+  const { data: roles } = await ctx.supabase.from("user_roles").select("role").eq("user_id", ctx.userId);
+  if (!(roles ?? []).some((r: any) => r.role === "super_admin")) throw new Error("Forbidden");
+}
+
+export const adminExtendSubscription = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { tenant_id: string; days: number }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: sub } = await supabaseAdmin
+      .from("subscriptions")
+      .select("current_period_end")
+      .eq("tenant_id", data.tenant_id)
+      .maybeSingle();
+    const base = sub && new Date(sub.current_period_end) > new Date() ? new Date(sub.current_period_end) : new Date();
+    base.setDate(base.getDate() + data.days);
+    const { error } = await supabaseAdmin
+      .from("subscriptions")
+      .update({ status: "active", current_period_end: base.toISOString() })
+      .eq("tenant_id", data.tenant_id);
+    if (error) throw new Error(error.message);
+    return { ok: true, new_end: base.toISOString() };
+  });
+
+export const adminSetSubscriptionStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { tenant_id: string; status: "active" | "trialing" | "past_due" | "canceled" }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("subscriptions")
+      .update({ status: data.status })
+      .eq("tenant_id", data.tenant_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminUpdateTenant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { tenant_id: string; name: string; phone?: string; address?: string }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("tenants")
+      .update({ name: data.name, phone: data.phone ?? null, address: data.address ?? null })
+      .eq("id", data.tenant_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminDeleteTenant = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { tenant_id: string }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("tenants").delete().eq("id", data.tenant_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminGetTenantStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { tenant_id: string }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [{ count: products }, { count: transactions }, { data: revenueRows }] = await Promise.all([
+      supabaseAdmin.from("products").select("*", { count: "exact", head: true }).eq("tenant_id", data.tenant_id),
+      supabaseAdmin.from("transactions").select("*", { count: "exact", head: true }).eq("tenant_id", data.tenant_id),
+      supabaseAdmin.from("transactions").select("total").eq("tenant_id", data.tenant_id),
+    ]);
+    const revenue = (revenueRows ?? []).reduce((s: number, r: any) => s + Number(r.total ?? 0), 0);
+    return { products: products ?? 0, transactions: transactions ?? 0, revenue };
+  });
+
