@@ -1,27 +1,52 @@
-import { createFileRoute, Outlet, redirect } from "@tanstack/react-router";
+import { createFileRoute, Outlet, Link, useRouter } from "@tanstack/react-router";
+import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Link, useRouter } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Package, Receipt, LogOut, Store } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
-  ssr: false,
-  beforeLoad: async () => {
-    const { data, error } = await supabase.auth.getUser();
-    if (error || !data.user) throw redirect({ to: "/auth" });
-    return { user: data.user };
-  },
   component: AuthedLayout,
 });
 
 function AuthedLayout() {
-  const { user } = Route.useRouteContext();
   const router = useRouter();
+  const [user, setUser] = useState<{ email: string | null } | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    supabase.auth.getUser().then(({ data, error }) => {
+      if (!mounted) return;
+      if (error || !data.user) {
+        router.navigate({ to: "/auth", replace: true });
+      } else {
+        setUser({ email: data.user.email ?? null });
+      }
+      setChecking(false);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_OUT" || !session) {
+        router.navigate({ to: "/auth", replace: true });
+      }
+    });
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
+  }, [router]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     router.navigate({ to: "/auth", replace: true });
   };
+
+  if (checking || !user) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Memuat...
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

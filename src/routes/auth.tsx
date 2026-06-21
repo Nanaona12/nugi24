@@ -1,4 +1,4 @@
-import { createFileRoute, useRouter, redirect } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,11 +9,6 @@ import { toast } from "sonner";
 import { Store } from "lucide-react";
 
 export const Route = createFileRoute("/auth")({
-  ssr: false,
-  beforeLoad: async () => {
-    const { data } = await supabase.auth.getUser();
-    if (data.user) throw redirect({ to: "/kasir" });
-  },
   component: AuthPage,
 });
 
@@ -22,8 +17,13 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [ready, setReady] = useState(false);
 
   useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      if (data.user) router.navigate({ to: "/kasir", replace: true });
+      else setReady(true);
+    });
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_IN") router.navigate({ to: "/kasir", replace: true });
     });
@@ -49,6 +49,14 @@ function AuthPage() {
     if (error) toast.error(error.message);
     else toast.success("Akun dibuat. Silakan masuk.");
   };
+
+  if (!ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-sm text-muted-foreground">
+        Memuat...
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-accent to-background px-4">
