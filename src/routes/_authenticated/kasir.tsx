@@ -22,10 +22,12 @@ type Product = {
   name: string;
   category: string | null;
   price: number;
+  cost_price: number;
   wholesale_price: number | null;
   wholesale_min_qty: number | null;
   stock: number;
 };
+
 
 type CartLine = {
   product: Product;
