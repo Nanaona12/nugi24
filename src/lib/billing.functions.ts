@@ -119,7 +119,7 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
       body: JSON.stringify({
         transaction_details: { order_id: orderId, gross_amount: amount },
         item_details: [
-          { id: "sub-basic", price: amount, quantity: 1, name: coupon ? `Langganan Bulanan (Kupon ${coupon.code} -${coupon.discount_percent}%)` : "Langganan Bulanan Nugi24" },
+          { id: "sub-basic", price: amount, quantity: 1, name: coupon ? `Langganan Bulanan (Kupon ${coupon.code} -${coupon.discount_percent}%)` : "Langganan Bulanan Dagang Pintar" },
         ],
         customer_details: { first_name: tenant.name },
       }),
