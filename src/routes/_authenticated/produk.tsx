@@ -231,7 +231,7 @@ function ProdukPage() {
           if (Object.keys(patch).length === 0) { skipped++; continue; }
           const { error, count } = await supabase
             .from("products")
-            .update(patch, { count: "exact" })
+            .update(patch as any, { count: "exact" })
             .eq("code", r.code);
           if (error) { toast.error(`${r.code}: ${error.message}`); skipped++; }
           else if ((count ?? 0) === 0) skipped++;
