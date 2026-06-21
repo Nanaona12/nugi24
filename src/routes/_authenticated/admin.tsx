@@ -11,6 +11,10 @@ import {
   adminGetTenantStats,
   adminCreateTenant,
   adminRecordPayment,
+  adminListCoupons,
+  adminCreateCoupon,
+  adminToggleCoupon,
+  adminDeleteCoupon,
 } from "@/lib/billing.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
