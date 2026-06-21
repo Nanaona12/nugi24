@@ -17,6 +17,7 @@ import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedPoRouteImport } from './routes/_authenticated/po'
 import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authenticated/keuntungan'
 import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
+import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -57,10 +58,16 @@ const AuthenticatedKasirRoute = AuthenticatedKasirRouteImport.update({
   path: '/kasir',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCekKoneksiRoute = AuthenticatedCekKoneksiRouteImport.update({
+  id: '/cek-koneksi',
+  path: '/cek-koneksi',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kasir': typeof AuthenticatedKasirRoute
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/po': typeof AuthenticatedPoRoute
@@ -70,6 +77,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kasir': typeof AuthenticatedKasirRoute
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/po': typeof AuthenticatedPoRoute
@@ -81,6 +89,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/_authenticated/kasir': typeof AuthenticatedKasirRoute
   '/_authenticated/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/_authenticated/po': typeof AuthenticatedPoRoute
@@ -92,18 +101,28 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/cek-koneksi'
     | '/kasir'
     | '/keuntungan'
     | '/po'
     | '/produk'
     | '/riwayat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/kasir' | '/keuntungan' | '/po' | '/produk' | '/riwayat'
+  to:
+    | '/'
+    | '/auth'
+    | '/cek-koneksi'
+    | '/kasir'
+    | '/keuntungan'
+    | '/po'
+    | '/produk'
+    | '/riwayat'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/cek-koneksi'
     | '/_authenticated/kasir'
     | '/_authenticated/keuntungan'
     | '/_authenticated/po'
@@ -175,10 +194,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKasirRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/cek-koneksi': {
+      id: '/_authenticated/cek-koneksi'
+      path: '/cek-koneksi'
+      fullPath: '/cek-koneksi'
+      preLoaderRoute: typeof AuthenticatedCekKoneksiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCekKoneksiRoute: typeof AuthenticatedCekKoneksiRoute
   AuthenticatedKasirRoute: typeof AuthenticatedKasirRoute
   AuthenticatedKeuntunganRoute: typeof AuthenticatedKeuntunganRoute
   AuthenticatedPoRoute: typeof AuthenticatedPoRoute
@@ -187,6 +214,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCekKoneksiRoute: AuthenticatedCekKoneksiRoute,
   AuthenticatedKasirRoute: AuthenticatedKasirRoute,
   AuthenticatedKeuntunganRoute: AuthenticatedKeuntunganRoute,
   AuthenticatedPoRoute: AuthenticatedPoRoute,
