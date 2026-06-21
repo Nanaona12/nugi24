@@ -18,9 +18,9 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Nugi24 — Aplikasi Kasir Online untuk UMKM Indonesia" },
+      { title: "Dagang Pintar — Aplikasi Kasir Online untuk UMKM Indonesia" },
       { name: "description", content: "Kelola toko Anda dengan mudah: kasir, stok, laporan keuntungan, dan struk WhatsApp. Mulai hanya Rp14.900/bulan." },
-      { property: "og:title", content: "Nugi24 — Aplikasi Kasir Online untuk UMKM" },
+      { property: "og:title", content: "Dagang Pintar — Aplikasi Kasir Online untuk UMKM" },
       { property: "og:description", content: "Aplikasi kasir lengkap untuk UMKM: stok, transaksi, laporan, dan struk WhatsApp." },
     ],
   }),
@@ -58,8 +58,8 @@ function Header({ signedIn }: { signedIn: boolean }) {
     <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
         <div className="flex items-center gap-2">
-          <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground font-bold">N</div>
-          <span className="text-lg font-bold">Nugi24</span>
+          <div className="grid h-8 w-8 place-items-center rounded-lg bg-primary text-primary-foreground font-bold">D</div>
+          <span className="text-lg font-bold">Dagang Pintar</span>
         </div>
         <nav className="hidden gap-6 text-sm md:flex">
           <a href="#fitur" className="text-muted-foreground hover:text-foreground">Fitur</a>
