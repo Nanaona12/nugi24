@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated/produk'
+import { Route as AuthenticatedPoRouteImport } from './routes/_authenticated/po'
 import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
 
 const AuthRoute = AuthRouteImport.update({
@@ -40,6 +41,11 @@ const AuthenticatedProdukRoute = AuthenticatedProdukRouteImport.update({
   path: '/produk',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedPoRoute = AuthenticatedPoRouteImport.update({
+  id: '/po',
+  path: '/po',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedKasirRoute = AuthenticatedKasirRouteImport.update({
   id: '/kasir',
   path: '/kasir',
@@ -50,6 +56,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/kasir': typeof AuthenticatedKasirRoute
+  '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
 }
@@ -57,6 +64,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/kasir': typeof AuthenticatedKasirRoute
+  '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
 }
@@ -66,20 +74,22 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/kasir': typeof AuthenticatedKasirRoute
+  '/_authenticated/po': typeof AuthenticatedPoRoute
   '/_authenticated/produk': typeof AuthenticatedProdukRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/kasir' | '/produk' | '/riwayat'
+  fullPaths: '/' | '/auth' | '/kasir' | '/po' | '/produk' | '/riwayat'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/kasir' | '/produk' | '/riwayat'
+  to: '/' | '/auth' | '/kasir' | '/po' | '/produk' | '/riwayat'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/kasir'
+    | '/_authenticated/po'
     | '/_authenticated/produk'
     | '/_authenticated/riwayat'
   fileRoutesById: FileRoutesById
@@ -127,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProdukRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/po': {
+      id: '/_authenticated/po'
+      path: '/po'
+      fullPath: '/po'
+      preLoaderRoute: typeof AuthenticatedPoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kasir': {
       id: '/_authenticated/kasir'
       path: '/kasir'
@@ -139,12 +156,14 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedKasirRoute: typeof AuthenticatedKasirRoute
+  AuthenticatedPoRoute: typeof AuthenticatedPoRoute
   AuthenticatedProdukRoute: typeof AuthenticatedProdukRoute
   AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKasirRoute: AuthenticatedKasirRoute,
+  AuthenticatedPoRoute: AuthenticatedPoRoute,
   AuthenticatedProdukRoute: AuthenticatedProdukRoute,
   AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
 }
