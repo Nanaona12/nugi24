@@ -82,13 +82,18 @@ function AuthedLayout() {
   const handleLogout = async () => {
     try {
       await queryClient.cancelQueries();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Logout error:", error);
+        toast.error("Gagal keluar: " + error.message);
+        return;
+      }
       queryClient.clear();
-      await supabase.auth.signOut();
-    } catch (e) {
+      try { localStorage.removeItem("sb-auth-token"); } catch {}
+      router.navigate({ to: "/auth", replace: true });
+    } catch (e: any) {
       console.error("Logout error:", e);
-    } finally {
-      try { localStorage.clear(); } catch {}
-      window.location.href = "/auth";
+      toast.error("Gagal keluar. Coba lagi.");
     }
   };
 
