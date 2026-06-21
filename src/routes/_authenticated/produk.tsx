@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { formatRupiah, parseNumber } from "@/lib/format";
 import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/produk")({
   component: ProdukPage,
