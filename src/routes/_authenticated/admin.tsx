@@ -9,6 +9,8 @@ import {
   adminUpdateTenant,
   adminDeleteTenant,
   adminGetTenantStats,
+  adminCreateTenant,
+  adminRecordPayment,
 } from "@/lib/billing.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -16,9 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
-import { Settings, Trash2, Calendar, Pause, Play } from "lucide-react";
+import { Settings, Trash2, Calendar, Pause, Play, Plus, Wallet } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
