@@ -14,10 +14,52 @@ export type Database = {
   }
   public: {
     Tables: {
+      coupons: {
+        Row: {
+          active: boolean
+          code: string
+          created_at: string
+          created_by: string | null
+          discount_percent: number
+          expires_at: string | null
+          id: string
+          max_uses: number | null
+          updated_at: string
+          used_count: number
+        }
+        Insert: {
+          active?: boolean
+          code: string
+          created_at?: string
+          created_by?: string | null
+          discount_percent: number
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          updated_at?: string
+          used_count?: number
+        }
+        Update: {
+          active?: boolean
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          discount_percent?: number
+          expires_at?: string | null
+          id?: string
+          max_uses?: number | null
+          updated_at?: string
+          used_count?: number
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount: number
+          coupon_code: string | null
+          coupon_id: string | null
           created_at: string
+          discount_percent: number | null
           id: string
           midtrans_order_id: string | null
           midtrans_transaction_id: string | null
@@ -31,7 +73,10 @@ export type Database = {
         }
         Insert: {
           amount: number
+          coupon_code?: string | null
+          coupon_id?: string | null
           created_at?: string
+          discount_percent?: number | null
           id?: string
           midtrans_order_id?: string | null
           midtrans_transaction_id?: string | null
@@ -45,7 +90,10 @@ export type Database = {
         }
         Update: {
           amount?: number
+          coupon_code?: string | null
+          coupon_id?: string | null
           created_at?: string
+          discount_percent?: number | null
           id?: string
           midtrans_order_id?: string | null
           midtrans_transaction_id?: string | null
@@ -58,6 +106,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "payments_coupon_id_fkey"
+            columns: ["coupon_id"]
+            isOneToOne: false
+            referencedRelation: "coupons"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "payments_tenant_id_fkey"
             columns: ["tenant_id"]
