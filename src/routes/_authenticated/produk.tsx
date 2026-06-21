@@ -142,18 +142,47 @@ function ProdukPage() {
       wholesale_min_qty: form.wholesale_min_qty ? parseInt(form.wholesale_min_qty, 10) : null,
       stock: parseInt(form.stock || "0", 10),
     };
-    const { error } = form.id
-      ? await supabase.from("products").update(payload).eq("id", form.id)
-      : await supabase.from("products").insert(payload);
-    if (error) {
-      if (error.code === "23505") toast.error(`Kode "${code}" sudah dipakai produk lain`);
-      else toast.error(error.message);
-    } else {
-      toast.success("Disimpan");
-      setEditOpen(false);
-      load();
-
+    // Validasi satuan
+    const cleanUnits = formUnits
+      .map((u) => ({ ...u, tiers: u.tiers.filter((t) => t.min_qty > 0 && t.price >= 0) }))
+      .filter((u) => u.name.trim() && u.tiers.length > 0);
+    if (cleanUnits.length === 0) {
+      toast.error("Minimal 1 satuan dengan 1 tingkatan harga");
+      return;
     }
+    // Pastikan satu base unit
+    if (!cleanUnits.some((u) => u.is_base)) cleanUnits[0].is_base = true;
+    // Sinkronkan kolom legacy products.price = harga tier terkecil pada base unit
+    const baseUnit = cleanUnits.find((u) => u.is_base) || cleanUnits[0];
+    const baseTier1 = [...baseUnit.tiers].sort((a, b) => a.min_qty - b.min_qty)[0];
+    const basePrice = baseTier1.price;
+    payload.price = basePrice;
+
+    let prodId = form.id;
+    if (form.id) {
+      const { error } = await supabase.from("products").update(payload).eq("id", form.id);
+      if (error) {
+        if (error.code === "23505") toast.error(`Kode "${code}" sudah dipakai produk lain`);
+        else toast.error(error.message);
+        return;
+      }
+    } else {
+      const { data: inserted, error } = await supabase.from("products").insert(payload).select().single();
+      if (error || !inserted) {
+        if (error?.code === "23505") toast.error(`Kode "${code}" sudah dipakai produk lain`);
+        else toast.error(error?.message || "Gagal simpan");
+        return;
+      }
+      prodId = inserted.id;
+    }
+    try {
+      await replaceProductUnits(prodId!, cleanUnits);
+    } catch (e: any) {
+      toast.error("Produk tersimpan tapi satuan gagal: " + e.message);
+    }
+    toast.success("Disimpan");
+    setEditOpen(false);
+    load();
   };
 
   const remove = async (p: Product) => {
