@@ -1,5 +1,6 @@
 import { createFileRoute, Outlet, Link, useRouter, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings } from "lucide-react";
@@ -12,6 +13,7 @@ type SubInfo = { status: string; current_period_end: string; isSuperAdmin: boole
 
 function AuthedLayout() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<{ id: string; email: string | null } | null>(null);
   const [sub, setSub] = useState<SubInfo>(null);
@@ -78,6 +80,8 @@ function AuthedLayout() {
   }, [sub, pathname, router]);
 
   const handleLogout = async () => {
+    await queryClient.cancelQueries();
+    queryClient.clear();
     await supabase.auth.signOut();
     router.navigate({ to: "/auth", replace: true });
   };
