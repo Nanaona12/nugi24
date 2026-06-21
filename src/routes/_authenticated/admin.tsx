@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   listAllTenants,
   adminExtendSubscription,
@@ -25,7 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
-import { Settings, Trash2, Calendar, Pause, Play, Plus, Wallet, Ticket } from "lucide-react";
+import { Settings, Trash2, Calendar, Pause, Play, Plus, Wallet, Ticket, Star, MessageSquare } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
@@ -157,6 +158,8 @@ function AdminPage() {
           </div>
         </CardContent>
       </Card>
+
+      <FeedbackCard />
     </div>
   );
 }
@@ -389,6 +392,71 @@ function Stat({ label, value }: { label: string; value: string }) {
       <CardContent className="pt-6">
         <div className="text-sm text-muted-foreground">{label}</div>
         <div className="text-2xl font-bold">{value}</div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FeedbackCard() {
+  const qc = useQueryClient();
+  const { data: feedback } = useQuery({
+    queryKey: ["admin-feedback"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("feedback").select("*").order("created_at", { ascending: false }).limit(100);
+      if (error) throw error;
+      return data ?? [];
+    },
+    retry: false,
+  });
+
+  const del = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("feedback").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Feedback dihapus"); qc.invalidateQueries({ queryKey: ["admin-feedback"] }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <MessageSquare className="h-5 w-5" />Feedback Pengunjung
+          <Badge variant="secondary" className="ml-2">{feedback?.length ?? 0}</Badge>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {!feedback || feedback.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Belum ada feedback.</p>
+        ) : (
+          <div className="space-y-3">
+            {feedback.map((f: any) => (
+              <div key={f.id} className="rounded-lg border p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="font-medium">{f.name}</span>
+                      {f.email && <span className="text-xs text-muted-foreground">{f.email}</span>}
+                      {f.rating && (
+                        <span className="flex items-center gap-0.5">
+                          {Array.from({ length: f.rating }).map((_, i) => (
+                            <Star key={i} className="h-3 w-3 fill-primary text-primary" />
+                          ))}
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 whitespace-pre-wrap text-sm">{f.message}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{new Date(f.created_at).toLocaleString("id-ID")}</p>
+                  </div>
+                  <Button size="sm" variant="destructive" onClick={() => { if (confirm("Hapus feedback ini?")) del.mutate(f.id); }}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );
