@@ -549,7 +549,8 @@ function KasirPage() {
                 <div className="flex gap-2">
                   <Button
                     className="flex-1"
-                    onClick={() => {
+                    disabled={sendingWa}
+                    onClick={async () => {
                       const r = lastReceipt;
                       const lines = r.items.map((l) => {
                         const c = computeLine(l);
@@ -564,15 +565,27 @@ function KasirPage() {
                         `Bayar (${r.paymentMethod.toUpperCase()}): ${formatRupiah(r.paid)}\n` +
                         `Kembali: ${formatRupiah(r.change)}\n\n` +
                         `Terima kasih sudah berbelanja 🙏`;
-                      const phone = r.customerPhone!.replace(/^\+/, "").replace(/^0/, "62");
-                      const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-                      const newTab = window.open(url, "_blank");
-                      if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
-                        window.location.href = url;
+                      setSendingWa(true);
+                      try {
+                        const res = await sendWaFn({ data: { target: r.customerPhone!, message: msg } });
+                        if (res.ok) {
+                          toast.success("E-struk terkirim via WhatsApp");
+                        } else {
+                          toast.error("Fonnte gagal: " + res.error + ". Membuka wa.me…");
+                          const phone = r.customerPhone!.replace(/[^\d]/g, "").replace(/^0/, "62");
+                          const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                          const newTab = window.open(url, "_blank");
+                          if (!newTab) window.location.href = url;
+                        }
+                      } catch (e: any) {
+                        toast.error("Gagal kirim: " + (e?.message || "unknown"));
+                      } finally {
+                        setSendingWa(false);
                       }
                     }}
                   >
-                    📲 Buka WhatsApp
+                    {sendingWa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    {sendingWa ? "Mengirim…" : "📲 Kirim via WhatsApp"}
                   </Button>
                   <Button
                     variant="outline"
