@@ -63,6 +63,8 @@ function ProdukPage() {
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
