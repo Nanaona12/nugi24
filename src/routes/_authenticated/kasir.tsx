@@ -15,7 +15,8 @@ import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check, Lo
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor, PriceTier } from "@/lib/product-pricing";
 import { useServerFn } from "@tanstack/react-start";
-import { sendFonnteWa } from "@/lib/fonnte.functions";
+import { sendFonnteWaImage } from "@/lib/fonnte.functions";
+import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 
 export const Route = createFileRoute("/_authenticated/kasir")({
   component: KasirPage,
@@ -88,7 +89,8 @@ function KasirPage() {
   const [sendingWa, setSendingWa] = useState(false);
   const [modePicker, setModePicker] = useState<Product | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const sendWaFn = useServerFn(sendFonnteWa);
+  const sendWaImgFn = useServerFn(sendFonnteWaImage);
+  const [receiptImg, setReceiptImg] = useState<string | null>(null);
 
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
@@ -235,6 +237,43 @@ function KasirPage() {
       customerPhone: sendWa && phoneClean ? phoneClean : null,
     };
     setLastReceipt(receipt);
+    // generate struk gambar
+    try {
+      const imgItems: ReceiptItem[] = cart.map((l) => {
+        const c = computeLine(l);
+        let detail = "";
+        if (l.mode === "grosiran") {
+          const parts: string[] = [];
+          if (c.packs > 0) parts.push(`${c.packs} ${l.unit.name} × ${formatRupiah(c.packPrice)}`);
+          if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
+          detail = parts.join(" + ");
+        } else {
+          detail = `${l.qty} × ${formatRupiah(c.ecerPrice)}`;
+        }
+        return {
+          name: l.product.name,
+          qty: l.qty,
+          unit: l.baseUnit.name,
+          isWholesale: l.mode === "grosiran",
+          detail,
+          subtotal: c.total,
+        };
+      });
+      const { dataUrl } = renderReceiptPng({
+        storeName: "Nugi Vidy 24",
+        storeNote: "Terima kasih atas kunjungan Anda",
+        txId: tx.id,
+        at: receipt.at,
+        items: imgItems,
+        total: receipt.total,
+        paid: receipt.paid,
+        change: receipt.change,
+        paymentMethod: receipt.paymentMethod,
+      });
+      setReceiptImg(dataUrl);
+    } catch (e) {
+      setReceiptImg(null);
+    }
     setCart([]); setPaid(""); setPayOpen(false); setSubmitting(false);
     setSendWa(false); setCustomerPhone(""); setPaymentMethod("cash");
     loadProducts();
@@ -515,8 +554,8 @@ function KasirPage() {
       </Dialog>
 
       {/* Receipt dialog */}
-      <Dialog open={!!lastReceipt} onOpenChange={(o) => !o && setLastReceipt(null)}>
-        <DialogContent>
+      <Dialog open={!!lastReceipt} onOpenChange={(o) => { if (!o) { setLastReceipt(null); setReceiptImg(null); } }}>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <ReceiptIcon className="h-5 w-5 text-success" /> Transaksi Berhasil
@@ -524,58 +563,54 @@ function KasirPage() {
           </DialogHeader>
           {lastReceipt && (
             <div className="space-y-3 text-sm">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <span>{lastReceipt.at.toLocaleString("id-ID")} • #{lastReceipt.id.slice(0, 8)}</span>
-                <Badge variant="secondary" className="uppercase">{lastReceipt.paymentMethod}</Badge>
-              </div>
-              <ul className="divide-y rounded-md border">
-                {lastReceipt.items.map((l) => {
-                  const c = computeLine(l);
-                  return (
-                    <li key={l.key} className="flex justify-between p-2">
-                      <span>
-                        {l.product.name} × {l.qty} {l.baseUnit.name}
-                        {l.mode === "grosiran" && <span className="text-xs text-muted-foreground"> (grosir)</span>}
-                      </span>
-                      <span>{formatRupiah(c.total)}</span>
-                    </li>
-                  );
-                })}
-              </ul>
-              <Row label="Total" value={formatRupiah(lastReceipt.total)} bold />
-              <Row label="Dibayar" value={formatRupiah(lastReceipt.paid)} />
-              <Row label="Kembali" value={formatRupiah(lastReceipt.change)} bold />
-              {lastReceipt.customerPhone && (
-                <div className="flex gap-2">
+              {receiptImg ? (
+                <div className="overflow-hidden rounded-md border bg-white">
+                  <img src={receiptImg} alt="Struk" className="block w-full" />
+                </div>
+              ) : (
+                <div className="rounded-md border p-4 text-center text-xs text-muted-foreground">Memuat gambar struk…</div>
+              )}
+              <div className="flex flex-wrap gap-2">
+                {receiptImg && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const a = document.createElement("a");
+                      a.href = receiptImg;
+                      a.download = `struk-${lastReceipt.id.slice(0, 8)}.png`;
+                      a.click();
+                    }}
+                  >
+                    ⬇️ Unduh
+                  </Button>
+                )}
+                {lastReceipt.customerPhone && receiptImg && (
                   <Button
                     className="flex-1"
                     disabled={sendingWa}
                     onClick={async () => {
                       const r = lastReceipt;
-                      const lines = r.items.map((l) => {
-                        const c = computeLine(l);
-                        return `• ${l.product.name} x${l.qty} ${l.baseUnit.name} = ${formatRupiah(c.total)}`;
-                      }).join("\n");
-                      const msg =
+                      const base64 = receiptImg.split(",")[1] || "";
+                      const caption =
                         `*Nugi Vidy 24*\n` +
                         `Struk #${r.id.slice(0, 8)}\n` +
-                        `${r.at.toLocaleString("id-ID")}\n\n` +
-                        `${lines}\n\n` +
-                        `Total: ${formatRupiah(r.total)}\n` +
-                        `Bayar (${r.paymentMethod.toUpperCase()}): ${formatRupiah(r.paid)}\n` +
-                        `Kembali: ${formatRupiah(r.change)}\n\n` +
+                        `Total: ${formatRupiah(r.total)} (${r.paymentMethod.toUpperCase()})\n` +
                         `Terima kasih sudah berbelanja 🙏`;
                       setSendingWa(true);
                       try {
-                        const res = await sendWaFn({ data: { target: r.customerPhone!, message: msg } });
+                        const res = await sendWaImgFn({
+                          data: {
+                            target: r.customerPhone!,
+                            caption,
+                            filename: `struk-${r.id.slice(0, 8)}.png`,
+                            imageBase64: base64,
+                          },
+                        });
                         if (res.ok) {
-                          toast.success("E-struk terkirim via WhatsApp");
+                          toast.success("E-struk (gambar) terkirim via WhatsApp");
                         } else {
-                          toast.error("Fonnte gagal: " + res.error + ". Membuka wa.me…");
-                          const phone = r.customerPhone!.replace(/[^\d]/g, "").replace(/^0/, "62");
-                          const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
-                          const newTab = window.open(url, "_blank");
-                          if (!newTab) window.location.href = url;
+                          toast.error("Fonnte gagal: " + res.error);
                         }
                       } catch (e: any) {
                         toast.error("Gagal kirim: " + (e?.message || "unknown"));
@@ -585,39 +620,33 @@ function KasirPage() {
                     }}
                   >
                     {sendingWa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    {sendingWa ? "Mengirim…" : "📲 Kirim via WhatsApp"}
+                    {sendingWa ? "Mengirim…" : "📲 Kirim Gambar via WhatsApp"}
                   </Button>
+                )}
+                {receiptImg && (
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      const r = lastReceipt;
-                      const lines = r.items.map((l) => {
-                        const c = computeLine(l);
-                        return `• ${l.product.name} x${l.qty} ${l.baseUnit.name} = ${formatRupiah(c.total)}`;
-                      }).join("\n");
-                      const msg =
-                        `*Nugi Vidy 24*\n` +
-                        `Struk #${r.id.slice(0, 8)}\n` +
-                        `${r.at.toLocaleString("id-ID")}\n\n` +
-                        `${lines}\n\n` +
-                        `Total: ${formatRupiah(r.total)}\n` +
-                        `Bayar (${r.paymentMethod.toUpperCase()}): ${formatRupiah(r.paid)}\n` +
-                        `Kembali: ${formatRupiah(r.change)}\n\n` +
-                        `Terima kasih sudah berbelanja 🙏`;
-                      navigator.clipboard.writeText(msg).then(() => {
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const blob = await (await fetch(receiptImg)).blob();
+                        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
                         setCopied(true);
                         setTimeout(() => setCopied(false), 2000);
-                      });
+                      } catch {
+                        toast.error("Browser tidak mendukung copy gambar");
+                      }
                     }}
                   >
                     {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </Button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
           <DialogFooter>
-            <Button onClick={() => setLastReceipt(null)}>Tutup</Button>
+            <Button onClick={() => { setLastReceipt(null); setReceiptImg(null); }}>Tutup</Button>
+
           </DialogFooter>
         </DialogContent>
       </Dialog>
