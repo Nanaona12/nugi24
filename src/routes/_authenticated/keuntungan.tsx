@@ -1,12 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { TrendingUp, DollarSign, ShoppingBag, Calendar } from "lucide-react";
+import { TrendingUp, DollarSign, ShoppingBag, Calendar, PackageX, ShoppingCart } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/keuntungan")({
   component: KeuntunganPage,
@@ -30,22 +31,45 @@ type Bucket = {
   count: number;
 };
 
+type LowStockProduct = {
+  id: string;
+  code: string;
+  name: string;
+  category: string | null;
+  stock: number;
+  price: number;
+};
+
+const LOW_STOCK_THRESHOLD = 5;
+
 function KeuntunganPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from("transaction_items")
-        .select("qty, unit_price, unit_cost, subtotal, product_name, transactions(created_at)")
-        .order("id", { ascending: false })
-        .limit(5000);
-      if (error) toast.error(error.message);
-      else setItems((data || []) as unknown as Item[]);
+      const [itemsRes, lowRes] = await Promise.all([
+        supabase
+          .from("transaction_items")
+          .select("qty, unit_price, unit_cost, subtotal, product_name, transactions(created_at)")
+          .order("id", { ascending: false })
+          .limit(5000),
+        supabase
+          .from("products")
+          .select("id, code, name, category, stock, price")
+          .lte("stock", LOW_STOCK_THRESHOLD)
+          .order("stock", { ascending: true })
+          .limit(100),
+      ]);
+      if (itemsRes.error) toast.error(itemsRes.error.message);
+      else setItems((itemsRes.data || []) as unknown as Item[]);
+      if (lowRes.error) toast.error(lowRes.error.message);
+      else setLowStock((lowRes.data || []) as LowStockProduct[]);
       setLoading(false);
     })();
   }, []);
+
 
   const stats = useMemo(() => {
     const now = new Date();
