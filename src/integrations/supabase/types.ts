@@ -280,27 +280,33 @@ export type Database = {
           cashier_id: string
           change_amount: number
           created_at: string
+          customer_phone: string | null
           id: string
           item_count: number
           paid: number
+          payment_method: string
           total: number
         }
         Insert: {
           cashier_id: string
           change_amount?: number
           created_at?: string
+          customer_phone?: string | null
           id?: string
           item_count?: number
           paid?: number
+          payment_method?: string
           total?: number
         }
         Update: {
           cashier_id?: string
           change_amount?: number
           created_at?: string
+          customer_phone?: string | null
           id?: string
           item_count?: number
           paid?: number
+          payment_method?: string
           total?: number
         }
         Relationships: []
