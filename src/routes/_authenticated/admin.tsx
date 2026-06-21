@@ -304,11 +304,11 @@ function ManageTenantDialog({ tenant, onSaved }: { tenant: any; onSaved: () => v
 
 function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ shop_name: "", email: "", password: "", phone: "", address: "", trial_days: 7 });
+  const [form, setForm] = useState({ shop_name: "", email: "", password: "", phone: "", address: "" });
   const fn = useServerFn(adminCreateTenant);
   const mut = useMutation({
     mutationFn: () => fn({ data: form }),
-    onSuccess: () => { toast.success("Toko baru dibuat"); onCreated(); setOpen(false); setForm({ shop_name: "", email: "", password: "", phone: "", address: "", trial_days: 7 }); },
+    onSuccess: () => { toast.success("Toko baru dibuat (belum berlangganan)"); onCreated(); setOpen(false); setForm({ shop_name: "", email: "", password: "", phone: "", address: "" }); },
     onError: (e: any) => toast.error(e.message),
   });
   return (
@@ -322,11 +322,9 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
           <div><Label>Nama Toko</Label><Input value={form.shop_name} onChange={(e) => setForm({ ...form, shop_name: e.target.value })} /></div>
           <div><Label>Email Pemilik</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
           <div><Label>Password Awal</Label><Input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="min. 6 karakter" /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>WhatsApp</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-            <div><Label>Trial (hari)</Label><Input type="number" value={form.trial_days} onChange={(e) => setForm({ ...form, trial_days: Number(e.target.value) })} /></div>
-          </div>
+          <div><Label>WhatsApp</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
           <div><Label>Alamat</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+          <p className="text-xs text-muted-foreground">Toko baru harus melakukan pembayaran (atau pakai kode kupon) untuk mengaktifkan langganan.</p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
