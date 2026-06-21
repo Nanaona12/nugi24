@@ -10,9 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah, parseNumber } from "@/lib/format";
-import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash } from "lucide-react";
+import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash, Package, X as XIcon } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { ProductUnit, loadUnitsForProducts, replaceProductUnits, fallbackUnitFromProduct } from "@/lib/product-pricing";
 
 export const Route = createFileRoute("/_authenticated/produk")({
   component: ProdukPage,
