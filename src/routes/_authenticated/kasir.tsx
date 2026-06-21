@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X } from "lucide-react";
+import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor, PriceTier } from "@/lib/product-pricing";
 
@@ -82,6 +82,7 @@ function KasirPage() {
   const [sendWa, setSendWa] = useState(false);
   const [customerPhone, setCustomerPhone] = useState("");
   const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date; paymentMethod: "cash" | "qris"; customerPhone: string | null }>(null);
+  const [copied, setCopied] = useState(false);
   const [modePicker, setModePicker] = useState<Product | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -541,29 +542,60 @@ function KasirPage() {
               <Row label="Dibayar" value={formatRupiah(lastReceipt.paid)} />
               <Row label="Kembali" value={formatRupiah(lastReceipt.change)} bold />
               {lastReceipt.customerPhone && (
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    const r = lastReceipt;
-                    const lines = r.items.map((l) => {
-                      const c = computeLine(l);
-                      return `• ${l.product.name} x${l.qty} ${l.baseUnit.name} = ${formatRupiah(c.total)}`;
-                    }).join("\n");
-                    const msg =
-                      `*Nugi Vidy 24*\n` +
-                      `Struk #${r.id.slice(0, 8)}\n` +
-                      `${r.at.toLocaleString("id-ID")}\n\n` +
-                      `${lines}\n\n` +
-                      `Total: ${formatRupiah(r.total)}\n` +
-                      `Bayar (${r.paymentMethod.toUpperCase()}): ${formatRupiah(r.paid)}\n` +
-                      `Kembali: ${formatRupiah(r.change)}\n\n` +
-                      `Terima kasih sudah berbelanja 🙏`;
-                    const phone = r.customerPhone!.replace(/^\+/, "").replace(/^0/, "62");
-                    window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, "_blank");
-                  }}
-                >
-                  📲 Kirim Struk ke WhatsApp ({lastReceipt.customerPhone})
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    className="flex-1"
+                    onClick={() => {
+                      const r = lastReceipt;
+                      const lines = r.items.map((l) => {
+                        const c = computeLine(l);
+                        return `• ${l.product.name} x${l.qty} ${l.baseUnit.name} = ${formatRupiah(c.total)}`;
+                      }).join("\n");
+                      const msg =
+                        `*Nugi Vidy 24*\n` +
+                        `Struk #${r.id.slice(0, 8)}\n` +
+                        `${r.at.toLocaleString("id-ID")}\n\n` +
+                        `${lines}\n\n` +
+                        `Total: ${formatRupiah(r.total)}\n` +
+                        `Bayar (${r.paymentMethod.toUpperCase()}): ${formatRupiah(r.paid)}\n` +
+                        `Kembali: ${formatRupiah(r.change)}\n\n` +
+                        `Terima kasih sudah berbelanja 🙏`;
+                      const phone = r.customerPhone!.replace(/^\+/, "").replace(/^0/, "62");
+                      const url = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+                      const newTab = window.open(url, "_blank");
+                      if (!newTab || newTab.closed || typeof newTab.closed === "undefined") {
+                        window.location.href = url;
+                      }
+                    }}
+                  >
+                    📲 Buka WhatsApp
+                  </Button>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      const r = lastReceipt;
+                      const lines = r.items.map((l) => {
+                        const c = computeLine(l);
+                        return `• ${l.product.name} x${l.qty} ${l.baseUnit.name} = ${formatRupiah(c.total)}`;
+                      }).join("\n");
+                      const msg =
+                        `*Nugi Vidy 24*\n` +
+                        `Struk #${r.id.slice(0, 8)}\n` +
+                        `${r.at.toLocaleString("id-ID")}\n\n` +
+                        `${lines}\n\n` +
+                        `Total: ${formatRupiah(r.total)}\n` +
+                        `Bayar (${r.paymentMethod.toUpperCase()}): ${formatRupiah(r.paid)}\n` +
+                        `Kembali: ${formatRupiah(r.change)}\n\n` +
+                        `Terima kasih sudah berbelanja 🙏`;
+                      navigator.clipboard.writeText(msg).then(() => {
+                        setCopied(true);
+                        setTimeout(() => setCopied(false), 2000);
+                      });
+                    }}
+                  >
+                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
               )}
             </div>
           )}
