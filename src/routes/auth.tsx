@@ -87,11 +87,15 @@ function AuthPage() {
             </Button>
           </TabsContent>
           <TabsContent value="signup" className="space-y-4 pt-4">
+            <Field label="Nama Toko" value={shopName} onChange={setShopName} />
             <Field label="Email" value={email} onChange={setEmail} type="email" />
             <Field label="Kata Sandi (min. 6)" value={password} onChange={setPassword} type="password" />
             <Button className="w-full" onClick={signUp} disabled={loading}>
-              {loading ? "Memproses..." : "Daftar Akun"}
+              {loading ? "Memproses..." : "Daftar — 7 Hari Gratis"}
             </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              Setelah trial: Rp 14.900/bulan
+            </p>
           </TabsContent>
         </Tabs>
       </div>
