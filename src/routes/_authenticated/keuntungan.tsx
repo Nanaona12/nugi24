@@ -1,12 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { TrendingUp, DollarSign, ShoppingBag, Calendar } from "lucide-react";
+import { TrendingUp, DollarSign, ShoppingBag, Calendar, PackageX, ShoppingCart } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/keuntungan")({
   component: KeuntunganPage,
@@ -30,22 +31,45 @@ type Bucket = {
   count: number;
 };
 
+type LowStockProduct = {
+  id: string;
+  code: string;
+  name: string;
+  category: string | null;
+  stock: number;
+  price: number;
+};
+
+const LOW_STOCK_THRESHOLD = 5;
+
 function KeuntunganPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     (async () => {
-      const { data, error } = await supabase
-        .from("transaction_items")
-        .select("qty, unit_price, unit_cost, subtotal, product_name, transactions(created_at)")
-        .order("id", { ascending: false })
-        .limit(5000);
-      if (error) toast.error(error.message);
-      else setItems((data || []) as unknown as Item[]);
+      const [itemsRes, lowRes] = await Promise.all([
+        supabase
+          .from("transaction_items")
+          .select("qty, unit_price, unit_cost, subtotal, product_name, transactions(created_at)")
+          .order("id", { ascending: false })
+          .limit(5000),
+        supabase
+          .from("products")
+          .select("id, code, name, category, stock, price")
+          .lte("stock", LOW_STOCK_THRESHOLD)
+          .order("stock", { ascending: true })
+          .limit(100),
+      ]);
+      if (itemsRes.error) toast.error(itemsRes.error.message);
+      else setItems((itemsRes.data || []) as unknown as Item[]);
+      if (lowRes.error) toast.error(lowRes.error.message);
+      else setLowStock((lowRes.data || []) as LowStockProduct[]);
       setLoading(false);
     })();
   }, []);
+
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -145,6 +169,59 @@ function KeuntunganPage() {
         </Card>
       )}
 
+      <Card className="overflow-hidden">
+        <div className="flex items-center justify-between gap-3 border-b bg-muted/40 p-3">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <PackageX className="h-4 w-4 text-destructive" />
+            Produk Habis / Stok Menipis
+            <Badge variant="secondary">{lowStock.length}</Badge>
+          </div>
+          <Button asChild size="sm" variant="default">
+            <Link to="/po"><ShoppingCart className="mr-1 h-4 w-4" />Buat PO</Link>
+          </Button>
+        </div>
+        {lowStock.length === 0 ? (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            Semua produk masih memiliki stok aman (&gt; {LOW_STOCK_THRESHOLD}).
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="p-3">Kode</th>
+                  <th className="p-3">Nama Produk</th>
+                  <th className="p-3">Kategori</th>
+                  <th className="p-3 text-right">Sisa Stok</th>
+                  <th className="p-3 text-right">Harga</th>
+                  <th className="p-3 text-right">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {lowStock.map((p) => (
+                  <tr key={p.id} className="border-t hover:bg-muted/40">
+                    <td className="p-3 font-mono text-xs">{p.code}</td>
+                    <td className="p-3 font-medium">{p.name}</td>
+                    <td className="p-3 text-muted-foreground">{p.category || "-"}</td>
+                    <td className="p-3 text-right font-semibold">{p.stock}</td>
+                    <td className="p-3 text-right">{formatRupiah(Number(p.price))}</td>
+                    <td className="p-3 text-right">
+                      {p.stock <= 0 ? (
+                        <Badge variant="destructive">Habis</Badge>
+                      ) : (
+                        <Badge variant="secondary">Menipis</Badge>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+
+
       <Tabs defaultValue="daily">
         <TabsList>
           <TabsTrigger value="daily">Per Hari</TabsTrigger>
@@ -203,8 +280,21 @@ function KeuntunganPage() {
 }
 
 function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; labelHeader: string; formatLabel: (k: string) => string }) {
+  const totals = rows.reduce(
+    (acc, r) => ({ revenue: acc.revenue + r.revenue, cost: acc.cost + r.cost, profit: acc.profit + r.profit, count: acc.count + r.count }),
+    { revenue: 0, cost: 0, profit: 0, count: 0 },
+  );
+  const totalMargin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0;
   return (
     <Card className="overflow-hidden">
+      {rows.length > 0 && (
+        <div className="grid gap-3 border-b bg-muted/40 p-3 sm:grid-cols-4">
+          <SummaryItem label="Total Omset" value={formatRupiah(totals.revenue)} />
+          <SummaryItem label="Total Modal" value={formatRupiah(totals.cost)} muted />
+          <SummaryItem label="Total Keuntungan" value={formatRupiah(totals.profit)} accent />
+          <SummaryItem label="Margin Rata-rata" value={`${totalMargin.toFixed(1)}%`} />
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
@@ -234,11 +324,32 @@ function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; label
               );
             })}
           </tbody>
+          {rows.length > 0 && (
+            <tfoot className="bg-muted/60 font-semibold">
+              <tr className="border-t">
+                <td className="p-3">TOTAL</td>
+                <td className="p-3 text-right">{formatRupiah(totals.revenue)}</td>
+                <td className="p-3 text-right text-muted-foreground">{formatRupiah(totals.cost)}</td>
+                <td className="p-3 text-right text-primary">{formatRupiah(totals.profit)}</td>
+                <td className="p-3 text-right">{totalMargin.toFixed(1)}%</td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </div>
     </Card>
   );
 }
+
+function SummaryItem({ label, value, accent, muted }: { label: string; value: string; accent?: boolean; muted?: boolean }) {
+  return (
+    <div>
+      <div className="text-xs uppercase text-muted-foreground">{label}</div>
+      <div className={`mt-1 text-lg font-bold ${accent ? "text-primary" : muted ? "text-muted-foreground" : ""}`}>{value}</div>
+    </div>
+  );
+}
+
 
 function StatCard({
   icon, label, value, sub, tone,
