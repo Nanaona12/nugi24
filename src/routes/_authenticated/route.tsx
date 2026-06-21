@@ -99,22 +99,30 @@ function AuthedLayout() {
             <span className="hidden sm:inline">Nugi Vidy 24</span>
           </div>
           <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
-            <NavLink to="/kasir" icon={<ShoppingCart className="h-4 w-4" />} label="Kasir" />
-            <NavLink to="/produk" icon={<Package className="h-4 w-4" />} label="Produk" />
-            <NavLink to="/po" icon={<ClipboardList className="h-4 w-4" />} label="PO" />
-            <NavLink to="/riwayat" icon={<Receipt className="h-4 w-4" />} label="Riwayat" />
-            <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
-            <NavLink to="/cek-koneksi" icon={<Wifi className="h-4 w-4" />} label="Koneksi" />
-            <NavLink to="/langganan" icon={<CreditCard className="h-4 w-4" />} label="Langganan" />
-            {sub?.isSuperAdmin && <NavLink to="/admin" icon={<Shield className="h-4 w-4" />} label="Admin" />}
+            {sub?.isSuperAdmin ? (
+              <NavLink to="/admin" icon={<Shield className="h-4 w-4" />} label="Admin" />
+            ) : (
+              <>
+                <NavLink to="/kasir" icon={<ShoppingCart className="h-4 w-4" />} label="Kasir" />
+                <NavLink to="/produk" icon={<Package className="h-4 w-4" />} label="Produk" />
+                <NavLink to="/po" icon={<ClipboardList className="h-4 w-4" />} label="PO" />
+                <NavLink to="/riwayat" icon={<Receipt className="h-4 w-4" />} label="Riwayat" />
+                <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
+                <NavLink to="/cek-koneksi" icon={<Wifi className="h-4 w-4" />} label="Koneksi" />
+                <NavLink to="/langganan" icon={<CreditCard className="h-4 w-4" />} label="Langganan" />
+              </>
+            )}
           </nav>
-          <div className="hidden text-xs text-sidebar-foreground/70 sm:block">{user.email}</div>
+          <div className="hidden text-xs text-sidebar-foreground/70 sm:block">
+            {sub?.isSuperAdmin && <span className="mr-2 rounded bg-primary px-2 py-0.5 text-primary-foreground">SUPER ADMIN</span>}
+            {user.email}
+          </div>
           <Button variant="ghost" size="sm" onClick={handleLogout} className="text-sidebar-foreground hover:bg-sidebar-accent">
             <LogOut className="h-4 w-4" />
             <span className="ml-1 hidden sm:inline">Keluar</span>
           </Button>
         </div>
-        {(showTrialBanner || expired) && (
+        {!sub?.isSuperAdmin && (showTrialBanner || expired) && (
           <div className={`px-4 py-2 text-center text-sm ${expired ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white"}`}>
             {expired ? (
               <>Langganan Anda berakhir. <Link to="/langganan" className="underline font-semibold">Perpanjang sekarang</Link></>
