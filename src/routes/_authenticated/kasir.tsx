@@ -489,3 +489,145 @@ function Row({ label, value, bold }: { label: string; value: string; bold?: bool
     </div>
   );
 }
+
+type PickerOption = {
+  id: string;
+  unit: ProductUnit;
+  tier: PriceTier;
+  perBasePrice: number;
+  isBase: boolean;
+};
+
+function buildOptions(units: ProductUnit[]): PickerOption[] {
+  const opts: PickerOption[] = [];
+  const sorted = [...units].sort((a, b) =>
+    a.is_base === b.is_base ? a.conversion - b.conversion : a.is_base ? -1 : 1,
+  );
+  for (const u of sorted) {
+    const tiers = [...u.tiers].sort((a, b) => a.min_qty - b.min_qty);
+    for (const t of tiers) {
+      opts.push({
+        id: `${u.name}-${t.min_qty}`,
+        unit: u,
+        tier: t,
+        perBasePrice: Number(t.price) / Math.max(1, u.conversion),
+        isBase: u.is_base,
+      });
+    }
+  }
+  return opts;
+}
+
+function PickerDialog({
+  product,
+  unitsByProduct,
+  onClose,
+  onAdd,
+}: {
+  product: Product | null;
+  unitsByProduct: Record<string, ProductUnit[]>;
+  onClose: () => void;
+  onAdd: (p: Product, mode: SaleMode, unit: ProductUnit, qtyPcs: number) => void;
+}) {
+  const [selected, setSelected] = useState<string | null>(null);
+  const [qty, setQty] = useState<number>(1);
+
+  const units = product ? (unitsByProduct[product.id] || [fallbackUnitFromProduct(product)]) : [];
+  const options = useMemo(() => buildOptions(units), [units]);
+  const cheapest = options.length ? Math.min(...options.map((o) => o.perBasePrice)) : 0;
+
+  useEffect(() => {
+    if (product) {
+      setSelected(options[0]?.id ?? null);
+      setQty(1);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product]);
+
+  if (!product) return null;
+  const opt = options.find((o) => o.id === selected) || options[0];
+  const baseUnit = units.find((u) => u.is_base) || units[0];
+  const baseName = baseUnit?.name || "pcs";
+
+  const qtyPcs = opt ? qty * opt.unit.conversion : qty;
+  const minOk = opt ? qty >= opt.tier.min_qty : false;
+  const subtotal = opt ? qty * Number(opt.tier.price) : 0;
+
+  const submit = () => {
+    if (!opt) return;
+    if (!minOk) { toast.error(`Minimal beli ${opt.tier.min_qty} ${opt.unit.name}`); return; }
+    if (qty <= 0) return;
+    const mode: SaleMode = opt.unit.conversion > 1 ? "grosiran" : "eceran";
+    onAdd(product, mode, opt.unit, qtyPcs);
+  };
+
+  return (
+    <Dialog open={!!product} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Tambahkan ke keranjang</DialogTitle>
+          <DialogDescription className="font-medium text-foreground">{product.name}</DialogDescription>
+        </DialogHeader>
+
+        <div className="rounded-lg border bg-muted/40 p-3 text-sm">
+          Harga termurah:{" "}
+          <span className="font-semibold text-primary">
+            {formatRupiah(cheapest)}/{baseName}
+          </span>
+        </div>
+
+        <RadioGroup value={selected ?? ""} onValueChange={setSelected} className="space-y-1.5">
+          {options.map((o) => (
+            <label
+              key={o.id}
+              htmlFor={`opt-${o.id}`}
+              className="flex cursor-pointer items-start gap-3 rounded-lg border p-3 hover:border-primary has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+            >
+              <RadioGroupItem id={`opt-${o.id}`} value={o.id} className="mt-0.5" />
+              <div className="flex-1 text-sm">
+                <div className="font-medium">
+                  {o.unit.name.toUpperCase()} - {formatRupiah(Number(o.tier.price))} / Isi {o.unit.conversion}
+                  <span className="ml-1 text-muted-foreground">
+                    ({formatRupiah(o.perBasePrice)}/{baseName})
+                  </span>
+                </div>
+                {o.tier.min_qty > 1 && (
+                  <div className="text-xs text-destructive">
+                    Min. Beli: {o.tier.min_qty} {o.unit.name}
+                  </div>
+                )}
+              </div>
+            </label>
+          ))}
+        </RadioGroup>
+
+        <div className="flex items-center justify-between gap-3 pt-2">
+          <div className="flex items-center gap-1">
+            <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => setQty((q) => Math.max(1, q - 1))}>
+              <Minus className="h-4 w-4" />
+            </Button>
+            <Input
+              type="number"
+              className="h-9 w-16 text-center"
+              value={qty}
+              onChange={(e) => setQty(Math.max(1, parseInt(e.target.value || "1", 10)))}
+            />
+            <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => setQty((q) => q + 1)}>
+              <Plus className="h-4 w-4" />
+            </Button>
+            {opt && <span className="ml-1 text-xs text-muted-foreground">{opt.unit.name}</span>}
+          </div>
+          <div className="text-right">
+            <div className="text-xs text-muted-foreground">Subtotal</div>
+            <div className="text-base font-semibold">{formatRupiah(subtotal)}</div>
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Batal</Button>
+          <Button onClick={submit} disabled={!opt || !minOk}>+ Keranjang</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
