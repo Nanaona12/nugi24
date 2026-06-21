@@ -84,6 +84,7 @@ function ProdukPage() {
       name: p.name,
       category: p.category || "",
       price: String(p.price),
+      cost_price: p.cost_price ? String(p.cost_price) : "",
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: String(p.stock),
@@ -92,15 +93,25 @@ function ProdukPage() {
   };
 
   const saveForm = async () => {
-    if (!form.code.trim() || !form.name.trim()) {
-      toast.error("Kode dan nama wajib diisi");
+    if (!form.name.trim()) {
+      toast.error("Nama wajib diisi");
       return;
     }
+    let code = form.code.trim();
+    if (!code) {
+      const { data, error } = await supabase.rpc("next_product_code");
+      if (error || !data) {
+        toast.error("Gagal generate kode otomatis: " + (error?.message || ""));
+        return;
+      }
+      code = String(data);
+    }
     const payload = {
-      code: form.code.trim(),
+      code,
       name: form.name.trim(),
       category: form.category.trim() || null,
       price: parseNumber(form.price),
+      cost_price: parseNumber(form.cost_price),
       wholesale_price: form.wholesale_price ? parseNumber(form.wholesale_price) : null,
       wholesale_min_qty: form.wholesale_min_qty ? parseInt(form.wholesale_min_qty, 10) : null,
       stock: parseInt(form.stock || "0", 10),
@@ -108,11 +119,14 @@ function ProdukPage() {
     const { error } = form.id
       ? await supabase.from("products").update(payload).eq("id", form.id)
       : await supabase.from("products").insert(payload);
-    if (error) toast.error(error.message);
-    else {
+    if (error) {
+      if (error.code === "23505") toast.error(`Kode "${code}" sudah dipakai produk lain`);
+      else toast.error(error.message);
+    } else {
       toast.success("Disimpan");
       setEditOpen(false);
       load();
+
     }
   };
 
