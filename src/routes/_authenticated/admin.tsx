@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import {
   listAllTenants,
   adminExtendSubscription,
@@ -25,7 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
-import { Settings, Trash2, Calendar, Pause, Play, Plus, Wallet, Ticket } from "lucide-react";
+import { Settings, Trash2, Calendar, Pause, Play, Plus, Wallet, Ticket, Star, MessageSquare } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
