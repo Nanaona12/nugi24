@@ -41,7 +41,13 @@ function AdminPage() {
   const statusFn = useServerFn(adminSetSubscriptionStatus);
   const deleteFn = useServerFn(adminDeleteTenant);
 
-  const { data, isLoading, error } = useQuery({ queryKey: ["admin-tenants"], queryFn: () => fn(), retry: false });
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["admin-tenants"],
+    queryFn: () => fn(),
+    retry: false,
+    refetchInterval: 15000,
+    refetchOnWindowFocus: true,
+  });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-tenants"] });
 
   const extend = useMutation({
@@ -67,6 +73,9 @@ function AdminPage() {
   const pays = data?.recentPayments ?? [];
   const totalPaid = pays.filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + p.amount, 0);
   const activeCount = tenants.filter((t: any) => t.subscriptions?.[0]?.status === "active").length;
+  const dayMs = 24 * 60 * 60 * 1000;
+  const newToday = tenants.filter((t: any) => Date.now() - new Date(t.created_at).getTime() < dayMs);
+  const isNew = (t: any) => Date.now() - new Date(t.created_at).getTime() < dayMs;
 
   return (
     <div className="space-y-6">
@@ -75,11 +84,39 @@ function AdminPage() {
         <CreateTenantDialog onCreated={invalidate} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Stat label="Total Toko" value={tenants.length.toString()} />
         <Stat label="Toko Aktif" value={activeCount.toString()} />
+        <Stat label="Daftar (24 jam)" value={newToday.length.toString()} />
         <Stat label="Pemasukan (100 terakhir)" value={formatRupiah(totalPaid)} />
       </div>
+
+      {newToday.length > 0 && (
+        <Card className="border-primary/40 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Plus className="h-4 w-4 text-primary" />
+              Pendaftaran Baru (24 jam terakhir)
+              <Badge variant="default">{newToday.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y text-sm">
+              {newToday.map((t: any) => (
+                <li key={t.id} className="flex items-center justify-between py-2">
+                  <div>
+                    <div className="font-medium">{t.name}</div>
+                    <div className="text-xs text-muted-foreground">
+                      {t.phone ?? "tanpa WA"} • {new Date(t.created_at).toLocaleString("id-ID")}
+                    </div>
+                  </div>
+                  <Badge variant="secondary">Baru</Badge>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader><CardTitle>Semua Toko</CardTitle></CardHeader>
@@ -95,7 +132,12 @@ function AdminPage() {
                   const isActive = s?.status === "active";
                   return (
                     <tr key={t.id} className="border-t">
-                      <td className="py-2 font-medium">{t.name}</td>
+                      <td className="py-2 font-medium">
+                        <div className="flex items-center gap-2">
+                          {t.name}
+                          {isNew(t) && <Badge variant="default" className="text-[10px]">Baru</Badge>}
+                        </div>
+                      </td>
                       <td>{t.phone ?? "-"}</td>
                       <td><Badge variant={isActive ? "default" : s?.status === "trialing" ? "secondary" : "destructive"}>{s?.status ?? "-"}</Badge></td>
                       <td>{s ? new Date(s.current_period_end).toLocaleDateString("id-ID") : "-"}</td>
