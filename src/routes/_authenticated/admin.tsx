@@ -199,6 +199,89 @@ function ManageTenantDialog({ tenant, onSaved }: { tenant: any; onSaved: () => v
   );
 }
 
+function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ shop_name: "", email: "", password: "", phone: "", address: "", trial_days: 7 });
+  const fn = useServerFn(adminCreateTenant);
+  const mut = useMutation({
+    mutationFn: () => fn({ data: form }),
+    onSuccess: () => { toast.success("Toko baru dibuat"); onCreated(); setOpen(false); setForm({ shop_name: "", email: "", password: "", phone: "", address: "", trial_days: 7 }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button><Plus className="mr-1 h-4 w-4" />Tambah Toko</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Tambah Toko Baru</DialogTitle></DialogHeader>
+        <div className="grid gap-3">
+          <div><Label>Nama Toko</Label><Input value={form.shop_name} onChange={(e) => setForm({ ...form, shop_name: e.target.value })} /></div>
+          <div><Label>Email Pemilik</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
+          <div><Label>Password Awal</Label><Input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="min. 6 karakter" /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>WhatsApp</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+            <div><Label>Trial (hari)</Label><Input type="number" value={form.trial_days} onChange={(e) => setForm({ ...form, trial_days: Number(e.target.value) })} /></div>
+          </div>
+          <div><Label>Alamat</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending || !form.email || !form.password || !form.shop_name}>
+            {mut.isPending ? "Membuat..." : "Buat Toko"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RecordPaymentDialog({ tenant, onSaved }: { tenant: any; onSaved: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ amount: 14900, payment_type: "manual_transfer", extend_days: 30, note: "" });
+  const fn = useServerFn(adminRecordPayment);
+  const mut = useMutation({
+    mutationFn: () => fn({ data: { tenant_id: tenant.id, ...form } }),
+    onSuccess: () => { toast.success("Pembayaran tercatat"); onSaved(); setOpen(false); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" title="Catat Pembayaran"><Wallet className="h-3.5 w-3.5" /></Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader><DialogTitle>Catat Pembayaran — {tenant.name}</DialogTitle></DialogHeader>
+        <div className="grid gap-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div><Label>Jumlah (Rp)</Label><Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: Number(e.target.value) })} /></div>
+            <div><Label>Perpanjang (hari)</Label><Input type="number" value={form.extend_days} onChange={(e) => setForm({ ...form, extend_days: Number(e.target.value) })} /></div>
+          </div>
+          <div>
+            <Label>Metode</Label>
+            <Select value={form.payment_type} onValueChange={(v) => setForm({ ...form, payment_type: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="manual_transfer">Transfer Bank</SelectItem>
+                <SelectItem value="manual_cash">Tunai</SelectItem>
+                <SelectItem value="manual_qris">QRIS Manual</SelectItem>
+                <SelectItem value="manual_other">Lainnya</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label>Catatan (opsional)</Label><Input value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
+          <Button onClick={() => mut.mutate()} disabled={mut.isPending}>
+            {mut.isPending ? "Menyimpan..." : "Catat & Perpanjang"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <Card>
