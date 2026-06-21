@@ -201,31 +201,65 @@ function ProdukPage() {
   };
 
   const confirmImport = async () => {
-    const named = importPreview.filter((r) => r.name);
+    const named = importPreview.filter((r) => r.name || r.code);
     if (named.length === 0) {
-      toast.error("Tidak ada baris valid (butuh kolom Nama)");
+      toast.error("Tidak ada baris valid (butuh kolom Nama atau Kode)");
       return;
     }
     setImporting(true);
-    // Auto-generate code for rows missing one
-    const rows = await Promise.all(
-      named.map(async (r) => {
-        if (r.code) return r;
-        const { data } = await supabase.rpc("next_product_code");
-        return { ...r, code: data ? String(data) : "" };
-      }),
-    );
-    const final = rows.filter((r) => r.code);
-    const { error } = await supabase.from("products").upsert(final, { onConflict: "code" });
-    setImporting(false);
-    if (error) toast.error(error.message);
-    else {
-      toast.success(`${final.length} produk diimport`);
+    try {
+      if (importMode === "update_only") {
+        // Update existing rows only, matched by code. Skip rows without code.
+        const withCode = named.filter((r) => r.code);
+        if (withCode.length === 0) {
+          toast.error("Mode Update: semua baris harus punya Kode");
+          setImporting(false);
+          return;
+        }
+        let updated = 0;
+        let skipped = 0;
+        for (const r of withCode) {
+          // Only send fields that have a value, so kolom kosong di Excel tidak menimpa data lama.
+          const patch: Record<string, any> = {};
+          if (r.name) patch.name = r.name;
+          if (r.category !== null && r.category !== "") patch.category = r.category;
+          if (r.price) patch.price = r.price;
+          if (r.cost_price) patch.cost_price = r.cost_price;
+          if (r.wholesale_price != null) patch.wholesale_price = r.wholesale_price;
+          if (r.wholesale_min_qty != null) patch.wholesale_min_qty = r.wholesale_min_qty;
+          if (r.stock || r.stock === 0) patch.stock = r.stock;
+          if (Object.keys(patch).length === 0) { skipped++; continue; }
+          const { error, count } = await supabase
+            .from("products")
+            .update(patch, { count: "exact" })
+            .eq("code", r.code);
+          if (error) { toast.error(`${r.code}: ${error.message}`); skipped++; }
+          else if ((count ?? 0) === 0) skipped++;
+          else updated++;
+        }
+        toast.success(`${updated} produk diupdate${skipped ? `, ${skipped} dilewati` : ""}`);
+      } else {
+        // Upsert: auto-generate code for rows missing one
+        const rows = await Promise.all(
+          named.filter((r) => r.name).map(async (r) => {
+            if (r.code) return r;
+            const { data } = await supabase.rpc("next_product_code");
+            return { ...r, code: data ? String(data) : "" };
+          }),
+        );
+        const final = rows.filter((r) => r.code);
+        const { error } = await supabase.from("products").upsert(final, { onConflict: "code" });
+        if (error) { toast.error(error.message); setImporting(false); return; }
+        toast.success(`${final.length} produk diimport`);
+      }
       setImportOpen(false);
       setImportPreview([]);
       load();
+    } finally {
+      setImporting(false);
     }
   };
+
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
