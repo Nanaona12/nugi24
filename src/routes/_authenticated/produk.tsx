@@ -420,14 +420,26 @@ function ProdukPage() {
                     <td className="p-3">{p.category && <Badge variant="secondary">{p.category}</Badge>}</td>
                     <td className="p-3 text-right">{formatRupiah(p.price)}</td>
                     <td className="p-3 text-right text-xs">
-                      {p.wholesale_price && p.wholesale_min_qty ? (
-                        <>
-                          {formatRupiah(Number(p.wholesale_price))}
-                          <div className="text-muted-foreground">≥ {p.wholesale_min_qty}</div>
-                        </>
-                      ) : (
-                        <span className="text-muted-foreground">—</span>
-                      )}
+                      {(() => {
+                        const us = unitsByProduct[p.id];
+                        if (us && us.length > 0) {
+                          const totalTiers = us.reduce((s, u) => s + u.tiers.length, 0);
+                          return (
+                            <div>
+                              <div className="font-medium">{us.map((u) => u.name).join(" / ")}</div>
+                              <div className="text-muted-foreground">{totalTiers} tingkat harga</div>
+                            </div>
+                          );
+                        }
+                        return p.wholesale_price && p.wholesale_min_qty ? (
+                          <>
+                            {formatRupiah(Number(p.wholesale_price))}
+                            <div className="text-muted-foreground">≥ {p.wholesale_min_qty}</div>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        );
+                      })()}
                     </td>
                     <td className="p-3 text-right">{p.stock}</td>
                     <td className="p-3">
