@@ -558,7 +558,93 @@ function FormField({ label, value, onChange, type = "text", placeholder }: { lab
       <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
     </div>
   );
+
+
+function UnitsEditor({ units, onChange }: { units: ProductUnit[]; onChange: (u: ProductUnit[]) => void }) {
+  const update = (i: number, patch: Partial<ProductUnit>) => {
+    const copy = units.map((u, idx) => (idx === i ? { ...u, ...patch } : u));
+    if (patch.is_base) copy.forEach((u, idx) => { if (idx !== i) u.is_base = false; });
+    onChange(copy);
+  };
+  const updateTier = (ui: number, ti: number, patch: Partial<{ min_qty: number; price: number }>) => {
+    const copy = units.map((u, idx) => {
+      if (idx !== ui) return u;
+      const tiers = u.tiers.map((t, j) => (j === ti ? { ...t, ...patch } : t));
+      return { ...u, tiers };
+    });
+    onChange(copy);
+  };
+  const addUnit = () => {
+    onChange([...units, { name: "", conversion: 1, sort_order: units.length, is_base: units.length === 0, tiers: [{ min_qty: 1, price: 0 }] }]);
+  };
+  const removeUnit = (i: number) => {
+    const copy = units.filter((_, idx) => idx !== i);
+    if (!copy.some((u) => u.is_base) && copy[0]) copy[0].is_base = true;
+    onChange(copy);
+  };
+  const addTier = (ui: number) => {
+    const u = units[ui];
+    const lastMin = u.tiers.length > 0 ? Math.max(...u.tiers.map((t) => t.min_qty)) : 0;
+    update(ui, { tiers: [...u.tiers, { min_qty: lastMin + 1, price: 0 }] });
+  };
+  const removeTier = (ui: number, ti: number) => {
+    const u = units[ui];
+    update(ui, { tiers: u.tiers.filter((_, j) => j !== ti) });
+  };
+
+  return (
+    <div className="space-y-3 rounded-lg border bg-muted/30 p-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <Label className="text-sm font-semibold flex items-center gap-1.5"><Package className="h-4 w-4" /> Satuan & Tingkatan Harga</Label>
+          <p className="text-xs text-muted-foreground mt-0.5">Buat satuan (mis. pcs, slove=10pcs, dus=60pcs). Tiap satuan boleh punya beberapa harga sesuai jumlah beli.</p>
+        </div>
+        <Button type="button" size="sm" variant="outline" onClick={addUnit}>
+          <Plus className="mr-1 h-3.5 w-3.5" /> Satuan
+        </Button>
+      </div>
+      {units.length === 0 && <p className="text-xs text-muted-foreground italic">Belum ada satuan.</p>}
+      {units.map((u, ui) => (
+        <div key={ui} className="space-y-2 rounded-md border bg-card p-2.5">
+          <div className="flex flex-wrap items-end gap-2">
+            <div className="flex-1 min-w-[100px]">
+              <Label className="text-[10px] uppercase">Nama Satuan</Label>
+              <Input value={u.name} onChange={(e) => update(ui, { name: e.target.value })} placeholder="pcs / slove / dus" className="h-8" />
+            </div>
+            <div className="w-24">
+              <Label className="text-[10px] uppercase">= ... unit dasar</Label>
+              <Input type="number" min={1} value={u.conversion} onChange={(e) => update(ui, { conversion: parseInt(e.target.value || "1", 10) })} className="h-8" />
+            </div>
+            <label className="flex items-center gap-1 text-xs cursor-pointer">
+              <input type="radio" checked={u.is_base} onChange={() => update(ui, { is_base: true })} /> Dasar
+            </label>
+            <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeUnit(ui)}>
+              <XIcon className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="space-y-1.5 pl-2 border-l-2 border-primary/30">
+            {u.tiers.map((t, ti) => (
+              <div key={ti} className="flex items-center gap-2 text-xs">
+                <span className="text-muted-foreground">≥</span>
+                <Input type="number" min={1} value={t.min_qty} onChange={(e) => updateTier(ui, ti, { min_qty: parseInt(e.target.value || "1", 10) })} className="h-8 w-20" />
+                <span className="text-muted-foreground">{u.name || "satuan"} →</span>
+                <Input type="number" min={0} value={t.price} onChange={(e) => updateTier(ui, ti, { price: parseNumber(e.target.value) })} className="h-8 flex-1" placeholder="Harga" />
+                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeTier(ui, ti)}>
+                  <XIcon className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            ))}
+            <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => addTier(ui)}>
+              <Plus className="mr-1 h-3 w-3" /> Tingkat harga
+            </Button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
+
+
 
 
 // Map flexible column names (Indonesian/English) → DB columns
