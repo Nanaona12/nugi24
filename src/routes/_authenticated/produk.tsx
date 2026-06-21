@@ -464,10 +464,33 @@ function ProdukPage() {
               </tbody>
             </table>
           </div>
+          <div className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3 text-sm">
+            <Label className="text-xs font-semibold">Mode Import</Label>
+            <div className="flex flex-col gap-1.5">
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="radio" className="mt-1" checked={importMode === "upsert"} onChange={() => setImportMode("upsert")} />
+                <span>
+                  <span className="font-medium">Tambah & Update</span>
+                  <span className="block text-xs text-muted-foreground">Produk baru ditambahkan, yang kodenya sudah ada akan diperbarui (kolom kosong akan ditimpa).</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 cursor-pointer">
+                <input type="radio" className="mt-1" checked={importMode === "update_only"} onChange={() => setImportMode("update_only")} />
+                <span>
+                  <span className="font-medium">Update Saja</span>
+                  <span className="block text-xs text-muted-foreground">Hanya update produk berdasarkan Kode. Baris tanpa kode / kode tidak ditemukan dilewati. Kolom kosong di Excel TIDAK menimpa data lama.</span>
+                </span>
+              </label>
+            </div>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setImportOpen(false)}>Batal</Button>
             <Button onClick={confirmImport} disabled={importing}>
-              {importing ? "Mengimport..." : `Import ${importPreview.filter((r) => r.name).length} produk`}
+              {importing
+                ? "Memproses..."
+                : importMode === "update_only"
+                  ? `Update ${importPreview.filter((r) => r.code).length} produk`
+                  : `Import ${importPreview.filter((r) => r.name).length} produk`}
             </Button>
 
           </DialogFooter>
