@@ -45,7 +45,8 @@ export const updateMyTenant = createServerFn({ method: "POST" })
 
 export const createMidtransPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d: { coupon_code?: string } | undefined) => d ?? {})
+  .handler(async ({ data, context }) => {
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) throw new Error("MIDTRANS_SERVER_KEY belum diatur");
 
@@ -56,14 +57,51 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
       .maybeSingle();
     if (!tenant) throw new Error("Toko tidak ditemukan");
 
-    const orderId = `SUB-${tenant.id.slice(0, 8)}-${Date.now()}`;
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // Validate coupon if provided
+    let coupon: any = null;
+    let amount = PRICE_IDR;
+    if (data.coupon_code) {
+      const { data: c } = await supabaseAdmin
+        .from("coupons").select("*").eq("code", data.coupon_code.trim().toUpperCase()).maybeSingle();
+      if (!c) throw new Error("Kode kupon tidak ditemukan");
+      if (!c.active) throw new Error("Kupon tidak aktif");
+      if (c.expires_at && new Date(c.expires_at) < new Date()) throw new Error("Kupon sudah kedaluwarsa");
+      if (c.max_uses && c.used_count >= c.max_uses) throw new Error("Kupon sudah habis digunakan");
+      coupon = c;
+      amount = Math.max(0, Math.round(PRICE_IDR * (100 - c.discount_percent) / 100));
+    }
+
+    // 100% discount → activate directly without Midtrans
+    if (coupon && amount === 0) {
+      const orderId = `FREE-${tenant.id.slice(0, 8)}-${Date.now()}`;
+      await supabaseAdmin.from("payments").insert({
+        tenant_id: tenant.id, amount: 0, status: "paid",
+        payment_type: "coupon_100", midtrans_order_id: orderId,
+        paid_at: new Date().toISOString(),
+        coupon_id: coupon.id, coupon_code: coupon.code, discount_percent: coupon.discount_percent,
+      });
+      const { data: sub } = await supabaseAdmin
+        .from("subscriptions").select("current_period_end").eq("tenant_id", tenant.id).maybeSingle();
+      const base = sub && new Date(sub.current_period_end) > new Date() ? new Date(sub.current_period_end) : new Date();
+      base.setDate(base.getDate() + 30);
+      await supabaseAdmin.from("subscriptions").update({
+        status: "active", current_period_end: base.toISOString(),
+      }).eq("tenant_id", tenant.id);
+      await supabaseAdmin.from("coupons").update({ used_count: coupon.used_count + 1 }).eq("id", coupon.id);
+      return { free: true as const, order_id: orderId };
+    }
+
+    const orderId = `SUB-${tenant.id.slice(0, 8)}-${Date.now()}`;
     await supabaseAdmin.from("payments").insert({
       tenant_id: tenant.id,
-      amount: PRICE_IDR,
+      amount,
       status: "pending",
       midtrans_order_id: orderId,
+      coupon_id: coupon?.id ?? null,
+      coupon_code: coupon?.code ?? null,
+      discount_percent: coupon?.discount_percent ?? null,
     });
 
     // Use sandbox by default; switch to https://app.midtrans.com if key is production
@@ -79,9 +117,9 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
         Authorization: `Basic ${auth}`,
       },
       body: JSON.stringify({
-        transaction_details: { order_id: orderId, gross_amount: PRICE_IDR },
+        transaction_details: { order_id: orderId, gross_amount: amount },
         item_details: [
-          { id: "sub-basic", price: PRICE_IDR, quantity: 1, name: "Langganan Bulanan Nugi24" },
+          { id: "sub-basic", price: amount, quantity: 1, name: coupon ? `Langganan Bulanan (Kupon ${coupon.code} -${coupon.discount_percent}%)` : "Langganan Bulanan Nugi24" },
         ],
         customer_details: { first_name: tenant.name },
       }),
@@ -288,4 +326,51 @@ export const changeMyPassword = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminListCoupons = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin.from("coupons").select("*").order("created_at", { ascending: false });
+    return data ?? [];
+  });
+
+export const adminCreateCoupon = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { code: string; discount_percent: number; max_uses?: number | null; expires_at?: string | null }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("coupons").insert({
+      code: data.code.trim().toUpperCase(),
+      discount_percent: data.discount_percent,
+      max_uses: data.max_uses ?? null,
+      expires_at: data.expires_at ?? null,
+      created_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminToggleCoupon = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; active: boolean }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("coupons").update({ active: data.active }).eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminDeleteCoupon = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin.from("coupons").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
 

@@ -11,6 +11,10 @@ import {
   adminGetTenantStats,
   adminCreateTenant,
   adminRecordPayment,
+  adminListCoupons,
+  adminCreateCoupon,
+  adminToggleCoupon,
+  adminDeleteCoupon,
 } from "@/lib/billing.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -21,7 +25,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
-import { Settings, Trash2, Calendar, Pause, Play, Plus, Wallet } from "lucide-react";
+import { Settings, Trash2, Calendar, Pause, Play, Plus, Wallet, Ticket } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
@@ -125,6 +129,8 @@ function AdminPage() {
         </CardContent>
       </Card>
 
+      <CouponsCard />
+
       <Card>
         <CardHeader><CardTitle>Pembayaran Terbaru</CardTitle></CardHeader>
         <CardContent>
@@ -152,6 +158,103 @@ function AdminPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function CouponsCard() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListCoupons);
+  const createFn = useServerFn(adminCreateCoupon);
+  const toggleFn = useServerFn(adminToggleCoupon);
+  const delFn = useServerFn(adminDeleteCoupon);
+  const { data: coupons } = useQuery({ queryKey: ["admin-coupons"], queryFn: () => listFn(), retry: false });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-coupons"] });
+
+  const [form, setForm] = useState({ code: "", discount_percent: 30, max_uses: "", expires_at: "" });
+  const create = useMutation({
+    mutationFn: () => createFn({ data: {
+      code: form.code,
+      discount_percent: form.discount_percent,
+      max_uses: form.max_uses ? Number(form.max_uses) : null,
+      expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
+    }}),
+    onSuccess: () => { toast.success("Kupon dibuat"); invalidate(); setForm({ code: "", discount_percent: 30, max_uses: "", expires_at: "" }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const toggle = useMutation({
+    mutationFn: (v: { id: string; active: boolean }) => toggleFn({ data: v }),
+    onSuccess: invalidate, onError: (e: any) => toast.error(e.message),
+  });
+  const del = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: () => { toast.success("Kupon dihapus"); invalidate(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2"><Ticket className="h-5 w-5" />Kupon Diskon</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-5">
+          <div className="sm:col-span-2"><Label className="text-xs">Kode</Label>
+            <Input placeholder="PROMO50" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} className="uppercase" />
+          </div>
+          <div><Label className="text-xs">Diskon %</Label>
+            <Select value={String(form.discount_percent)} onValueChange={(v) => setForm({ ...form, discount_percent: Number(v) })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10%</SelectItem>
+                <SelectItem value="25">25%</SelectItem>
+                <SelectItem value="30">30%</SelectItem>
+                <SelectItem value="50">50%</SelectItem>
+                <SelectItem value="75">75%</SelectItem>
+                <SelectItem value="100">100% (Gratis)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label className="text-xs">Maks. Pakai</Label>
+            <Input type="number" placeholder="∞" value={form.max_uses} onChange={(e) => setForm({ ...form, max_uses: e.target.value })} />
+          </div>
+          <div><Label className="text-xs">Berakhir</Label>
+            <Input type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })} />
+          </div>
+          <div className="sm:col-span-5">
+            <Button onClick={() => create.mutate()} disabled={create.isPending || !form.code}><Plus className="mr-1 h-4 w-4" />Buat Kupon</Button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase text-muted-foreground">
+              <tr><th className="py-2">Kode</th><th>Diskon</th><th>Pakai</th><th>Berakhir</th><th>Status</th><th className="text-right">Aksi</th></tr>
+            </thead>
+            <tbody>
+              {(coupons ?? []).map((c: any) => (
+                <tr key={c.id} className="border-t">
+                  <td className="py-2 font-mono font-semibold">{c.code}</td>
+                  <td>{c.discount_percent}%</td>
+                  <td>{c.used_count}{c.max_uses ? `/${c.max_uses}` : ""}</td>
+                  <td>{c.expires_at ? new Date(c.expires_at).toLocaleDateString("id-ID") : "-"}</td>
+                  <td><Badge variant={c.active ? "default" : "secondary"}>{c.active ? "Aktif" : "Nonaktif"}</Badge></td>
+                  <td className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="outline" onClick={() => toggle.mutate({ id: c.id, active: !c.active })}>
+                        {c.active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => { if (confirm(`Hapus kupon ${c.code}?`)) del.mutate(c.id); }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {(coupons ?? []).length === 0 && (
+                <tr><td colSpan={6} className="py-4 text-center text-muted-foreground">Belum ada kupon.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -201,11 +304,11 @@ function ManageTenantDialog({ tenant, onSaved }: { tenant: any; onSaved: () => v
 
 function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ shop_name: "", email: "", password: "", phone: "", address: "", trial_days: 7 });
+  const [form, setForm] = useState({ shop_name: "", email: "", password: "", phone: "", address: "" });
   const fn = useServerFn(adminCreateTenant);
   const mut = useMutation({
     mutationFn: () => fn({ data: form }),
-    onSuccess: () => { toast.success("Toko baru dibuat"); onCreated(); setOpen(false); setForm({ shop_name: "", email: "", password: "", phone: "", address: "", trial_days: 7 }); },
+    onSuccess: () => { toast.success("Toko baru dibuat (belum berlangganan)"); onCreated(); setOpen(false); setForm({ shop_name: "", email: "", password: "", phone: "", address: "" }); },
     onError: (e: any) => toast.error(e.message),
   });
   return (
@@ -219,11 +322,9 @@ function CreateTenantDialog({ onCreated }: { onCreated: () => void }) {
           <div><Label>Nama Toko</Label><Input value={form.shop_name} onChange={(e) => setForm({ ...form, shop_name: e.target.value })} /></div>
           <div><Label>Email Pemilik</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></div>
           <div><Label>Password Awal</Label><Input type="text" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} placeholder="min. 6 karakter" /></div>
-          <div className="grid grid-cols-2 gap-3">
-            <div><Label>WhatsApp</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
-            <div><Label>Trial (hari)</Label><Input type="number" value={form.trial_days} onChange={(e) => setForm({ ...form, trial_days: Number(e.target.value) })} /></div>
-          </div>
+          <div><Label>WhatsApp</Label><Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
           <div><Label>Alamat</Label><Input value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
+          <p className="text-xs text-muted-foreground">Toko baru harus melakukan pembayaran (atau pakai kode kupon) untuk mengaktifkan langganan.</p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => setOpen(false)}>Batal</Button>
