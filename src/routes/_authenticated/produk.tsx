@@ -10,7 +10,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah, parseNumber } from "@/lib/format";
-import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet } from "lucide-react";
+import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash } from "lucide-react";
+import { BarcodeScanner } from "@/components/BarcodeScanner";
 
 export const Route = createFileRoute("/_authenticated/produk")({
   component: ProdukPage,
@@ -60,6 +61,7 @@ function ProdukPage() {
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -137,6 +139,38 @@ function ProdukPage() {
     else { toast.success("Dihapus"); load(); }
   };
 
+  const removeAll = async () => {
+    if (products.length === 0) return;
+    if (!confirm(`Yakin hapus SEMUA ${products.length} produk? Tindakan ini tidak bisa dibatalkan.`)) return;
+    if (!confirm("Konfirmasi sekali lagi: hapus semua produk?")) return;
+    const { error } = await supabase.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (error) toast.error(error.message);
+    else { toast.success("Semua produk dihapus"); load(); }
+  };
+
+  const handleScan = async (code: string) => {
+    const mode = scanMode;
+    setScanMode(null);
+    if (!mode) return;
+    if (mode === "search") {
+      setQuery(code);
+      const found = products.find((p) => p.code === code);
+      if (found) toast.success(`Ditemukan: ${found.name}`);
+      else toast.info("Produk tidak ditemukan");
+      return;
+    }
+    // add mode
+    const existing = products.find((p) => p.code === code);
+    if (existing) {
+      toast.info("Produk sudah ada, membuka edit");
+      openEdit(existing);
+    } else {
+      setForm({ ...emptyForm, code });
+      setEditOpen(true);
+      toast.success(`Barcode ${code} siap diisi`);
+    }
+  };
+
   // ---------- EXCEL IMPORT ----------
   const onFile = async (file: File) => {
     try {
@@ -201,6 +235,9 @@ function ProdukPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Cari produk..." value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
         </div>
+        <Button variant="outline" onClick={() => setScanMode("search")}>
+          <ScanLine className="mr-2 h-4 w-4" /> Scan Cari
+        </Button>
         <Button variant="outline" onClick={downloadTemplate}>
           <Download className="mr-2 h-4 w-4" /> Template Excel
         </Button>
@@ -218,10 +255,25 @@ function ProdukPage() {
             e.target.value = "";
           }}
         />
+        <Button variant="outline" onClick={() => setScanMode("add")}>
+          <ScanLine className="mr-2 h-4 w-4" /> Scan Tambah
+        </Button>
         <Button onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" /> Tambah
         </Button>
+        <Button variant="destructive" onClick={removeAll} disabled={products.length === 0}>
+          <Trash className="mr-2 h-4 w-4" /> Hapus Semua
+        </Button>
       </div>
+
+      <BarcodeScanner
+        open={scanMode !== null}
+        onClose={() => setScanMode(null)}
+        onDetected={handleScan}
+        title={scanMode === "search" ? "Scan untuk Cari" : "Scan untuk Tambah"}
+        description={scanMode === "search" ? "Arahkan ke barcode produk untuk mencari" : "Arahkan ke barcode produk baru"}
+      />
+
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
