@@ -386,62 +386,35 @@ function KasirPage() {
         </div>
       </Card>
 
-      {/* Mode picker dialog */}
-      <Dialog open={!!modePicker} onOpenChange={(o) => !o && setModePicker(null)}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle>{modePicker?.name}</DialogTitle>
-            <DialogDescription>Pilih jenis penjualan</DialogDescription>
-          </DialogHeader>
-          {modePicker && (() => {
-            const units = getUnits(modePicker, unitsByProduct);
+      {/* Picker dialog (radio opsi harga + qty pcs) */}
+      <PickerDialog
+        product={modePicker}
+        unitsByProduct={unitsByProduct}
+        onClose={() => setModePicker(null)}
+        onAdd={(p, mode, unit, qtyPcs) => {
+          if (mode === "eceran") {
+            const units = getUnits(p, unitsByProduct);
             const base = units.find((u) => u.is_base) || units[0];
-            const ecer = tierPriceFor(base, 1).price;
-            const grosirUnits = units.filter((u) => u.conversion > 1);
-            return (
-              <div className="space-y-2">
-                <button
-                  onClick={() => addEceran(modePicker)}
-                  className="flex w-full items-center justify-between rounded-lg border p-3 text-left hover:border-primary"
-                >
-                  <div className="flex items-center gap-2">
-                    <ShoppingBag className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="font-medium">Eceran</div>
-                      <div className="text-xs text-muted-foreground">{formatRupiah(ecer)} / {base.name}</div>
-                    </div>
-                  </div>
-                  <Badge variant="secondary">+</Badge>
-                </button>
-                {grosirUnits.map((u) => {
-                  const packPrice = tierPriceFor(u, 1).price;
-                  return (
-                    <button
-                      key={u.name}
-                      onClick={() => addGrosir(modePicker, u)}
-                      className="flex w-full items-center justify-between rounded-lg border p-3 text-left hover:border-primary"
-                    >
-                      <div className="flex items-center gap-2">
-                        <Package className="h-4 w-4 text-primary" />
-                        <div>
-                          <div className="font-medium">Grosir per {u.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            1 {u.name} = {u.conversion} {base.name} · {formatRupiah(packPrice)}
-                          </div>
-                          <div className="text-[11px] text-muted-foreground">
-                            Sisa di luar kelipatan dihitung eceran {formatRupiah(ecer)}/{base.name}
-                          </div>
-                        </div>
-                      </div>
-                      <Badge>+</Badge>
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })()}
-        </DialogContent>
-      </Dialog>
+            const key = `${p.id}:eceran`;
+            setCart((c) => {
+              const idx = c.findIndex((x) => x.key === key);
+              if (idx >= 0) { const copy = [...c]; copy[idx] = { ...copy[idx], qty: copy[idx].qty + qtyPcs }; return copy; }
+              return [...c, { key, product: p, mode: "eceran", unit: base, baseUnit: base, qty: qtyPcs }];
+            });
+          } else {
+            const units = getUnits(p, unitsByProduct);
+            const base = units.find((u) => u.is_base) || units[0];
+            const key = `${p.id}:grosir:${unit.name}`;
+            setCart((c) => {
+              const idx = c.findIndex((x) => x.key === key);
+              if (idx >= 0) { const copy = [...c]; copy[idx] = { ...copy[idx], qty: copy[idx].qty + qtyPcs }; return copy; }
+              return [...c, { key, product: p, mode: "grosiran", unit, baseUnit: base, qty: qtyPcs }];
+            });
+          }
+          setModePicker(null);
+        }}
+      />
+
 
       {/* Payment dialog */}
       <Dialog open={payOpen} onOpenChange={setPayOpen}>
