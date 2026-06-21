@@ -110,6 +110,7 @@ function AuthedLayout() {
                 <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
                 <NavLink to="/cek-koneksi" icon={<Wifi className="h-4 w-4" />} label="Koneksi" />
                 <NavLink to="/langganan" icon={<CreditCard className="h-4 w-4" />} label="Langganan" />
+                <NavLink to="/pengaturan" icon={<Settings className="h-4 w-4" />} label="Pengaturan" />
               </>
             )}
           </nav>
