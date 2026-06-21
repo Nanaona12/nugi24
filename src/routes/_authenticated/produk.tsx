@@ -22,6 +22,7 @@ type Product = {
   name: string;
   category: string | null;
   price: number;
+  cost_price: number;
   wholesale_price: number | null;
   wholesale_min_qty: number | null;
   stock: number;
@@ -33,6 +34,7 @@ type ProductForm = {
   name: string;
   category: string;
   price: string;
+  cost_price: string;
   wholesale_price: string;
   wholesale_min_qty: string;
   stock: string;
@@ -43,10 +45,12 @@ const emptyForm: ProductForm = {
   name: "",
   category: "",
   price: "",
+  cost_price: "",
   wholesale_price: "",
   wholesale_min_qty: "",
   stock: "0",
 };
+
 
 function ProdukPage() {
   const [products, setProducts] = useState<Product[]>([]);
