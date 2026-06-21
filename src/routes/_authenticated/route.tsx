@@ -80,10 +80,16 @@ function AuthedLayout() {
   }, [sub, pathname, router]);
 
   const handleLogout = async () => {
-    await queryClient.cancelQueries();
-    queryClient.clear();
-    await supabase.auth.signOut();
-    router.navigate({ to: "/auth", replace: true });
+    try {
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      await supabase.auth.signOut();
+    } catch (e) {
+      console.error("Logout error:", e);
+    } finally {
+      try { localStorage.clear(); } catch {}
+      window.location.href = "/auth";
+    }
   };
 
   if (checking || !user) {
