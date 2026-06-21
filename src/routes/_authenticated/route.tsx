@@ -13,6 +13,7 @@ type SubInfo = { status: string; current_period_end: string; isSuperAdmin: boole
 
 function AuthedLayout() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<{ id: string; email: string | null } | null>(null);
   const [sub, setSub] = useState<SubInfo>(null);
