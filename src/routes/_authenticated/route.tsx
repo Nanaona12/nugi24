@@ -54,7 +54,7 @@ function AuthedLayout() {
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
           <div className="flex items-center gap-2 font-semibold">
             <Store className="h-5 w-5 text-primary" />
-            <span className="hidden sm:inline">Warung Kasir</span>
+            <span className="hidden sm:inline">Nugi Vidy 24</span>
           </div>
           <nav className="flex flex-1 items-center gap-1">
             <NavLink to="/kasir" icon={<ShoppingCart className="h-4 w-4" />} label="Kasir" />
