@@ -17,6 +17,7 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [shopName, setShopName] = useState("");
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -39,15 +40,19 @@ function AuthPage() {
   };
 
   const signUp = async () => {
+    if (!shopName.trim()) { toast.error("Nama toko wajib diisi"); return; }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin },
+      options: {
+        emailRedirectTo: window.location.origin,
+        data: { shop_name: shopName.trim() },
+      },
     });
     setLoading(false);
     if (error) toast.error(error.message);
-    else toast.success("Akun dibuat. Silakan masuk.");
+    else toast.success("Akun & toko dibuat. Anda dapat 7 hari trial gratis!");
   };
 
   if (!ready) {
