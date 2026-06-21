@@ -15,9 +15,12 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated/produk'
 import { Route as AuthenticatedPoRouteImport } from './routes/_authenticated/po'
+import { Route as AuthenticatedLanggananRouteImport } from './routes/_authenticated/langganan'
 import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authenticated/keuntungan'
 import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
 import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as ApiPublicMidtransWebhookRouteImport } from './routes/api/public/midtrans-webhook'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -48,6 +51,11 @@ const AuthenticatedPoRoute = AuthenticatedPoRouteImport.update({
   path: '/po',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedLanggananRoute = AuthenticatedLanggananRouteImport.update({
+  id: '/langganan',
+  path: '/langganan',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedKeuntunganRoute = AuthenticatedKeuntunganRouteImport.update({
   id: '/keuntungan',
   path: '/keuntungan',
@@ -63,77 +71,107 @@ const AuthenticatedCekKoneksiRoute = AuthenticatedCekKoneksiRouteImport.update({
   path: '/cek-koneksi',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const ApiPublicMidtransWebhookRoute =
+  ApiPublicMidtransWebhookRouteImport.update({
+    id: '/api/public/midtrans-webhook',
+    path: '/api/public/midtrans-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kasir': typeof AuthenticatedKasirRoute
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
+  '/langganan': typeof AuthenticatedLanggananRoute
   '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
+  '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kasir': typeof AuthenticatedKasirRoute
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
+  '/langganan': typeof AuthenticatedLanggananRoute
   '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
+  '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/_authenticated/kasir': typeof AuthenticatedKasirRoute
   '/_authenticated/keuntungan': typeof AuthenticatedKeuntunganRoute
+  '/_authenticated/langganan': typeof AuthenticatedLanggananRoute
   '/_authenticated/po': typeof AuthenticatedPoRoute
   '/_authenticated/produk': typeof AuthenticatedProdukRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
+  '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/auth'
+    | '/admin'
     | '/cek-koneksi'
     | '/kasir'
     | '/keuntungan'
+    | '/langganan'
     | '/po'
     | '/produk'
     | '/riwayat'
+    | '/api/public/midtrans-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/admin'
     | '/cek-koneksi'
     | '/kasir'
     | '/keuntungan'
+    | '/langganan'
     | '/po'
     | '/produk'
     | '/riwayat'
+    | '/api/public/midtrans-webhook'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/admin'
     | '/_authenticated/cek-koneksi'
     | '/_authenticated/kasir'
     | '/_authenticated/keuntungan'
+    | '/_authenticated/langganan'
     | '/_authenticated/po'
     | '/_authenticated/produk'
     | '/_authenticated/riwayat'
+    | '/api/public/midtrans-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
+  ApiPublicMidtransWebhookRoute: typeof ApiPublicMidtransWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -180,6 +218,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/langganan': {
+      id: '/_authenticated/langganan'
+      path: '/langganan'
+      fullPath: '/langganan'
+      preLoaderRoute: typeof AuthenticatedLanggananRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/keuntungan': {
       id: '/_authenticated/keuntungan'
       path: '/keuntungan'
@@ -201,22 +246,40 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCekKoneksiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/api/public/midtrans-webhook': {
+      id: '/api/public/midtrans-webhook'
+      path: '/api/public/midtrans-webhook'
+      fullPath: '/api/public/midtrans-webhook'
+      preLoaderRoute: typeof ApiPublicMidtransWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCekKoneksiRoute: typeof AuthenticatedCekKoneksiRoute
   AuthenticatedKasirRoute: typeof AuthenticatedKasirRoute
   AuthenticatedKeuntunganRoute: typeof AuthenticatedKeuntunganRoute
+  AuthenticatedLanggananRoute: typeof AuthenticatedLanggananRoute
   AuthenticatedPoRoute: typeof AuthenticatedPoRoute
   AuthenticatedProdukRoute: typeof AuthenticatedProdukRoute
   AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCekKoneksiRoute: AuthenticatedCekKoneksiRoute,
   AuthenticatedKasirRoute: AuthenticatedKasirRoute,
   AuthenticatedKeuntunganRoute: AuthenticatedKeuntunganRoute,
+  AuthenticatedLanggananRoute: AuthenticatedLanggananRoute,
   AuthenticatedPoRoute: AuthenticatedPoRoute,
   AuthenticatedProdukRoute: AuthenticatedProdukRoute,
   AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
@@ -229,6 +292,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
+  ApiPublicMidtransWebhookRoute: ApiPublicMidtransWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
