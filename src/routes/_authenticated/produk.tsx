@@ -57,6 +57,7 @@ const emptyForm: ProductForm = {
 
 function ProdukPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [query, setQuery] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -64,6 +65,7 @@ function ProdukPage() {
   const [importing, setImporting] = useState(false);
   const [importMode, setImportMode] = useState<"upsert" | "update_only">("upsert");
   const [form, setForm] = useState<ProductForm>(emptyForm);
+  const [formUnits, setFormUnits] = useState<ProductUnit[]>([]);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
@@ -71,8 +73,15 @@ function ProdukPage() {
 
   const load = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
-    if (error) toast.error(error.message);
-    else setProducts((data || []) as Product[]);
+    if (error) { toast.error(error.message); return; }
+    const prods = (data || []) as Product[];
+    setProducts(prods);
+    try {
+      const map = await loadUnitsForProducts(prods.map((p) => p.id));
+      setUnitsByProduct(map);
+    } catch (e: any) {
+      toast.error("Gagal memuat satuan: " + e.message);
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -83,7 +92,16 @@ function ProdukPage() {
     return p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q);
   });
 
-  const openNew = () => { setForm(emptyForm); setEditOpen(true); };
+  const defaultUnitsFor = (p?: Product): ProductUnit[] => {
+    if (p) {
+      const existing = unitsByProduct[p.id];
+      if (existing && existing.length > 0) return existing.map((u) => ({ ...u, tiers: [...u.tiers] }));
+      return [fallbackUnitFromProduct(p)];
+    }
+    return [{ name: "pcs", conversion: 1, sort_order: 0, is_base: true, tiers: [{ min_qty: 1, price: 0 }] }];
+  };
+
+  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setEditOpen(true); };
   const openEdit = (p: Product) => {
     setForm({
       id: p.id,
@@ -96,6 +114,7 @@ function ProdukPage() {
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: String(p.stock),
     });
+    setFormUnits(defaultUnitsFor(p));
     setEditOpen(true);
   };
 
