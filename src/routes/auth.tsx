@@ -70,7 +70,7 @@ function AuthPage() {
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-xl bg-primary text-primary-foreground">
             <Store className="h-7 w-7" />
           </div>
-          <h1 className="text-2xl font-bold">Nugi Vidy 24</h1>
+          <h1 className="text-2xl font-bold">Dagang Pintar</h1>
           <p className="text-sm text-muted-foreground">Manajemen usaha Anda</p>
         </div>
 
