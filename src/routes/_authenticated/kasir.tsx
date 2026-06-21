@@ -78,7 +78,10 @@ function KasirPage() {
   const [paid, setPaid] = useState("");
   const [payOpen, setPayOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date }>(null);
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris">("cash");
+  const [sendWa, setSendWa] = useState(false);
+  const [customerPhone, setCustomerPhone] = useState("");
+  const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date; paymentMethod: "cash" | "qris"; customerPhone: string | null }>(null);
   const [modePicker, setModePicker] = useState<Product | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
