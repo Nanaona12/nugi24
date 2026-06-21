@@ -20,11 +20,14 @@ export const getMyBilling = createServerFn({ method: "GET" })
       supabase.from("user_roles").select("role").eq("user_id", userId),
     ]);
 
+    const clientKey = process.env.MIDTRANS_CLIENT_KEY ?? "";
     return {
       tenant,
       subscription: sub,
       payments: pays ?? [],
       isSuperAdmin: (roles ?? []).some((r) => r.role === "super_admin"),
+      midtransClientKey: clientKey,
+      midtransIsProduction: clientKey ? !clientKey.startsWith("SB-Mid-client-") : false,
     };
   });
 
