@@ -61,6 +61,7 @@ function ProdukPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
+  const [importMode, setImportMode] = useState<"upsert" | "update_only">("upsert");
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
