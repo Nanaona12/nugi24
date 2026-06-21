@@ -65,7 +65,10 @@ function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-bold">Super Admin</h1>
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Super Admin</h1>
+        <CreateTenantDialog onCreated={invalidate} />
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Stat label="Total Toko" value={tenants.length.toString()} />
