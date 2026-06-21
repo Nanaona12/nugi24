@@ -157,6 +157,8 @@ function AdminPage() {
           </div>
         </CardContent>
       </Card>
+
+      <FeedbackCard />
     </div>
   );
 }
