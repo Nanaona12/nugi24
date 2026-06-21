@@ -157,17 +157,26 @@ function ProdukPage() {
   };
 
   const confirmImport = async () => {
-    const valid = importPreview.filter((r) => r.code && r.name);
-    if (valid.length === 0) {
-      toast.error("Tidak ada baris valid (butuh kolom Kode & Nama)");
+    const named = importPreview.filter((r) => r.name);
+    if (named.length === 0) {
+      toast.error("Tidak ada baris valid (butuh kolom Nama)");
       return;
     }
     setImporting(true);
-    const { error } = await supabase.from("products").upsert(valid, { onConflict: "code" });
+    // Auto-generate code for rows missing one
+    const rows = await Promise.all(
+      named.map(async (r) => {
+        if (r.code) return r;
+        const { data } = await supabase.rpc("next_product_code");
+        return { ...r, code: data ? String(data) : "" };
+      }),
+    );
+    const final = rows.filter((r) => r.code);
+    const { error } = await supabase.from("products").upsert(final, { onConflict: "code" });
     setImporting(false);
     if (error) toast.error(error.message);
     else {
-      toast.success(`${valid.length} produk diimport`);
+      toast.success(`${final.length} produk diimport`);
       setImportOpen(false);
       setImportPreview([]);
       load();
@@ -176,13 +185,14 @@ function ProdukPage() {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { Kode: "BRG001", Nama: "Beras 5kg", Kategori: "Sembako", Harga: 65000, "Harga Grosir": 62000, "Min Grosir": 5, Stok: 50 },
-      { Kode: "BRG002", Nama: "Minyak Goreng 1L", Kategori: "Sembako", Harga: 18000, "Harga Grosir": 17000, "Min Grosir": 12, Stok: 30 },
+      { Kode: "", Nama: "Beras 5kg", Kategori: "Sembako", "Harga Modal": 58000, Harga: 65000, "Harga Grosir": 62000, "Min Grosir": 5, Stok: 50 },
+      { Kode: "", Nama: "Minyak Goreng 1L", Kategori: "Sembako", "Harga Modal": 15000, Harga: 18000, "Harga Grosir": 17000, "Min Grosir": 12, Stok: 30 },
     ]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Produk");
     XLSX.writeFile(wb, "template-produk-warung.xlsx");
   };
+
 
   return (
     <div className="space-y-4">
