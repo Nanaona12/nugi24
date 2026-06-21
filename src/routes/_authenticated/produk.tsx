@@ -139,6 +139,38 @@ function ProdukPage() {
     else { toast.success("Dihapus"); load(); }
   };
 
+  const removeAll = async () => {
+    if (products.length === 0) return;
+    if (!confirm(`Yakin hapus SEMUA ${products.length} produk? Tindakan ini tidak bisa dibatalkan.`)) return;
+    if (!confirm("Konfirmasi sekali lagi: hapus semua produk?")) return;
+    const { error } = await supabase.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    if (error) toast.error(error.message);
+    else { toast.success("Semua produk dihapus"); load(); }
+  };
+
+  const handleScan = async (code: string) => {
+    const mode = scanMode;
+    setScanMode(null);
+    if (!mode) return;
+    if (mode === "search") {
+      setQuery(code);
+      const found = products.find((p) => p.code === code);
+      if (found) toast.success(`Ditemukan: ${found.name}`);
+      else toast.info("Produk tidak ditemukan");
+      return;
+    }
+    // add mode
+    const existing = products.find((p) => p.code === code);
+    if (existing) {
+      toast.info("Produk sudah ada, membuka edit");
+      openEdit(existing);
+    } else {
+      setForm({ ...emptyForm, code });
+      setEditOpen(true);
+      toast.success(`Barcode ${code} siap diisi`);
+    }
+  };
+
   // ---------- EXCEL IMPORT ----------
   const onFile = async (file: File) => {
     try {
