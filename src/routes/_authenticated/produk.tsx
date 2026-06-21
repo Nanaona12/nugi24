@@ -12,6 +12,7 @@ import { toast } from "sonner";
 import { formatRupiah, parseNumber } from "@/lib/format";
 import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/produk")({
   component: ProdukPage,
@@ -62,6 +63,8 @@ function ProdukPage() {
   const [importing, setImporting] = useState(false);
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
+  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
+  const [deletingAll, setDeletingAll] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
@@ -140,12 +143,18 @@ function ProdukPage() {
   };
 
   const removeAll = async () => {
-    if (products.length === 0) return;
-    if (!confirm(`Yakin hapus SEMUA ${products.length} produk? Tindakan ini tidak bisa dibatalkan.`)) return;
-    if (!confirm("Konfirmasi sekali lagi: hapus semua produk?")) return;
-    const { error } = await supabase.from("products").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+    setDeletingAll(true);
+    const { error, count } = await supabase
+      .from("products")
+      .delete({ count: "exact" })
+      .not("id", "is", null);
+    setDeletingAll(false);
+    setConfirmDeleteAll(false);
     if (error) toast.error(error.message);
-    else { toast.success("Semua produk dihapus"); load(); }
+    else {
+      toast.success(`${count ?? 0} produk dihapus`);
+      load();
+    }
   };
 
   const handleScan = async (code: string) => {
@@ -261,10 +270,31 @@ function ProdukPage() {
         <Button onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" /> Tambah
         </Button>
-        <Button variant="destructive" onClick={removeAll} disabled={products.length === 0}>
-          <Trash className="mr-2 h-4 w-4" /> Hapus Semua
+        <Button variant="destructive" onClick={() => setConfirmDeleteAll(true)} disabled={products.length === 0}>
+          <Trash className="mr-2 h-4 w-4" /> Hapus Semua ({products.length})
         </Button>
       </div>
+
+      <AlertDialog open={confirmDeleteAll} onOpenChange={setConfirmDeleteAll}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus semua {products.length} produk?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak bisa dibatalkan. Semua produk akan dihapus permanen dari database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingAll}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); removeAll(); }}
+              disabled={deletingAll}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deletingAll ? "Menghapus..." : "Ya, Hapus Semua"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <BarcodeScanner
         open={scanMode !== null}
