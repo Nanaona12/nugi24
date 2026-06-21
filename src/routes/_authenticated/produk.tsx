@@ -235,6 +235,9 @@ function ProdukPage() {
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input placeholder="Cari produk..." value={query} onChange={(e) => setQuery(e.target.value)} className="pl-9" />
         </div>
+        <Button variant="outline" onClick={() => setScanMode("search")}>
+          <ScanLine className="mr-2 h-4 w-4" /> Scan Cari
+        </Button>
         <Button variant="outline" onClick={downloadTemplate}>
           <Download className="mr-2 h-4 w-4" /> Template Excel
         </Button>
@@ -252,10 +255,25 @@ function ProdukPage() {
             e.target.value = "";
           }}
         />
+        <Button variant="outline" onClick={() => setScanMode("add")}>
+          <ScanLine className="mr-2 h-4 w-4" /> Scan Tambah
+        </Button>
         <Button onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" /> Tambah
         </Button>
+        <Button variant="destructive" onClick={removeAll} disabled={products.length === 0}>
+          <Trash className="mr-2 h-4 w-4" /> Hapus Semua
+        </Button>
       </div>
+
+      <BarcodeScanner
+        open={scanMode !== null}
+        onClose={() => setScanMode(null)}
+        onDetected={handleScan}
+        title={scanMode === "search" ? "Scan untuk Cari" : "Scan untuk Tambah"}
+        description={scanMode === "search" ? "Arahkan ke barcode produk untuk mencari" : "Arahkan ke barcode produk baru"}
+      />
+
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
