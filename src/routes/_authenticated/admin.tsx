@@ -129,6 +129,8 @@ function AdminPage() {
         </CardContent>
       </Card>
 
+      <CouponsCard />
+
       <Card>
         <CardHeader><CardTitle>Pembayaran Terbaru</CardTitle></CardHeader>
         <CardContent>
@@ -156,6 +158,103 @@ function AdminPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function CouponsCard() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(adminListCoupons);
+  const createFn = useServerFn(adminCreateCoupon);
+  const toggleFn = useServerFn(adminToggleCoupon);
+  const delFn = useServerFn(adminDeleteCoupon);
+  const { data: coupons } = useQuery({ queryKey: ["admin-coupons"], queryFn: () => listFn(), retry: false });
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-coupons"] });
+
+  const [form, setForm] = useState({ code: "", discount_percent: 30, max_uses: "", expires_at: "" });
+  const create = useMutation({
+    mutationFn: () => createFn({ data: {
+      code: form.code,
+      discount_percent: form.discount_percent,
+      max_uses: form.max_uses ? Number(form.max_uses) : null,
+      expires_at: form.expires_at ? new Date(form.expires_at).toISOString() : null,
+    }}),
+    onSuccess: () => { toast.success("Kupon dibuat"); invalidate(); setForm({ code: "", discount_percent: 30, max_uses: "", expires_at: "" }); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const toggle = useMutation({
+    mutationFn: (v: { id: string; active: boolean }) => toggleFn({ data: v }),
+    onSuccess: invalidate, onError: (e: any) => toast.error(e.message),
+  });
+  const del = useMutation({
+    mutationFn: (id: string) => delFn({ data: { id } }),
+    onSuccess: () => { toast.success("Kupon dihapus"); invalidate(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader><CardTitle className="flex items-center gap-2"><Ticket className="h-5 w-5" />Kupon Diskon</CardTitle></CardHeader>
+      <CardContent className="space-y-4">
+        <div className="grid gap-3 rounded-lg border bg-muted/30 p-3 sm:grid-cols-5">
+          <div className="sm:col-span-2"><Label className="text-xs">Kode</Label>
+            <Input placeholder="PROMO50" value={form.code} onChange={(e) => setForm({ ...form, code: e.target.value.toUpperCase() })} className="uppercase" />
+          </div>
+          <div><Label className="text-xs">Diskon %</Label>
+            <Select value={String(form.discount_percent)} onValueChange={(v) => setForm({ ...form, discount_percent: Number(v) })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10%</SelectItem>
+                <SelectItem value="25">25%</SelectItem>
+                <SelectItem value="30">30%</SelectItem>
+                <SelectItem value="50">50%</SelectItem>
+                <SelectItem value="75">75%</SelectItem>
+                <SelectItem value="100">100% (Gratis)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div><Label className="text-xs">Maks. Pakai</Label>
+            <Input type="number" placeholder="∞" value={form.max_uses} onChange={(e) => setForm({ ...form, max_uses: e.target.value })} />
+          </div>
+          <div><Label className="text-xs">Berakhir</Label>
+            <Input type="date" value={form.expires_at} onChange={(e) => setForm({ ...form, expires_at: e.target.value })} />
+          </div>
+          <div className="sm:col-span-5">
+            <Button onClick={() => create.mutate()} disabled={create.isPending || !form.code}><Plus className="mr-1 h-4 w-4" />Buat Kupon</Button>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs uppercase text-muted-foreground">
+              <tr><th className="py-2">Kode</th><th>Diskon</th><th>Pakai</th><th>Berakhir</th><th>Status</th><th className="text-right">Aksi</th></tr>
+            </thead>
+            <tbody>
+              {(coupons ?? []).map((c: any) => (
+                <tr key={c.id} className="border-t">
+                  <td className="py-2 font-mono font-semibold">{c.code}</td>
+                  <td>{c.discount_percent}%</td>
+                  <td>{c.used_count}{c.max_uses ? `/${c.max_uses}` : ""}</td>
+                  <td>{c.expires_at ? new Date(c.expires_at).toLocaleDateString("id-ID") : "-"}</td>
+                  <td><Badge variant={c.active ? "default" : "secondary"}>{c.active ? "Aktif" : "Nonaktif"}</Badge></td>
+                  <td className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button size="sm" variant="outline" onClick={() => toggle.mutate({ id: c.id, active: !c.active })}>
+                        {c.active ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                      </Button>
+                      <Button size="sm" variant="destructive" onClick={() => { if (confirm(`Hapus kupon ${c.code}?`)) del.mutate(c.id); }}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {(coupons ?? []).length === 0 && (
+                <tr><td colSpan={6} className="py-4 text-center text-muted-foreground">Belum ada kupon.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
 
