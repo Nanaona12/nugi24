@@ -78,14 +78,18 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
+      { title: "Nugi Vidy 24" },
+      { name: "description", content: "Warung dan Grosir" },
       { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { property: "og:title", content: "Nugi Vidy 24" },
+      { property: "og:description", content: "Warung dan Grosir" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Nugi Vidy 24" },
+      { name: "twitter:description", content: "Warung dan Grosir" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/8Vy2zr92fvZyGNlAKK2f3SretXr2/social-images/social-1782043596842-Screenshot_2026-06-21_190603.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/8Vy2zr92fvZyGNlAKK2f3SretXr2/social-images/social-1782043596842-Screenshot_2026-06-21_190603.webp" },
     ],
     links: [
       {
