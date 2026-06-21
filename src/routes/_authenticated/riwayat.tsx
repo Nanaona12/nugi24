@@ -91,6 +91,14 @@ function RiwayatPage() {
         <Stat label="Transaksi Hari Ini" value={String(txs.filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString()).length)} />
         <Stat label="Total Transaksi" value={String(txs.length)} />
       </div>
+      {txs.length > 0 && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" onClick={clearAll} className="text-destructive hover:text-destructive">
+            <Trash2 className="mr-2 h-4 w-4" /> Hapus Semua Riwayat
+          </Button>
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
