@@ -25,7 +25,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, Dialog
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
-import { Settings, Trash2, Calendar, Pause, Play, Plus, Wallet } from "lucide-react";
+import { Settings, Trash2, Calendar, Pause, Play, Plus, Wallet, Ticket } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin")({
   component: AdminPage,
