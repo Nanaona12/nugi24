@@ -14,7 +14,126 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      products: {
+        Row: {
+          category: string | null
+          code: string
+          created_at: string
+          id: string
+          name: string
+          price: number
+          stock: number
+          updated_at: string
+          wholesale_min_qty: number | null
+          wholesale_price: number | null
+        }
+        Insert: {
+          category?: string | null
+          code: string
+          created_at?: string
+          id?: string
+          name: string
+          price?: number
+          stock?: number
+          updated_at?: string
+          wholesale_min_qty?: number | null
+          wholesale_price?: number | null
+        }
+        Update: {
+          category?: string | null
+          code?: string
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+          stock?: number
+          updated_at?: string
+          wholesale_min_qty?: number | null
+          wholesale_price?: number | null
+        }
+        Relationships: []
+      }
+      transaction_items: {
+        Row: {
+          id: string
+          is_wholesale: boolean
+          product_code: string
+          product_id: string | null
+          product_name: string
+          qty: number
+          subtotal: number
+          transaction_id: string
+          unit_price: number
+        }
+        Insert: {
+          id?: string
+          is_wholesale?: boolean
+          product_code: string
+          product_id?: string | null
+          product_name: string
+          qty: number
+          subtotal: number
+          transaction_id: string
+          unit_price: number
+        }
+        Update: {
+          id?: string
+          is_wholesale?: boolean
+          product_code?: string
+          product_id?: string | null
+          product_name?: string
+          qty?: number
+          subtotal?: number
+          transaction_id?: string
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transaction_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_items_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      transactions: {
+        Row: {
+          cashier_id: string
+          change_amount: number
+          created_at: string
+          id: string
+          item_count: number
+          paid: number
+          total: number
+        }
+        Insert: {
+          cashier_id: string
+          change_amount?: number
+          created_at?: string
+          id?: string
+          item_count?: number
+          paid?: number
+          total?: number
+        }
+        Update: {
+          cashier_id?: string
+          change_amount?: number
+          created_at?: string
+          id?: string
+          item_count?: number
+          paid?: number
+          total?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
