@@ -599,11 +599,16 @@ function KasirPage() {
                       lines.push(new Date(r.at).toLocaleString("id-ID"));
                       lines.push(`--------------------------------`);
                       for (const it of r.items) {
-                        const unitName = it.unit?.unit_name || "pcs";
-                        const price = Number(it.unit_price);
-                        const sub = price * it.qty;
+                        const c = computeLine(it);
                         lines.push(`${it.product.name}`);
-                        lines.push(`  ${it.qty} ${unitName} x ${formatRupiah(price)} = ${formatRupiah(sub)}`);
+                        if (it.mode === "grosiran" && c.packs > 0) {
+                          lines.push(`  ${c.packs} ${it.unit.name} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
+                          if (c.remainder > 0) {
+                            lines.push(`  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.remainder * c.ecerPrice)}`);
+                          }
+                        } else {
+                          lines.push(`  ${it.qty} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.total)}`);
+                        }
                       }
                       lines.push(`--------------------------------`);
                       lines.push(`Total   : ${formatRupiah(r.total)}`);
