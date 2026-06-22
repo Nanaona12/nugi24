@@ -5,9 +5,19 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { TrendingUp, DollarSign, ShoppingBag, Calendar, PackageX, ShoppingCart } from "lucide-react";
+import {
+  TrendingUp, DollarSign, ShoppingBag, Calendar, PackageX,
+  ShoppingCart, Download, AlertTriangle, FileSpreadsheet,
+} from "lucide-react";
+import {
+  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
+  Tooltip, CartesianGrid, Legend, PieChart, Pie, Cell,
+} from "recharts";
+import * as XLSX from "xlsx";
 
 export const Route = createFileRoute("/_authenticated/keuntungan")({
   component: KeuntunganPage,
@@ -41,11 +51,14 @@ type LowStockProduct = {
 };
 
 const LOW_STOCK_THRESHOLD = 5;
+const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#14b8a6", "#f97316"];
 
 function KeuntunganPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [fromDate, setFromDate] = useState<string>("");
+  const [toDate, setToDate] = useState<string>("");
 
   useEffect(() => {
     (async () => {
@@ -70,6 +83,19 @@ function KeuntunganPage() {
     })();
   }, []);
 
+  const filteredItems = useMemo(() => {
+    if (!fromDate && !toDate) return items;
+    const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
+    const to = toDate ? new Date(toDate + "T23:59:59") : null;
+    return items.filter((it) => {
+      const at = it.transactions?.created_at;
+      if (!at) return false;
+      const d = new Date(at);
+      if (from && d < from) return false;
+      if (to && d > to) return false;
+      return true;
+    });
+  }, [items, fromDate, toDate]);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -81,13 +107,16 @@ function KeuntunganPage() {
     let monthProfit = 0, monthRev = 0;
     let yearProfit = 0, yearRev = 0;
     let allProfit = 0, allRev = 0;
+    let totalQty = 0;
+    let txSet = new Set<string>();
 
     const dailyMap = new Map<string, Bucket>();
     const monthlyMap = new Map<string, Bucket>();
     const yearlyMap = new Map<string, Bucket>();
-    const productMap = new Map<string, { name: string; qty: number; revenue: number; profit: number }>();
+    const productMap = new Map<string, { name: string; qty: number; revenue: number; cost: number; profit: number }>();
+    const lossMap = new Map<string, { name: string; qty: number; revenue: number; cost: number; loss: number; occurrences: number }>();
 
-    for (const it of items) {
+    for (const it of filteredItems) {
       const at = it.transactions?.created_at;
       if (!at) continue;
       const d = new Date(at);
@@ -98,7 +127,8 @@ function KeuntunganPage() {
       const cost = Number(it.unit_cost) * it.qty;
       const profit = rev - cost;
 
-      allRev += rev; allProfit += profit;
+      allRev += rev; allProfit += profit; totalQty += it.qty;
+      txSet.add(at);
       if (dk === todayKey) { todayRev += rev; todayProfit += profit; }
       if (mk === monthKey) { monthRev += rev; monthProfit += profit; }
       if (yk === yearKey) { yearRev += rev; yearProfit += profit; }
@@ -107,20 +137,111 @@ function KeuntunganPage() {
       bump(monthlyMap, mk, mk, rev, cost, profit);
       bump(yearlyMap, yk, yk, rev, cost, profit);
 
-      const pm = productMap.get(it.product_name) || { name: it.product_name, qty: 0, revenue: 0, profit: 0 };
-      pm.qty += it.qty;
-      pm.revenue += rev;
-      pm.profit += profit;
+      const pm = productMap.get(it.product_name) || { name: it.product_name, qty: 0, revenue: 0, cost: 0, profit: 0 };
+      pm.qty += it.qty; pm.revenue += rev; pm.cost += cost; pm.profit += profit;
       productMap.set(it.product_name, pm);
+
+      if (profit < 0 && Number(it.unit_cost) > 0) {
+        const lm = lossMap.get(it.product_name) || { name: it.product_name, qty: 0, revenue: 0, cost: 0, loss: 0, occurrences: 0 };
+        lm.qty += it.qty; lm.revenue += rev; lm.cost += cost; lm.loss += profit; lm.occurrences += 1;
+        lossMap.set(it.product_name, lm);
+      }
     }
 
-    const daily = Array.from(dailyMap.values()).sort((a, b) => b.key.localeCompare(a.key)).slice(0, 30);
-    const monthly = Array.from(monthlyMap.values()).sort((a, b) => b.key.localeCompare(a.key)).slice(0, 24);
-    const yearly = Array.from(yearlyMap.values()).sort((a, b) => b.key.localeCompare(a.key));
-    const topProducts = Array.from(productMap.values()).sort((a, b) => b.profit - a.profit).slice(0, 10);
+    const daily = Array.from(dailyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
+    const monthly = Array.from(monthlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
+    const yearly = Array.from(yearlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
+    const topProducts = Array.from(productMap.values()).sort((a, b) => b.profit - a.profit);
+    const lossMakers = Array.from(lossMap.values()).sort((a, b) => a.loss - b.loss);
 
-    return { todayProfit, todayRev, monthProfit, monthRev, yearProfit, yearRev, allProfit, allRev, daily, monthly, yearly, topProducts };
-  }, [items]);
+    return {
+      todayProfit, todayRev, monthProfit, monthRev, yearProfit, yearRev,
+      allProfit, allRev, totalQty, txCount: txSet.size,
+      daily, monthly, yearly, topProducts, lossMakers,
+    };
+  }, [filteredItems]);
+
+  function exportExcel() {
+    const wb = XLSX.utils.book_new();
+
+    const summary = [
+      ["Laporan Keuntungan"],
+      ["Diekspor", new Date().toLocaleString("id-ID")],
+      ["Rentang", `${fromDate || "awal"} s/d ${toDate || "sekarang"}`],
+      [],
+      ["Metrik", "Nilai"],
+      ["Total Omset", stats.allRev],
+      ["Total Modal", stats.allRev - stats.allProfit],
+      ["Total Keuntungan", stats.allProfit],
+      ["Margin Rata-rata (%)", stats.allRev > 0 ? Number(((stats.allProfit / stats.allRev) * 100).toFixed(2)) : 0],
+      ["Jumlah Transaksi", stats.txCount],
+      ["Total Item Terjual", stats.totalQty],
+      ["Keuntungan Hari Ini", stats.todayProfit],
+      ["Omset Hari Ini", stats.todayRev],
+      ["Keuntungan Bulan Ini", stats.monthProfit],
+      ["Omset Bulan Ini", stats.monthRev],
+      ["Keuntungan Tahun Ini", stats.yearProfit],
+      ["Omset Tahun Ini", stats.yearRev],
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summary), "Ringkasan");
+
+    const bucketRows = (arr: Bucket[], labelFn: (k: string) => string) => [
+      ["Periode", "Omset", "Modal", "Keuntungan", "Margin (%)", "Jumlah Item"],
+      ...arr.map((r) => [
+        labelFn(r.key), r.revenue, r.cost, r.profit,
+        r.revenue > 0 ? Number(((r.profit / r.revenue) * 100).toFixed(2)) : 0,
+        r.count,
+      ]),
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bucketRows(stats.daily, formatDate)), "Harian");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bucketRows(stats.monthly, formatMonth)), "Bulanan");
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bucketRows(stats.yearly, (k) => k)), "Tahunan");
+
+    const productRows = [
+      ["Produk", "Qty Terjual", "Omset", "Modal", "Keuntungan", "Margin (%)"],
+      ...stats.topProducts.map((p) => [
+        p.name, p.qty, p.revenue, p.cost, p.profit,
+        p.revenue > 0 ? Number(((p.profit / p.revenue) * 100).toFixed(2)) : 0,
+      ]),
+    ];
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(productRows), "Produk");
+
+    if (stats.lossMakers.length > 0) {
+      const lossRows = [
+        ["Produk", "Qty", "Omset", "Modal", "Total Kerugian", "Kejadian"],
+        ...stats.lossMakers.map((l) => [l.name, l.qty, l.revenue, l.cost, l.loss, l.occurrences]),
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lossRows), "Rugi");
+    }
+
+    if (lowStock.length > 0) {
+      const lowRows = [
+        ["Kode", "Nama", "Kategori", "Sisa Stok", "Harga", "Status"],
+        ...lowStock.map((p) => [p.code, p.name, p.category || "-", p.stock, Number(p.price), p.stock <= 0 ? "Habis" : "Menipis"]),
+      ];
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lowRows), "Stok Menipis");
+    }
+
+    const ts = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `Laporan-Keuntungan-${ts}.xlsx`);
+    toast.success("Laporan Excel berhasil diunduh");
+  }
+
+  function exportCSV() {
+    const header = ["Tanggal", "Omset", "Modal", "Keuntungan", "Margin %", "Jumlah Item"];
+    const rows = stats.daily.map((r) => [
+      formatDate(r.key), r.revenue, r.cost, r.profit,
+      r.revenue > 0 ? ((r.profit / r.revenue) * 100).toFixed(2) : "0", r.count,
+    ]);
+    const csv = [header, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `Keuntungan-Harian-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success("CSV berhasil diunduh");
+  }
 
   if (loading) {
     return <div className="py-12 text-center text-sm text-muted-foreground">Memuat data keuntungan...</div>;
@@ -128,45 +249,148 @@ function KeuntunganPage() {
 
   return (
     <div className="space-y-4">
+      {/* Filter + Export Toolbar */}
+      <Card className="flex flex-wrap items-end gap-3 p-3">
+        <div className="grid gap-1">
+          <Label className="text-xs">Dari Tanggal</Label>
+          <Input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} className="h-9 w-[160px]" />
+        </div>
+        <div className="grid gap-1">
+          <Label className="text-xs">Sampai Tanggal</Label>
+          <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-9 w-[160px]" />
+        </div>
+        <Button variant="outline" size="sm" onClick={() => { setFromDate(""); setToDate(""); }}>Reset</Button>
+        <div className="ml-auto flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={exportCSV}>
+            <Download className="mr-1 h-4 w-4" /> CSV
+          </Button>
+          <Button size="sm" onClick={exportExcel}>
+            <FileSpreadsheet className="mr-1 h-4 w-4" /> Export Excel
+          </Button>
+        </div>
+      </Card>
+
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
-          icon={<Calendar className="h-5 w-5" />}
-          label="Keuntungan Hari Ini"
-          value={formatRupiah(stats.todayProfit)}
-          sub={`Omset ${formatRupiah(stats.todayRev)}`}
-          tone="primary"
-        />
-        <StatCard
-          icon={<TrendingUp className="h-5 w-5" />}
-          label="Keuntungan Bulan Ini"
-          value={formatRupiah(stats.monthProfit)}
-          sub={`Omset ${formatRupiah(stats.monthRev)}`}
-          tone="success"
-        />
-        <StatCard
-          icon={<DollarSign className="h-5 w-5" />}
-          label="Keuntungan Tahun Ini"
-          value={formatRupiah(stats.yearProfit)}
-          sub={`Omset ${formatRupiah(stats.yearRev)}`}
-        />
-        <StatCard
-          icon={<ShoppingBag className="h-5 w-5" />}
-          label="Total Keuntungan"
-          value={formatRupiah(stats.allProfit)}
-          sub={`Omset ${formatRupiah(stats.allRev)}`}
-        />
+        <StatCard icon={<Calendar className="h-5 w-5" />} label="Keuntungan Hari Ini" value={formatRupiah(stats.todayProfit)} sub={`Omset ${formatRupiah(stats.todayRev)}`} tone="primary" />
+        <StatCard icon={<TrendingUp className="h-5 w-5" />} label="Keuntungan Bulan Ini" value={formatRupiah(stats.monthProfit)} sub={`Omset ${formatRupiah(stats.monthRev)}`} tone="success" />
+        <StatCard icon={<DollarSign className="h-5 w-5" />} label="Keuntungan Tahun Ini" value={formatRupiah(stats.yearProfit)} sub={`Omset ${formatRupiah(stats.yearRev)}`} />
+        <StatCard icon={<ShoppingBag className="h-5 w-5" />} label="Total Keuntungan" value={formatRupiah(stats.allProfit)} sub={`${stats.txCount} transaksi • ${stats.totalQty} item`} />
       </div>
 
-      {items.length === 0 && (
-        <Card className="p-6 text-sm text-muted-foreground">
-          Belum ada data transaksi. Selesaikan transaksi di menu Kasir untuk melihat keuntungan.
+      {stats.lossMakers.length > 0 && (
+        <Card className="border-destructive/40 bg-destructive/5 p-4">
+          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-destructive">
+            <AlertTriangle className="h-4 w-4" />
+            Penyebab Keuntungan Minus — {stats.lossMakers.length} produk dijual di bawah modal
+          </div>
+          <p className="mb-3 text-xs text-muted-foreground">
+            Produk berikut harga jualnya lebih rendah dari harga modal. Naikkan harga jual (terutama tier grosir/slove) atau perbaiki harga modal di menu Produk.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="p-2">Produk</th>
+                  <th className="p-2 text-right">Qty</th>
+                  <th className="p-2 text-right">Omset</th>
+                  <th className="p-2 text-right">Modal</th>
+                  <th className="p-2 text-right">Kerugian</th>
+                  <th className="p-2 text-right">Kejadian</th>
+                </tr>
+              </thead>
+              <tbody>
+                {stats.lossMakers.slice(0, 8).map((l) => (
+                  <tr key={l.name} className="border-t">
+                    <td className="p-2 font-medium">{l.name}</td>
+                    <td className="p-2 text-right">{l.qty}</td>
+                    <td className="p-2 text-right">{formatRupiah(l.revenue)}</td>
+                    <td className="p-2 text-right text-muted-foreground">{formatRupiah(l.cost)}</td>
+                    <td className="p-2 text-right font-semibold text-destructive">{formatRupiah(l.loss)}</td>
+                    <td className="p-2 text-right">
+                      <Badge variant="destructive">{l.occurrences}×</Badge>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </Card>
       )}
 
-      {items.some((it) => Number(it.unit_cost) === 0) && (
-        <Card className="border-warning/40 bg-warning/10 p-3 text-xs">
-          <strong>Catatan:</strong> Sebagian item tercatat tanpa harga modal (modal = 0), sehingga keuntungan dihitung sama dengan harga jual. Isi <em>Harga Modal</em> di menu Produk agar perhitungan akurat.
+      {filteredItems.length === 0 && (
+        <Card className="p-6 text-sm text-muted-foreground">
+          Belum ada data transaksi pada rentang ini.
         </Card>
+      )}
+
+      {/* Charts */}
+      {stats.daily.length > 0 && (
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Card className="p-4">
+            <div className="mb-3 text-sm font-semibold">Tren Omset & Keuntungan Harian</div>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={stats.daily.slice(-30).map((d) => ({ tgl: d.key.slice(5), Omset: d.revenue, Keuntungan: d.profit }))}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="tgl" fontSize={11} />
+                <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => formatRupiah(v)} />
+                <Legend />
+                <Line type="monotone" dataKey="Omset" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                <Line type="monotone" dataKey="Keuntungan" stroke="#10b981" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+
+          <Card className="p-4">
+            <div className="mb-3 text-sm font-semibold">Top 8 Produk Berdasarkan Keuntungan</div>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={stats.topProducts.slice(0, 8).map((p) => ({ name: p.name.length > 12 ? p.name.slice(0, 12) + "…" : p.name, Keuntungan: p.profit }))}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="name" fontSize={10} angle={-20} textAnchor="end" height={60} />
+                <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                <Tooltip formatter={(v: number) => formatRupiah(v)} />
+                <Bar dataKey="Keuntungan" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+
+          {stats.monthly.length > 1 && (
+            <Card className="p-4">
+              <div className="mb-3 text-sm font-semibold">Perbandingan Modal vs Omset (Bulanan)</div>
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={stats.monthly.slice(-12).map((m) => ({ bln: m.key, Omset: m.revenue, Modal: m.cost, Keuntungan: m.profit }))}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="bln" fontSize={11} />
+                  <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
+                  <Tooltip formatter={(v: number) => formatRupiah(v)} />
+                  <Legend />
+                  <Bar dataKey="Omset" fill="hsl(var(--primary))" />
+                  <Bar dataKey="Modal" fill="#f59e0b" />
+                  <Bar dataKey="Keuntungan" fill="#10b981" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+
+          {stats.topProducts.length > 0 && (
+            <Card className="p-4">
+              <div className="mb-3 text-sm font-semibold">Komposisi Omset Top 6 Produk</div>
+              <ResponsiveContainer width="100%" height={260}>
+                <PieChart>
+                  <Pie
+                    data={stats.topProducts.slice(0, 6).map((p) => ({ name: p.name, value: p.revenue }))}
+                    dataKey="value" nameKey="name" outerRadius={90} label={(e) => e.name}
+                  >
+                    {stats.topProducts.slice(0, 6).map((_, i) => (
+                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => formatRupiah(v)} />
+                </PieChart>
+              </ResponsiveContainer>
+            </Card>
+          )}
+        </div>
       )}
 
       <Card className="overflow-hidden">
@@ -206,11 +430,7 @@ function KeuntunganPage() {
                     <td className="p-3 text-right font-semibold">{p.stock}</td>
                     <td className="p-3 text-right">{formatRupiah(Number(p.price))}</td>
                     <td className="p-3 text-right">
-                      {p.stock <= 0 ? (
-                        <Badge variant="destructive">Habis</Badge>
-                      ) : (
-                        <Badge variant="secondary">Menipis</Badge>
-                      )}
+                      {p.stock <= 0 ? <Badge variant="destructive">Habis</Badge> : <Badge variant="secondary">Menipis</Badge>}
                     </td>
                   </tr>
                 ))}
@@ -219,8 +439,6 @@ function KeuntunganPage() {
           </div>
         )}
       </Card>
-
-
 
       <Tabs defaultValue="daily">
         <TabsList>
@@ -231,13 +449,13 @@ function KeuntunganPage() {
         </TabsList>
 
         <TabsContent value="daily">
-          <BucketTable rows={stats.daily} labelHeader="Tanggal" formatLabel={(k) => formatDate(k)} />
+          <BucketTable rows={[...stats.daily].reverse().slice(0, 60)} labelHeader="Tanggal" formatLabel={(k) => formatDate(k)} />
         </TabsContent>
         <TabsContent value="monthly">
-          <BucketTable rows={stats.monthly} labelHeader="Bulan" formatLabel={(k) => formatMonth(k)} />
+          <BucketTable rows={[...stats.monthly].reverse().slice(0, 24)} labelHeader="Bulan" formatLabel={(k) => formatMonth(k)} />
         </TabsContent>
         <TabsContent value="yearly">
-          <BucketTable rows={stats.yearly} labelHeader="Tahun" formatLabel={(k) => k} />
+          <BucketTable rows={[...stats.yearly].reverse()} labelHeader="Tahun" formatLabel={(k) => k} />
         </TabsContent>
         <TabsContent value="products">
           <Card className="overflow-hidden">
@@ -255,16 +473,16 @@ function KeuntunganPage() {
                 <tbody>
                   {stats.topProducts.length === 0 ? (
                     <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Belum ada data</td></tr>
-                  ) : stats.topProducts.map((p) => {
+                  ) : stats.topProducts.slice(0, 30).map((p) => {
                     const margin = p.revenue > 0 ? (p.profit / p.revenue) * 100 : 0;
                     return (
                       <tr key={p.name} className="border-t hover:bg-muted/40">
                         <td className="p-3 font-medium">{p.name}</td>
                         <td className="p-3 text-right">{p.qty}</td>
                         <td className="p-3 text-right">{formatRupiah(p.revenue)}</td>
-                        <td className="p-3 text-right font-semibold text-primary">{formatRupiah(p.profit)}</td>
+                        <td className={`p-3 text-right font-semibold ${p.profit < 0 ? "text-destructive" : "text-primary"}`}>{formatRupiah(p.profit)}</td>
                         <td className="p-3 text-right">
-                          <Badge variant={margin >= 20 ? "default" : "secondary"}>{margin.toFixed(1)}%</Badge>
+                          <Badge variant={margin >= 20 ? "default" : margin < 0 ? "destructive" : "secondary"}>{margin.toFixed(1)}%</Badge>
                         </td>
                       </tr>
                     );
@@ -316,9 +534,9 @@ function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; label
                   <td className="p-3 font-medium">{formatLabel(r.key)}</td>
                   <td className="p-3 text-right">{formatRupiah(r.revenue)}</td>
                   <td className="p-3 text-right text-muted-foreground">{formatRupiah(r.cost)}</td>
-                  <td className="p-3 text-right font-semibold text-primary">{formatRupiah(r.profit)}</td>
+                  <td className={`p-3 text-right font-semibold ${r.profit < 0 ? "text-destructive" : "text-primary"}`}>{formatRupiah(r.profit)}</td>
                   <td className="p-3 text-right">
-                    <Badge variant={margin >= 20 ? "default" : "secondary"}>{margin.toFixed(1)}%</Badge>
+                    <Badge variant={margin >= 20 ? "default" : margin < 0 ? "destructive" : "secondary"}>{margin.toFixed(1)}%</Badge>
                   </td>
                 </tr>
               );
@@ -330,7 +548,7 @@ function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; label
                 <td className="p-3">TOTAL</td>
                 <td className="p-3 text-right">{formatRupiah(totals.revenue)}</td>
                 <td className="p-3 text-right text-muted-foreground">{formatRupiah(totals.cost)}</td>
-                <td className="p-3 text-right text-primary">{formatRupiah(totals.profit)}</td>
+                <td className={`p-3 text-right ${totals.profit < 0 ? "text-destructive" : "text-primary"}`}>{formatRupiah(totals.profit)}</td>
                 <td className="p-3 text-right">{totalMargin.toFixed(1)}%</td>
               </tr>
             </tfoot>
@@ -350,10 +568,7 @@ function SummaryItem({ label, value, accent, muted }: { label: string; value: st
   );
 }
 
-
-function StatCard({
-  icon, label, value, sub, tone,
-}: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: "primary" | "success" }) {
+function StatCard({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: "primary" | "success" }) {
   const toneCls = tone === "primary" ? "text-primary" : tone === "success" ? "text-success" : "text-foreground";
   return (
     <Card className="p-4">
