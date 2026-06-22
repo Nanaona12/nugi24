@@ -178,6 +178,11 @@ function KasirPage() {
     setCart((c) => c.map((l) => (l.key === key ? { ...l, qty } : l)));
   };
 
+  const setDisplayQty = (line: CartLine, displayQty: number) => {
+    const multiplier = line.mode === "grosiran" ? Math.max(1, line.unit.conversion) : 1;
+    setQty(line.key, displayQty * multiplier);
+  };
+
   const changeGrosirUnit = (key: string, unitName: string) => {
     setCart((c) =>
       c.map((l) => {
@@ -380,6 +385,8 @@ function KasirPage() {
                 const grosirUnits = allUnits.filter((u) => u.conversion > 1);
                 const packUnitName = l.mode === "grosiran" ? l.unit.name : (c.autoUnit?.name || "");
                 const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
+                const displayQty = l.mode === "grosiran" ? Math.max(1, c.packs) : l.qty;
+                const displayUnitName = l.mode === "grosiran" ? l.unit.name : l.baseUnit.name;
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -407,19 +414,19 @@ function KasirPage() {
                     </div>
                     <div className="mt-2 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1">
-                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.key, l.qty - 1)}>
+                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setDisplayQty(l, displayQty - 1)}>
                           <Minus className="h-3 w-3" />
                         </Button>
                         <Input
                           className="h-7 w-14 text-center"
                           type="number"
-                          value={l.qty}
-                          onChange={(e) => setQty(l.key, parseInt(e.target.value || "0", 10))}
+                          value={displayQty}
+                          onChange={(e) => setDisplayQty(l, parseInt(e.target.value || "0", 10))}
                         />
-                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setQty(l.key, l.qty + 1)}>
+                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setDisplayQty(l, displayQty + 1)}>
                           <Plus className="h-3 w-3" />
                         </Button>
-                        <span className="ml-1 text-xs text-muted-foreground">{l.baseUnit.name}</span>
+                        <span className="ml-1 text-xs text-muted-foreground">{displayUnitName}</span>
                         {l.mode === "grosiran" && grosirUnits.length > 1 && (
                           <Select value={l.unit.name} onValueChange={(v) => changeGrosirUnit(l.key, v)}>
                             <SelectTrigger className="h-7 w-[90px] text-xs ml-1">
