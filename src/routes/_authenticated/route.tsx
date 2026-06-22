@@ -5,6 +5,21 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+} from "@/components/ui/sidebar";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -65,7 +80,6 @@ function AuthedLayout() {
     return () => { mounted = false; authSub.subscription.unsubscribe(); };
   }, [router]);
 
-  // Super admin: lock down to /admin area only (no kasir/produk access)
   useEffect(() => {
     if (!sub?.isSuperAdmin) return;
     if (!pathname.startsWith("/admin")) {
@@ -73,7 +87,6 @@ function AuthedLayout() {
     }
   }, [sub, pathname, router]);
 
-  // Tenant gate: redirect to /langganan if expired
   useEffect(() => {
     if (!sub || sub.isSuperAdmin) return;
     const expired = new Date(sub.current_period_end) < new Date();
@@ -87,15 +100,13 @@ function AuthedLayout() {
       await queryClient.cancelQueries();
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("Logout error:", error);
         toast.error("Gagal keluar: " + error.message);
         return;
       }
       queryClient.clear();
       try { localStorage.removeItem("sb-auth-token"); } catch {}
       router.navigate({ to: "/auth", replace: true });
-    } catch (e: any) {
-      console.error("Logout error:", e);
+    } catch {
       toast.error("Gagal keluar. Coba lagi.");
     }
   };
@@ -108,69 +119,88 @@ function AuthedLayout() {
   const showTrialBanner = sub && (sub.status === "trialing" || daysLeft <= 3) && daysLeft > 0;
   const expired = sub && new Date(sub.current_period_end) < new Date();
 
+  const navItems = sub?.isSuperAdmin
+    ? [{ to: "/admin", icon: Shield, label: "Admin" }]
+    : [
+        { to: "/kasir", icon: ShoppingCart, label: "Kasir" },
+        { to: "/produk", icon: Package, label: "Produk" },
+        { to: "/pelanggan", icon: Users, label: "Pelanggan" },
+        { to: "/po", icon: ClipboardList, label: "PO" },
+        { to: "/riwayat", icon: Receipt, label: "Riwayat" },
+        { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
+        { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
+        { to: "/langganan", icon: CreditCard, label: "Langganan" },
+        { to: "/pengaturan", icon: Settings, label: "Pengaturan" },
+      ];
+
+  const title = sub?.isSuperAdmin ? "Dagang Pintar" : (tenantName || "Toko Saya");
+
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-30 border-b bg-sidebar text-sidebar-foreground">
-        <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
-          <div className="flex items-center gap-2 font-semibold">
-            <Store className="h-5 w-5 text-primary" />
-            <span className="hidden max-w-[200px] truncate sm:inline">
-              {sub?.isSuperAdmin ? "Dagang Pintar" : (tenantName || "Toko Saya")}
-            </span>
-          </div>
-          <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
-            {sub?.isSuperAdmin ? (
-              <NavLink to="/admin" icon={<Shield className="h-4 w-4" />} label="Admin" />
-            ) : (
-              <>
-                <NavLink to="/kasir" icon={<ShoppingCart className="h-4 w-4" />} label="Kasir" />
-                <NavLink to="/produk" icon={<Package className="h-4 w-4" />} label="Produk" />
-                <NavLink to="/pelanggan" icon={<Users className="h-4 w-4" />} label="Pelanggan" />
-                <NavLink to="/po" icon={<ClipboardList className="h-4 w-4" />} label="PO" />
-                <NavLink to="/riwayat" icon={<Receipt className="h-4 w-4" />} label="Riwayat" />
-                <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
-                <NavLink to="/cek-koneksi" icon={<Wifi className="h-4 w-4" />} label="Koneksi" />
-                <NavLink to="/langganan" icon={<CreditCard className="h-4 w-4" />} label="Langganan" />
-                <NavLink to="/pengaturan" icon={<Settings className="h-4 w-4" />} label="Pengaturan" />
-              </>
-            )}
-          </nav>
-          <div className="hidden text-xs text-sidebar-foreground/70 sm:block">
-            {sub?.isSuperAdmin && <span className="mr-2 rounded bg-primary px-2 py-0.5 text-primary-foreground">SUPER ADMIN</span>}
-            {user.email}
-          </div>
-          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-sidebar-foreground hover:bg-sidebar-accent">
-            <LogOut className="h-4 w-4" />
-            <span className="ml-1 hidden sm:inline">Keluar</span>
-          </Button>
-        </div>
-        {!sub?.isSuperAdmin && (showTrialBanner || expired) && (
-          <div className={`px-4 py-2 text-center text-sm ${expired ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white"}`}>
-            {expired ? (
-              <>Langganan Anda berakhir. <Link to="/langganan" className="underline font-semibold">Perpanjang sekarang</Link></>
-            ) : (
-              <>Trial berakhir dalam {daysLeft} hari. <Link to="/langganan" className="underline font-semibold">Berlangganan Rp 14.900/bulan</Link></>
-            )}
-          </div>
-        )}
-      </header>
-      <main className="mx-auto max-w-7xl px-4 py-6">
-        <Outlet />
-      </main>
-    </div>
+    <SidebarProvider>
+      <div className="flex min-h-screen w-full bg-background">
+        <Sidebar collapsible="icon">
+          <SidebarHeader>
+            <div className="flex items-center gap-2 px-2 py-2 font-semibold">
+              <Store className="h-5 w-5 shrink-0 text-primary" />
+              <span className="truncate group-data-[collapsible=icon]:hidden">{title}</span>
+            </div>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarGroup>
+              <SidebarGroupLabel>Menu</SidebarGroupLabel>
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {navItems.map((item) => {
+                    const Icon = item.icon;
+                    const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                    return (
+                      <SidebarMenuItem key={item.to}>
+                        <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                          <Link to={item.to}>
+                            <Icon className="h-4 w-4" />
+                            <span>{item.label}</span>
+                          </Link>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </SidebarContent>
+          <SidebarFooter>
+            <div className="px-2 py-1 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
+              {sub?.isSuperAdmin && (
+                <div className="mb-1 inline-block rounded bg-primary px-2 py-0.5 text-primary-foreground">SUPER ADMIN</div>
+              )}
+              <div className="truncate">{user.email}</div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={handleLogout} className="justify-start text-sidebar-foreground hover:bg-sidebar-accent">
+              <LogOut className="h-4 w-4" />
+              <span className="ml-2 group-data-[collapsible=icon]:hidden">Keluar</span>
+            </Button>
+          </SidebarFooter>
+        </Sidebar>
+        <SidebarInset>
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-4">
+            <SidebarTrigger />
+            <div className="flex-1 truncate text-sm font-medium">{title}</div>
+            <div className="hidden text-xs text-muted-foreground sm:block">{user.email}</div>
+          </header>
+          {!sub?.isSuperAdmin && (showTrialBanner || expired) && (
+            <div className={`px-4 py-2 text-center text-sm ${expired ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white"}`}>
+              {expired ? (
+                <>Langganan Anda berakhir. <Link to="/langganan" className="underline font-semibold">Perpanjang sekarang</Link></>
+              ) : (
+                <>Trial berakhir dalam {daysLeft} hari. <Link to="/langganan" className="underline font-semibold">Berlangganan Rp 14.900/bulan</Link></>
+              )}
+            </div>
+          )}
+          <main className="mx-auto w-full max-w-7xl px-4 py-6">
+            <Outlet />
+          </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }
-
-function NavLink({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
-  return (
-    <Link
-      to={to}
-      className="inline-flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-sidebar-foreground/80 transition hover:bg-sidebar-accent hover:text-sidebar-foreground [&.active]:bg-primary [&.active]:text-primary-foreground"
-      activeProps={{ className: "active" }}
-    >
-      {icon}
-      <span className="hidden sm:inline">{label}</span>
-    </Link>
-  );
-}
-
