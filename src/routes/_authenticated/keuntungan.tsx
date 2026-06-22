@@ -453,6 +453,9 @@ function KeuntunganPage() {
           <Button size="sm" variant="outline" onClick={exportCSV}>
             <Download className="mr-1 h-4 w-4" /> CSV
           </Button>
+          <Button size="sm" variant="secondary" onClick={exportPDF} disabled={exportingPdf}>
+            <FileText className="mr-1 h-4 w-4" /> {exportingPdf ? "Membuat PDF..." : "Export PDF"}
+          </Button>
           <Button size="sm" onClick={exportExcel}>
             <FileSpreadsheet className="mr-1 h-4 w-4" /> Export Excel
           </Button>
