@@ -53,9 +53,34 @@ function getUnits(p: Product, map: Record<string, ProductUnit[]>): ProductUnit[]
   return [fallbackUnitFromProduct(p)];
 }
 
-/** Hitung subtotal & rincian untuk satu line. */
-function computeLine(l: CartLine): { total: number; packs: number; remainder: number; packPrice: number; ecerPrice: number } {
+/** Hitung subtotal & rincian untuk satu line.
+ *  Untuk mode eceran, jika `allUnits` diberikan, sistem otomatis memakai
+ *  unit grosir terbesar yang muat (greedy) — mis. 13 pcs -> 1 slove + 3 pcs.
+ */
+function computeLine(
+  l: CartLine,
+  allUnits?: ProductUnit[],
+): { total: number; packs: number; remainder: number; packPrice: number; ecerPrice: number; autoUnit?: ProductUnit } {
   if (l.mode === "eceran") {
+    // cari unit grosir terbesar yang muat
+    const grosir = (allUnits || []).filter((u) => u.conversion > 1).sort((a, b) => b.conversion - a.conversion);
+    for (const g of grosir) {
+      if (l.qty >= g.conversion) {
+        const conv = g.conversion;
+        const packs = Math.floor(l.qty / conv);
+        const remainder = l.qty - packs * conv;
+        const packPrice = tierPriceFor(g, Math.max(1, packs)).price;
+        const ecerPrice = tierPriceFor(l.baseUnit, Math.max(1, remainder)).price;
+        return {
+          total: packs * packPrice + remainder * ecerPrice,
+          packs,
+          remainder,
+          packPrice,
+          ecerPrice,
+          autoUnit: g,
+        };
+      }
+    }
     const ecerPrice = tierPriceFor(l.baseUnit, l.qty).price;
     return { total: ecerPrice * l.qty, packs: 0, remainder: l.qty, packPrice: 0, ecerPrice };
   }
