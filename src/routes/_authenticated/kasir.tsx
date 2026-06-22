@@ -580,39 +580,19 @@ function KasirPage() {
               </label>
               {sendWa && (
                 <div className="space-y-2">
-                  {customers.length > 0 && (
-                    <select
-                      className="h-10 w-full rounded-md border bg-background px-2 text-sm"
-                      defaultValue=""
-                      onChange={(e) => {
-                        const c = customers.find((x) => x.id === e.target.value);
-                        if (c) {
-                          setCustomerName(c.name);
-                          if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
-                        }
-                      }}
-                    >
-                      <option value="">— Pilih pelanggan tersimpan (opsional) —</option>
-                      {customers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}{c.phone ? ` • ${c.phone}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <Input
-                    placeholder="Nama pelanggan (opsional)"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                  <Input
-                    inputMode="numeric"
-                    placeholder="08xxxxxxxxxx"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ""))}
+                  <CustomerPicker
+                    customers={customers}
+                    name={customerName}
+                    phone={customerPhone}
+                    onPick={(c) => {
+                      setCustomerName(c.name);
+                      if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+                    }}
+                    onChangeName={setCustomerName}
+                    onChangePhone={(v) => setCustomerPhone(v.replace(/[^\d+]/g, ""))}
                   />
                   <div className="text-xs text-muted-foreground">
-                    Nama pelanggan akan dicantumkan pada caption WhatsApp.
+                    Cari pelanggan tersimpan via nama atau no. HP. Data akan dicantumkan pada caption WhatsApp.
                   </div>
                 </div>
               )}
@@ -935,5 +915,68 @@ function PickerDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type PickCustomer = { id: string; name: string; phone: string | null };
+function CustomerPicker({
+  customers, name, phone, onPick, onChangeName, onChangePhone,
+}: {
+  customers: PickCustomer[];
+  name: string;
+  phone: string;
+  onPick: (c: PickCustomer) => void;
+  onChangeName: (v: string) => void;
+  onChangePhone: (v: string) => void;
+}) {
+  const [q, setQ] = useState("");
+  const [openList, setOpenList] = useState(false);
+  const results = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    if (!s) return customers.slice(0, 8);
+    return customers
+      .filter((c) => c.name.toLowerCase().includes(s) || (c.phone || "").toLowerCase().includes(s))
+      .slice(0, 8);
+  }, [q, customers]);
+
+  return (
+    <div className="space-y-2">
+      <div className="relative">
+        <Input
+          placeholder="🔍 Cari pelanggan (nama / no. HP)..."
+          value={q}
+          onChange={(e) => { setQ(e.target.value); setOpenList(true); }}
+          onFocus={() => setOpenList(true)}
+          onBlur={() => setTimeout(() => setOpenList(false), 150)}
+        />
+        {openList && results.length > 0 && (
+          <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover shadow-lg">
+            {results.map((c) => (
+              <button
+                key={c.id}
+                type="button"
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-accent"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  onPick(c);
+                  setQ("");
+                  setOpenList(false);
+                }}
+              >
+                <span className="font-medium">{c.name}</span>
+                <span className="text-xs text-muted-foreground">{c.phone || "—"}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {openList && q && results.length === 0 && (
+          <div className="absolute z-50 mt-1 w-full rounded-md border bg-popover px-3 py-2 text-xs text-muted-foreground shadow-lg">
+            Tidak ada pelanggan cocok. Isi manual di bawah.
+          </div>
+        )}
+      </div>
+      <Input placeholder="Nama pelanggan" value={name} onChange={(e) => onChangeName(e.target.value)} />
+      <Input inputMode="numeric" placeholder="08xxxxxxxxxx" value={phone} onChange={(e) => onChangePhone(e.target.value)} />
+    </div>
   );
 }
