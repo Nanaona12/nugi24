@@ -114,7 +114,9 @@ function AuthedLayout() {
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
           <div className="flex items-center gap-2 font-semibold">
             <Store className="h-5 w-5 text-primary" />
-            <span className="hidden sm:inline">Dagang Pintar</span>
+            <span className="hidden max-w-[200px] truncate sm:inline">
+              {sub?.isSuperAdmin ? "Dagang Pintar" : (tenantName || "Toko Saya")}
+            </span>
           </div>
           <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
             {sub?.isSuperAdmin ? (
@@ -123,6 +125,7 @@ function AuthedLayout() {
               <>
                 <NavLink to="/kasir" icon={<ShoppingCart className="h-4 w-4" />} label="Kasir" />
                 <NavLink to="/produk" icon={<Package className="h-4 w-4" />} label="Produk" />
+                <NavLink to="/pelanggan" icon={<Users className="h-4 w-4" />} label="Pelanggan" />
                 <NavLink to="/po" icon={<ClipboardList className="h-4 w-4" />} label="PO" />
                 <NavLink to="/riwayat" icon={<Receipt className="h-4 w-4" />} label="Riwayat" />
                 <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />
