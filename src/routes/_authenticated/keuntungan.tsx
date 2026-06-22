@@ -517,6 +517,25 @@ function KeuntunganPage() {
         <StatCard icon={<ShoppingBag className="h-5 w-5" />} label="Total Keuntungan" value={formatRupiah(stats.allProfit)} sub={`${stats.txCount} transaksi • ${stats.totalQty} item`} />
       </div>
 
+      {/* Ringkasan Kadaluarsa */}
+      {(expirySummary.expired + expirySummary.le30 + expirySummary.le60 + expirySummary.le90) > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <AlarmClock className="h-4 w-4 text-amber-500" />
+              Barang Mendekati Kadaluarsa
+            </div>
+            <Link to="/kadaluarsa" className="text-xs font-medium text-primary hover:underline">Kelola batch →</Link>
+          </div>
+          <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+            <ExpiryStat label="Expired" count={expirySummary.expired} tone="destructive" />
+            <ExpiryStat label="≤ 30 hari" count={expirySummary.le30} tone="red" />
+            <ExpiryStat label="31 – 60 hari" count={expirySummary.le60} tone="orange" />
+            <ExpiryStat label="61 – 90 hari" count={expirySummary.le90} tone="amber" />
+          </div>
+        </Card>
+      )}
+
       {/* Rekonsiliasi Kas */}
       <Card className="p-4">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
