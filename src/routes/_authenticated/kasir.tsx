@@ -586,7 +586,10 @@ function KasirPage() {
                       defaultValue=""
                       onChange={(e) => {
                         const c = customers.find((x) => x.id === e.target.value);
-                        if (c?.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+                        if (c) {
+                          setCustomerName(c.name);
+                          if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+                        }
                       }}
                     >
                       <option value="">— Pilih pelanggan tersimpan (opsional) —</option>
@@ -598,13 +601,18 @@ function KasirPage() {
                     </select>
                   )}
                   <Input
+                    placeholder="Nama pelanggan (opsional)"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
+                  <Input
                     inputMode="numeric"
                     placeholder="08xxxxxxxxxx"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ""))}
                   />
                   <div className="text-xs text-muted-foreground">
-                    Setelah selesai, WhatsApp akan terbuka dengan struk siap kirim.
+                    Nama pelanggan akan dicantumkan pada caption WhatsApp.
                   </div>
                 </div>
               )}
