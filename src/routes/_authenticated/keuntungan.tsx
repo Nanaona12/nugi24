@@ -64,6 +64,7 @@ function KeuntunganPage() {
   const [toDate, setToDate] = useState<string>("");
   const [exportingPdf, setExportingPdf] = useState(false);
   const [storeName, setStoreName] = useState<string>("Toko");
+  const [exportingPdf, setExportingPdf] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
