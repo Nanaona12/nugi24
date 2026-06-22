@@ -321,7 +321,7 @@ function KasirPage() {
       setReceiptImg(null);
     }
     setCart([]); setPaid(""); setPayOpen(false); setSubmitting(false);
-    setSendWa(false); setCustomerPhone(""); setPaymentMethod("cash");
+    setSendWa(false); setCustomerPhone(""); setCustomerName(""); setPaymentMethod("cash");
     loadProducts();
   };
 
