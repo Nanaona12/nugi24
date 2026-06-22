@@ -18,6 +18,7 @@ function AuthedLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<{ id: string; email: string | null } | null>(null);
   const [sub, setSub] = useState<SubInfo>(null);
+  const [tenantName, setTenantName] = useState<string>("");
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
