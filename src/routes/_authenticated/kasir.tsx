@@ -266,11 +266,13 @@ function KasirPage() {
     // generate struk gambar
     try {
       const imgItems: ReceiptItem[] = cart.map((l) => {
-        const c = computeLine(l);
+        const c = computeLine(l, getUnits(l.product, unitsByProduct));
         let detail = "";
-        if (l.mode === "grosiran") {
+        const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
+        const packUnitName = l.mode === "grosiran" ? l.unit.name : (c.autoUnit?.name || "");
+        if (showPack) {
           const parts: string[] = [];
-          if (c.packs > 0) parts.push(`${c.packs} ${l.unit.name} × ${formatRupiah(c.packPrice)}`);
+          parts.push(`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`);
           if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
           detail = parts.join(" + ");
         } else {
