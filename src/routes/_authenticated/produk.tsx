@@ -194,13 +194,24 @@ function ProdukPage() {
   };
 
   const removeAll = async () => {
+    if (!deleteAllPassword) { toast.error("Masukkan password untuk konfirmasi"); return; }
     setDeletingAll(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email;
+    if (!email) { setDeletingAll(false); toast.error("Sesi tidak ditemukan"); return; }
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: deleteAllPassword });
+    if (authErr) {
+      setDeletingAll(false);
+      toast.error("Password salah");
+      return;
+    }
     const { error, count } = await supabase
       .from("products")
       .delete({ count: "exact" })
       .not("id", "is", null);
     setDeletingAll(false);
     setConfirmDeleteAll(false);
+    setDeleteAllPassword("");
     if (error) toast.error(error.message);
     else {
       toast.success(`${count ?? 0} produk dihapus`);
