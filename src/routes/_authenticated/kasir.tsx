@@ -15,7 +15,7 @@ import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check, Lo
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor, PriceTier } from "@/lib/product-pricing";
 import { useServerFn } from "@tanstack/react-start";
-import { sendFonnteWaImage } from "@/lib/fonnte.functions";
+import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 
 export const Route = createFileRoute("/_authenticated/kasir")({
