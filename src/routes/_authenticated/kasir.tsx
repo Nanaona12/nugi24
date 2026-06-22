@@ -304,7 +304,7 @@ function KasirPage() {
         };
       });
       const { dataUrl } = renderReceiptPng({
-        storeName: "Dagang Pintar",
+        storeName: storeName || "Toko",
         storeNote: "Terima kasih atas kunjungan Anda",
         txId: tx.id,
         at: receipt.at,
