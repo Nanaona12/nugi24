@@ -67,6 +67,7 @@ function KeuntunganPage() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [actualCash, setActualCash] = useState<string>("");
   const [actualQris, setActualQris] = useState<string>("");
+  const [expirySummary, setExpirySummary] = useState<{ expired: number; le30: number; le60: number; le90: number }>({ expired: 0, le30: 0, le60: 0, le90: 0 });
   const chartsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,6 +102,21 @@ function KeuntunganPage() {
       if (lowRes.error) toast.error(lowRes.error.message);
       else setLowStock((lowRes.data || []) as LowStockProduct[]);
       if (!txRes.error) setTxs((txRes.data || []) as { created_at: string; total: number; payment_method: string }[]);
+
+      const { data: batches } = await (supabase as any)
+        .from("product_batches")
+        .select("expiry_date");
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const sum = { expired: 0, le30: 0, le60: 0, le90: 0 };
+      for (const b of (batches || []) as { expiry_date: string }[]) {
+        const d = Math.ceil((new Date(b.expiry_date + "T00:00:00").getTime() - today.getTime()) / 86400000);
+        if (d < 0) sum.expired++;
+        else if (d <= 30) sum.le30++;
+        else if (d <= 60) sum.le60++;
+        else if (d <= 90) sum.le90++;
+      }
+      setExpirySummary(sum);
+
       setLoading(false);
     })();
   }, []);
