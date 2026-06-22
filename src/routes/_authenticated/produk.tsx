@@ -500,19 +500,31 @@ function ProdukPage() {
         </Button>
       </div>
 
-      <AlertDialog open={confirmDeleteAll} onOpenChange={setConfirmDeleteAll}>
+      <AlertDialog open={confirmDeleteAll} onOpenChange={(o) => { setConfirmDeleteAll(o); if (!o) setDeleteAllPassword(""); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Hapus semua {products.length} produk?</AlertDialogTitle>
             <AlertDialogDescription>
               Tindakan ini tidak bisa dibatalkan. Semua produk akan dihapus permanen dari database.
+              Masukkan password akun Anda untuk konfirmasi.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Password</label>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              value={deleteAllPassword}
+              onChange={(e) => setDeleteAllPassword(e.target.value)}
+              placeholder="Password akun Anda"
+              disabled={deletingAll}
+            />
+          </div>
           <AlertDialogFooter>
             <AlertDialogCancel disabled={deletingAll}>Batal</AlertDialogCancel>
             <AlertDialogAction
               onClick={(e) => { e.preventDefault(); removeAll(); }}
-              disabled={deletingAll}
+              disabled={deletingAll || !deleteAllPassword}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deletingAll ? "Menghapus..." : "Ya, Hapus Semua"}
@@ -520,6 +532,7 @@ function ProdukPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
 
       <BarcodeScanner
         open={scanMode !== null}
