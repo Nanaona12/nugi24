@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import {
   TrendingUp, DollarSign, ShoppingBag, Calendar, PackageX,
-  ShoppingCart, Download, AlertTriangle, FileSpreadsheet, FileText,
+  ShoppingCart, Download, AlertTriangle, FileSpreadsheet, FileText, AlarmClock,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
