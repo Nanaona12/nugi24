@@ -43,10 +43,11 @@ function AuthedLayout() {
       } else {
         const { data: tenant } = await supabase
           .from("tenants")
-          .select("id")
+          .select("id, name")
           .eq("owner_user_id", data.user.id)
           .maybeSingle();
         if (tenant) {
+          setTenantName(tenant.name || "");
           const { data: s } = await supabase
             .from("subscriptions")
             .select("status, current_period_end")
