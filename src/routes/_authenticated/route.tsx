@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings } from "lucide-react";
+import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users } from "lucide-react";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated")({
@@ -18,6 +18,7 @@ function AuthedLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [user, setUser] = useState<{ id: string; email: string | null } | null>(null);
   const [sub, setSub] = useState<SubInfo>(null);
+  const [tenantName, setTenantName] = useState<string>("");
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -42,10 +43,11 @@ function AuthedLayout() {
       } else {
         const { data: tenant } = await supabase
           .from("tenants")
-          .select("id")
+          .select("id, name")
           .eq("owner_user_id", data.user.id)
           .maybeSingle();
         if (tenant) {
+          setTenantName(tenant.name || "");
           const { data: s } = await supabase
             .from("subscriptions")
             .select("status, current_period_end")
@@ -112,7 +114,9 @@ function AuthedLayout() {
         <div className="mx-auto flex h-16 max-w-7xl items-center gap-4 px-4">
           <div className="flex items-center gap-2 font-semibold">
             <Store className="h-5 w-5 text-primary" />
-            <span className="hidden sm:inline">Dagang Pintar</span>
+            <span className="hidden max-w-[200px] truncate sm:inline">
+              {sub?.isSuperAdmin ? "Dagang Pintar" : (tenantName || "Toko Saya")}
+            </span>
           </div>
           <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
             {sub?.isSuperAdmin ? (
@@ -121,6 +125,7 @@ function AuthedLayout() {
               <>
                 <NavLink to="/kasir" icon={<ShoppingCart className="h-4 w-4" />} label="Kasir" />
                 <NavLink to="/produk" icon={<Package className="h-4 w-4" />} label="Produk" />
+                <NavLink to="/pelanggan" icon={<Users className="h-4 w-4" />} label="Pelanggan" />
                 <NavLink to="/po" icon={<ClipboardList className="h-4 w-4" />} label="PO" />
                 <NavLink to="/riwayat" icon={<Receipt className="h-4 w-4" />} label="Riwayat" />
                 <NavLink to="/keuntungan" icon={<TrendingUp className="h-4 w-4" />} label="Untung" />

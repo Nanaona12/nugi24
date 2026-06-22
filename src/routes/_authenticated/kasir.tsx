@@ -117,6 +117,8 @@ function KasirPage() {
   const sendWaImgFn = useServerFn(sendFonnteWaImage);
   const sendWaUrlFn = useServerFn(sendFonnteWaUrl);
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState<string>("Toko");
+  const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null }[]>([]);
 
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
@@ -134,6 +136,15 @@ function KasirPage() {
   useEffect(() => {
     loadProducts();
     searchRef.current?.focus();
+    (async () => {
+      const { data: t } = await supabase.from("tenants").select("name").limit(1).maybeSingle();
+      if (t?.name) setStoreName(t.name);
+      const { data: cs } = await supabase
+        .from("customers")
+        .select("id, name, phone")
+        .order("name", { ascending: true });
+      setCustomers((cs || []) as any);
+    })();
   }, []);
 
   const filtered = useMemo(() => {
@@ -293,7 +304,7 @@ function KasirPage() {
         };
       });
       const { dataUrl } = renderReceiptPng({
-        storeName: "Dagang Pintar",
+        storeName: storeName || "Toko",
         storeNote: "Terima kasih atas kunjungan Anda",
         txId: tx.id,
         at: receipt.at,
@@ -566,14 +577,31 @@ function KasirPage() {
                 Kirim e-struk via WhatsApp
               </label>
               {sendWa && (
-                <div>
+                <div className="space-y-2">
+                  {customers.length > 0 && (
+                    <select
+                      className="h-10 w-full rounded-md border bg-background px-2 text-sm"
+                      defaultValue=""
+                      onChange={(e) => {
+                        const c = customers.find((x) => x.id === e.target.value);
+                        if (c?.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+                      }}
+                    >
+                      <option value="">— Pilih pelanggan tersimpan (opsional) —</option>
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name}{c.phone ? ` • ${c.phone}` : ""}
+                        </option>
+                      ))}
+                    </select>
+                  )}
                   <Input
                     inputMode="numeric"
                     placeholder="08xxxxxxxxxx"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ""))}
                   />
-                  <div className="mt-1 text-xs text-muted-foreground">
+                  <div className="text-xs text-muted-foreground">
                     Setelah selesai, WhatsApp akan terbuka dengan struk siap kirim.
                   </div>
                 </div>
@@ -629,7 +657,7 @@ function KasirPage() {
                       const r = lastReceipt;
                       const base64 = receiptImg.split(",")[1] || "";
                       const lines: string[] = [];
-                      lines.push(`*Dagang Pintar*`);
+                      lines.push(`*${storeName || "Toko"}*`);
                       lines.push(`Struk #${r.id.slice(0, 8)}`);
                       lines.push(new Date(r.at).toLocaleString("id-ID"));
                       lines.push(`--------------------------------`);
