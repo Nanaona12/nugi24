@@ -63,19 +63,13 @@ function KeuntunganPage() {
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [storeName, setStoreName] = useState<string>("");
+  const [storeName, setStoreName] = useState<string>("Toko");
   const chartsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     (async () => {
-      const { data: userData } = await supabase.auth.getUser();
-      const uid = userData.user?.id;
-      if (!uid) return;
-      const { data: prof } = await supabase.from("profiles").select("tenant_id").eq("id", uid).maybeSingle();
-      const tid = (prof as { tenant_id?: string } | null)?.tenant_id;
-      if (!tid) return;
-      const { data: tenant } = await supabase.from("tenants").select("name").eq("id", tid).maybeSingle();
-      if (tenant?.name) setStoreName(tenant.name);
+      const { data: t } = await supabase.from("tenants").select("name").limit(1).maybeSingle();
+      if (t?.name) setStoreName(t.name);
     })();
   }, []);
 
