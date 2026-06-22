@@ -55,15 +55,15 @@ function getUnits(p: Product, map: Record<string, ProductUnit[]>): ProductUnit[]
 
 /** Hitung subtotal & rincian untuk satu line. */
 function computeLine(l: CartLine): { total: number; packs: number; remainder: number; packPrice: number; ecerPrice: number } {
-  const ecerPrice = tierPriceFor(l.baseUnit, 1).price;
   if (l.mode === "eceran") {
+    const ecerPrice = tierPriceFor(l.baseUnit, l.qty).price;
     return { total: ecerPrice * l.qty, packs: 0, remainder: l.qty, packPrice: 0, ecerPrice };
   }
   const conv = Math.max(1, l.unit.conversion);
-  // pack price = harga 1 pak grosir (tier qty=1 di unit grosir)
-  const packPrice = tierPriceFor(l.unit, 1).price;
   const packs = Math.floor(l.qty / conv);
   const remainder = l.qty - packs * conv;
+  const packPrice = tierPriceFor(l.unit, Math.max(1, packs)).price;
+  const ecerPrice = tierPriceFor(l.baseUnit, Math.max(1, remainder)).price;
   return {
     total: packs * packPrice + remainder * ecerPrice,
     packs,
