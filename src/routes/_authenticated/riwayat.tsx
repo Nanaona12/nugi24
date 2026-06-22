@@ -43,6 +43,10 @@ function RiwayatPage() {
   const [selected, setSelected] = useState<Tx | null>(null);
   const [items, setItems] = useState<TxItem[]>([]);
 
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [clearPassword, setClearPassword] = useState("");
+  const [clearing, setClearing] = useState(false);
+
   const load = async () => {
     const { data, error } = await supabase
       .from("transactions")
