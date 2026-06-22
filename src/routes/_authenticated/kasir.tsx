@@ -580,39 +580,19 @@ function KasirPage() {
               </label>
               {sendWa && (
                 <div className="space-y-2">
-                  {customers.length > 0 && (
-                    <select
-                      className="h-10 w-full rounded-md border bg-background px-2 text-sm"
-                      defaultValue=""
-                      onChange={(e) => {
-                        const c = customers.find((x) => x.id === e.target.value);
-                        if (c) {
-                          setCustomerName(c.name);
-                          if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
-                        }
-                      }}
-                    >
-                      <option value="">— Pilih pelanggan tersimpan (opsional) —</option>
-                      {customers.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.name}{c.phone ? ` • ${c.phone}` : ""}
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                  <Input
-                    placeholder="Nama pelanggan (opsional)"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                  <Input
-                    inputMode="numeric"
-                    placeholder="08xxxxxxxxxx"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ""))}
+                  <CustomerPicker
+                    customers={customers}
+                    name={customerName}
+                    phone={customerPhone}
+                    onPick={(c) => {
+                      setCustomerName(c.name);
+                      if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+                    }}
+                    onChangeName={setCustomerName}
+                    onChangePhone={(v) => setCustomerPhone(v.replace(/[^\d+]/g, ""))}
                   />
                   <div className="text-xs text-muted-foreground">
-                    Nama pelanggan akan dicantumkan pada caption WhatsApp.
+                    Cari pelanggan tersimpan via nama atau no. HP. Data akan dicantumkan pada caption WhatsApp.
                   </div>
                 </div>
               )}
