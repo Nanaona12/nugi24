@@ -5,6 +5,11 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import { Receipt, Eye, Trash2 } from "lucide-react";
@@ -38,6 +43,10 @@ function RiwayatPage() {
   const [selected, setSelected] = useState<Tx | null>(null);
   const [items, setItems] = useState<TxItem[]>([]);
 
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [clearPassword, setClearPassword] = useState("");
+  const [clearing, setClearing] = useState(false);
+
   const load = async () => {
     const { data, error } = await supabase
       .from("transactions")
@@ -69,11 +78,20 @@ function RiwayatPage() {
   };
 
   const clearAll = async () => {
-    if (!confirm("Hapus SEMUA riwayat transaksi? Tindakan ini tidak bisa dibatalkan.")) return;
+    if (!clearPassword) { toast.error("Masukkan password untuk konfirmasi"); return; }
+    setClearing(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email;
+    if (!email) { setClearing(false); toast.error("Sesi tidak ditemukan"); return; }
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: clearPassword });
+    if (authErr) { setClearing(false); toast.error("Password salah"); return; }
     const { error: e1 } = await supabase.from("transaction_items").delete().not("id", "is", null);
-    if (e1) return toast.error(e1.message);
+    if (e1) { setClearing(false); return toast.error(e1.message); }
     const { error: e2 } = await supabase.from("transactions").delete().not("id", "is", null);
+    setClearing(false);
     if (e2) return toast.error(e2.message);
+    setConfirmClearOpen(false);
+    setClearPassword("");
     toast.success("Riwayat dibersihkan");
     setSelected(null);
     load();
@@ -93,7 +111,7 @@ function RiwayatPage() {
       </div>
       {txs.length > 0 && (
         <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={clearAll} className="text-destructive hover:text-destructive">
+          <Button variant="outline" size="sm" onClick={() => setConfirmClearOpen(true)} className="text-destructive hover:text-destructive">
             <Trash2 className="mr-2 h-4 w-4" /> Hapus Semua Riwayat
           </Button>
         </div>
@@ -182,6 +200,38 @@ function RiwayatPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AlertDialog open={confirmClearOpen} onOpenChange={(o) => { setConfirmClearOpen(o); if (!o) setClearPassword(""); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus SEMUA riwayat transaksi?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tindakan ini tidak bisa dibatalkan. Masukkan password akun Anda untuk konfirmasi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Password</label>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              value={clearPassword}
+              onChange={(e) => setClearPassword(e.target.value)}
+              placeholder="Password akun Anda"
+              disabled={clearing}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={clearing}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); clearAll(); }}
+              disabled={clearing || !clearPassword}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {clearing ? "Menghapus..." : "Ya, Hapus Semua"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
