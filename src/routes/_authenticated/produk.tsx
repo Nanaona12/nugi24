@@ -683,6 +683,48 @@ function normalizeRow(r: Record<string, any>) {
   const minRaw = get("min grosir", "minimum grosir", "min qty", "min", "wholesale min qty");
   const wholesale_min_qty = minRaw === "" || minRaw == null ? null : parseInt(String(minRaw), 10) || null;
   const stock = parseInt(String(get("stok", "stock", "qty") || "0"), 10) || 0;
-  return { code, name, category, price, cost_price, wholesale_price, wholesale_min_qty, stock };
+  const satuanStr = String(get("satuan", "satuan & harga", "units", "satuan harga") ?? "").trim();
+  const units = parseUnitsString(satuanStr);
+  return { code, name, category, price, cost_price, wholesale_price, wholesale_min_qty, stock, units, satuanStr };
 }
+
+/**
+ * Format kolom "Satuan":
+ *   pcs*1: 1=15000; 3=14700; 5=14500 | slove*10: 1=143000 | dus*60: 1=800000
+ * - Pisahkan tiap satuan dengan "|"
+ * - "nama*konversi" lalu ":" lalu daftar "minQty=harga" dipisahkan ";" atau ","
+ * - Satuan dengan konversi=1 dianggap satuan dasar (atau satuan pertama bila tak ada konversi=1)
+ */
+function parseUnitsString(s: string): ProductUnit[] {
+  if (!s || !s.trim()) return [];
+  const parts = s.split("|").map((x) => x.trim()).filter(Boolean);
+  const units: ProductUnit[] = [];
+  parts.forEach((part, i) => {
+    const colon = part.indexOf(":");
+    if (colon < 0) return;
+    const head = part.slice(0, colon).trim();
+    const body = part.slice(colon + 1).trim();
+    const m = head.match(/^(.+?)(?:\*\s*(\d+))?$/);
+    if (!m) return;
+    const name = m[1].trim();
+    const conversion = Math.max(1, parseInt(m[2] || "1", 10) || 1);
+    const tiers = body
+      .split(/[;,]/)
+      .map((t) => {
+        const [q, p] = t.split("=").map((x) => (x || "").trim());
+        const min_qty = parseInt(q, 10);
+        const price = parseNumber(p);
+        if (!min_qty || min_qty < 1) return null;
+        return { min_qty, price };
+      })
+      .filter(Boolean) as { min_qty: number; price: number }[];
+    if (!name || tiers.length === 0) return;
+    units.push({ name, conversion, sort_order: i, is_base: false, tiers });
+  });
+  if (units.length === 0) return [];
+  const baseIdx = units.findIndex((u) => u.conversion === 1);
+  units[baseIdx >= 0 ? baseIdx : 0].is_base = true;
+  return units;
+}
+
 
