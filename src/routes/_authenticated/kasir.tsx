@@ -90,6 +90,7 @@ function KasirPage() {
   const [modePicker, setModePicker] = useState<Product | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const sendWaImgFn = useServerFn(sendFonnteWaImage);
+  const sendWaUrlFn = useServerFn(sendFonnteWaUrl);
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
 
   const loadProducts = async () => {
