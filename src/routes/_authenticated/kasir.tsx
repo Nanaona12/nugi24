@@ -600,14 +600,39 @@ function KasirPage() {
                         `Terima kasih sudah berbelanja 🙏`;
                       setSendingWa(true);
                       try {
-                        const res = await sendWaImgFn({
-                          data: {
-                            target: r.customerPhone!,
-                            caption,
-                            filename: `struk-${r.id.slice(0, 8)}.png`,
-                            imageBase64: base64,
-                          },
-                        });
+                        // 1) Upload PNG ke Storage bucket 'receipts'
+                        const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+                        const blob = new Blob([bin], { type: "image/png" });
+                        const objectPath = `${r.id}.png`;
+                        const up = await supabase.storage
+                          .from("receipts")
+                          .upload(objectPath, blob, { upsert: true, contentType: "image/png" });
+                        let publicUrl: string | null = null;
+                        if (!up.error) {
+                          const signed = await supabase.storage
+                            .from("receipts")
+                            .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
+                          publicUrl = signed.data?.signedUrl ?? null;
+                        }
+
+                        // 2) Kirim via Fonnte (prefer URL, fallback ke file base64)
+                        const res = publicUrl
+                          ? await sendWaUrlFn({
+                              data: {
+                                target: r.customerPhone!,
+                                message: caption,
+                                url: publicUrl,
+                                filename: `struk-${r.id.slice(0, 8)}.png`,
+                              },
+                            })
+                          : await sendWaImgFn({
+                              data: {
+                                target: r.customerPhone!,
+                                caption,
+                                filename: `struk-${r.id.slice(0, 8)}.png`,
+                                imageBase64: base64,
+                              },
+                            });
                         if (res.ok) {
                           toast.success("E-struk (gambar) terkirim via WhatsApp");
                         } else {
