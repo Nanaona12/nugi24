@@ -460,6 +460,9 @@ function ProdukPage() {
         <Button variant="outline" onClick={downloadTemplate}>
           <Download className="mr-2 h-4 w-4" /> Template Excel
         </Button>
+        <Button variant="outline" onClick={exportExcel} disabled={products.length === 0}>
+          <FileSpreadsheet className="mr-2 h-4 w-4" /> Export Excel
+        </Button>
         <Button variant="outline" onClick={() => fileRef.current?.click()}>
           <Upload className="mr-2 h-4 w-4" /> Import Excel
         </Button>
