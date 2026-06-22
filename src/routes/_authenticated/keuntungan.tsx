@@ -62,6 +62,22 @@ function KeuntunganPage() {
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const [storeName, setStoreName] = useState<string>("");
+  const chartsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (!uid) return;
+      const { data: prof } = await supabase.from("profiles").select("tenant_id").eq("id", uid).maybeSingle();
+      const tid = (prof as { tenant_id?: string } | null)?.tenant_id;
+      if (!tid) return;
+      const { data: tenant } = await supabase.from("tenants").select("name").eq("id", tid).maybeSingle();
+      if (tenant?.name) setStoreName(tenant.name);
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
