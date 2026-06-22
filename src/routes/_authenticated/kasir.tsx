@@ -375,9 +375,11 @@ function KasirPage() {
           ) : (
             <ul className="space-y-2">
               {cart.map((l) => {
-                const c = computeLine(l);
                 const allUnits = getUnits(l.product, unitsByProduct);
+                const c = computeLine(l, allUnits);
                 const grosirUnits = allUnits.filter((u) => u.conversion > 1);
+                const packUnitName = l.mode === "grosiran" ? l.unit.name : (c.autoUnit?.name || "");
+                const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -388,15 +390,14 @@ function KasirPage() {
                           </Badge>
                           <span className="truncate text-sm font-medium">{l.product.name}</span>
                         </div>
-                        {l.mode === "eceran" ? (
+                        {showPack ? (
                           <div className="mt-0.5 text-xs text-muted-foreground">
-                            {formatRupiah(c.ecerPrice)} / {l.baseUnit.name}
+                            {c.packs} {packUnitName} × {formatRupiah(c.packPrice)}
+                            {c.remainder > 0 && <> + {c.remainder} {l.baseUnit.name} × {formatRupiah(c.ecerPrice)}</>}
                           </div>
                         ) : (
                           <div className="mt-0.5 text-xs text-muted-foreground">
-                            {c.packs > 0 && <>{c.packs} {l.unit.name} × {formatRupiah(c.packPrice)}</>}
-                            {c.packs > 0 && c.remainder > 0 && <span> + </span>}
-                            {c.remainder > 0 && <>{c.remainder} {l.baseUnit.name} × {formatRupiah(c.ecerPrice)}</>}
+                            {formatRupiah(c.ecerPrice)} / {l.baseUnit.name}
                           </div>
                         )}
                       </div>
