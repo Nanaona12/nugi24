@@ -594,6 +594,7 @@ function ProdukPage() {
                   <th className="p-2 text-right">Grosir</th>
                   <th className="p-2 text-right">Min</th>
                   <th className="p-2 text-right">Stok</th>
+                  <th className="p-2">Satuan</th>
                 </tr>
               </thead>
               <tbody>
@@ -607,8 +608,20 @@ function ProdukPage() {
                     <td className="p-2 text-right">{r.wholesale_price ?? ""}</td>
                     <td className="p-2 text-right">{r.wholesale_min_qty ?? ""}</td>
                     <td className="p-2 text-right">{r.stock}</td>
+                    <td className="p-2">
+                      {r.units && r.units.length > 0 ? (
+                        <span className="text-[11px]">
+                          {r.units.map((u: ProductUnit) => `${u.name}(${u.tiers.length})`).join(", ")}
+                        </span>
+                      ) : r.satuanStr ? (
+                        <span className="text-destructive text-[11px]" title="Format Satuan tidak terbaca">!format</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
                   </tr>
                 ))}
+
 
               </tbody>
             </table>
