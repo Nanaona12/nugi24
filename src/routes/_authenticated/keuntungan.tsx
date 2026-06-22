@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
+import html2canvas from "html2canvas";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +14,7 @@ import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import {
   TrendingUp, DollarSign, ShoppingBag, Calendar, PackageX,
-  ShoppingCart, Download, AlertTriangle, FileSpreadsheet,
+  ShoppingCart, Download, AlertTriangle, FileSpreadsheet, FileText,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
@@ -59,6 +62,16 @@ function KeuntunganPage() {
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
+  const [storeName, setStoreName] = useState<string>("Toko");
+  const [exportingPdf, setExportingPdf] = useState(false);
+  const chartsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data: t } = await supabase.from("tenants").select("name").limit(1).maybeSingle();
+      if (t?.name) setStoreName(t.name);
+    })();
+  }, []);
 
   useEffect(() => {
     (async () => {
@@ -243,6 +256,182 @@ function KeuntunganPage() {
     toast.success("CSV berhasil diunduh");
   }
 
+  async function exportPDF() {
+    setExportingPdf(true);
+    try {
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const margin = 12;
+      const now = new Date();
+      const rangeText = `${fromDate || "Awal"} s/d ${toDate || ymd(now)}`;
+
+      // ===== HEADER =====
+      doc.setFillColor(234, 88, 12); // primary orange
+      doc.rect(0, 0, pageW, 26, "F");
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(16);
+      doc.text(storeName, margin, 12);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(11);
+      doc.text("Laporan Keuntungan", margin, 19);
+      doc.setFontSize(8);
+      doc.text(`Diekspor: ${now.toLocaleString("id-ID")}`, pageW - margin, 12, { align: "right" });
+      doc.text(`Periode: ${rangeText}`, pageW - margin, 18, { align: "right" });
+
+      let y = 34;
+      doc.setTextColor(20, 20, 20);
+
+      // ===== KPI CARDS =====
+      const kpis = [
+        { label: "Total Omset", value: formatRupiah(stats.allRev), color: [59, 130, 246] as [number, number, number] },
+        { label: "Total Modal", value: formatRupiah(stats.allRev - stats.allProfit), color: [148, 163, 184] as [number, number, number] },
+        { label: "Total Keuntungan", value: formatRupiah(stats.allProfit), color: stats.allProfit >= 0 ? [16, 185, 129] as [number, number, number] : [220, 38, 38] as [number, number, number] },
+        { label: "Margin", value: `${stats.allRev > 0 ? ((stats.allProfit / stats.allRev) * 100).toFixed(1) : 0}%`, color: [234, 88, 12] as [number, number, number] },
+      ];
+      const cardW = (pageW - margin * 2 - 6) / 4;
+      kpis.forEach((k, i) => {
+        const x = margin + i * (cardW + 2);
+        doc.setFillColor(245, 245, 245);
+        doc.roundedRect(x, y, cardW, 22, 2, 2, "F");
+        doc.setFillColor(k.color[0], k.color[1], k.color[2]);
+        doc.rect(x, y, 2, 22, "F");
+        doc.setFontSize(7);
+        doc.setTextColor(100, 100, 100);
+        doc.text(k.label.toUpperCase(), x + 4, y + 6);
+        doc.setFontSize(11);
+        doc.setFont("helvetica", "bold");
+        doc.setTextColor(k.color[0], k.color[1], k.color[2]);
+        doc.text(k.value, x + 4, y + 15);
+        doc.setFont("helvetica", "normal");
+      });
+      y += 28;
+
+      doc.setFontSize(8);
+      doc.setTextColor(100, 100, 100);
+      doc.text(`Transaksi: ${stats.txCount}   •   Item terjual: ${stats.totalQty}   •   Hari ini: ${formatRupiah(stats.todayProfit)}   •   Bulan ini: ${formatRupiah(stats.monthProfit)}`, margin, y);
+      y += 6;
+
+      // ===== CHARTS (capture from DOM) =====
+      if (chartsRef.current) {
+        try {
+          const canvas = await html2canvas(chartsRef.current, { scale: 2, backgroundColor: "#ffffff", logging: false });
+          const imgData = canvas.toDataURL("image/png");
+          const imgW = pageW - margin * 2;
+          const imgH = (canvas.height * imgW) / canvas.width;
+          if (y + imgH > pageH - margin) { doc.addPage(); y = margin; }
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(11);
+          doc.setTextColor(20, 20, 20);
+          doc.text("Grafik Analitik", margin, y);
+          y += 4;
+          doc.addImage(imgData, "PNG", margin, y, imgW, Math.min(imgH, pageH - margin - y));
+          y += Math.min(imgH, pageH - margin - y) + 6;
+        } catch (e) {
+          console.warn("chart capture failed", e);
+        }
+      }
+
+      // ===== LOSS MAKERS (root cause) =====
+      if (stats.lossMakers.length > 0) {
+        if (y > pageH - 60) { doc.addPage(); y = margin; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(220, 38, 38);
+        doc.text("Produk Dijual di Bawah Modal (Penyebab Rugi)", margin, y);
+        y += 2;
+        autoTable(doc, {
+          startY: y + 2,
+          head: [["Produk", "Qty", "Omset", "Modal", "Kerugian", "Kejadian"]],
+          body: stats.lossMakers.slice(0, 15).map((l) => [
+            l.name, l.qty, formatRupiah(l.revenue), formatRupiah(l.cost), formatRupiah(l.loss), `${l.occurrences}x`,
+          ]),
+          theme: "striped",
+          headStyles: { fillColor: [220, 38, 38], textColor: 255, fontSize: 8 },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: margin, right: margin },
+          columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right", textColor: [220, 38, 38] }, 5: { halign: "right" } },
+        });
+        y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
+      }
+
+      // ===== TOP PRODUCTS =====
+      if (stats.topProducts.length > 0) {
+        if (y > pageH - 60) { doc.addPage(); y = margin; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(20, 20, 20);
+        doc.text("Produk Terlaris (Top 20)", margin, y);
+        autoTable(doc, {
+          startY: y + 2,
+          head: [["Produk", "Qty", "Omset", "Modal", "Untung", "Margin"]],
+          body: stats.topProducts.slice(0, 20).map((p) => [
+            p.name, p.qty, formatRupiah(p.revenue), formatRupiah(p.cost), formatRupiah(p.profit),
+            `${p.revenue > 0 ? ((p.profit / p.revenue) * 100).toFixed(1) : 0}%`,
+          ]),
+          theme: "striped",
+          headStyles: { fillColor: [234, 88, 12], textColor: 255, fontSize: 8 },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: margin, right: margin },
+          columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } },
+        });
+        y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
+      }
+
+      // ===== DAILY =====
+      if (stats.daily.length > 0) {
+        if (y > pageH - 60) { doc.addPage(); y = margin; }
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(11);
+        doc.setTextColor(20, 20, 20);
+        doc.text("Rincian Per Hari", margin, y);
+        const dailyRows = [...stats.daily].reverse().slice(0, 60);
+        autoTable(doc, {
+          startY: y + 2,
+          head: [["Tanggal", "Omset", "Modal", "Keuntungan", "Margin"]],
+          body: dailyRows.map((r) => [
+            formatDate(r.key), formatRupiah(r.revenue), formatRupiah(r.cost), formatRupiah(r.profit),
+            `${r.revenue > 0 ? ((r.profit / r.revenue) * 100).toFixed(1) : 0}%`,
+          ]),
+          foot: [[
+            "TOTAL",
+            formatRupiah(dailyRows.reduce((s, r) => s + r.revenue, 0)),
+            formatRupiah(dailyRows.reduce((s, r) => s + r.cost, 0)),
+            formatRupiah(dailyRows.reduce((s, r) => s + r.profit, 0)),
+            "",
+          ]],
+          theme: "striped",
+          headStyles: { fillColor: [234, 88, 12], textColor: 255, fontSize: 8 },
+          footStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: "bold", fontSize: 8 },
+          bodyStyles: { fontSize: 8 },
+          margin: { left: margin, right: margin },
+          columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
+        });
+      }
+
+      // ===== FOOTER on every page =====
+      const total = doc.getNumberOfPages();
+      for (let i = 1; i <= total; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`${storeName} • Laporan Keuntungan`, margin, pageH - 6);
+        doc.text(`Halaman ${i} dari ${total}`, pageW - margin, pageH - 6, { align: "right" });
+      }
+
+      const fname = `Laporan-Keuntungan-${storeName.replace(/\s+/g, "-")}-${ymd(now)}.pdf`;
+      doc.save(fname);
+      toast.success("Laporan PDF berhasil diunduh");
+    } catch (e) {
+      console.error(e);
+      toast.error("Gagal membuat PDF");
+    } finally {
+      setExportingPdf(false);
+    }
+  }
+
+
   if (loading) {
     return <div className="py-12 text-center text-sm text-muted-foreground">Memuat data keuntungan...</div>;
   }
@@ -263,6 +452,9 @@ function KeuntunganPage() {
         <div className="ml-auto flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={exportCSV}>
             <Download className="mr-1 h-4 w-4" /> CSV
+          </Button>
+          <Button size="sm" variant="secondary" onClick={exportPDF} disabled={exportingPdf}>
+            <FileText className="mr-1 h-4 w-4" /> {exportingPdf ? "Membuat PDF..." : "Export PDF"}
           </Button>
           <Button size="sm" onClick={exportExcel}>
             <FileSpreadsheet className="mr-1 h-4 w-4" /> Export Excel
@@ -325,7 +517,7 @@ function KeuntunganPage() {
 
       {/* Charts */}
       {stats.daily.length > 0 && (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div ref={chartsRef} className="grid gap-3 lg:grid-cols-2">
           <Card className="p-4">
             <div className="mb-3 text-sm font-semibold">Tren Omset & Keuntungan Harian</div>
             <ResponsiveContainer width="100%" height={260}>
