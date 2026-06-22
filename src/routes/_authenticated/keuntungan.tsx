@@ -863,6 +863,22 @@ function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; label
   );
 }
 
+function ExpiryStat({ label, count, tone }: { label: string; count: number; tone: "destructive" | "red" | "orange" | "amber" }) {
+  const cls: Record<string, string> = {
+    destructive: "border-destructive/50 bg-destructive/10 text-destructive",
+    red: "border-red-500/50 bg-red-500/10 text-red-600",
+    orange: "border-orange-500/50 bg-orange-500/10 text-orange-600",
+    amber: "border-amber-500/50 bg-amber-500/10 text-amber-700",
+  };
+  return (
+    <div className={`rounded-md border p-2 ${cls[tone]}`}>
+      <div className="text-[11px] font-medium">{label}</div>
+      <div className="mt-0.5 text-xl font-bold">{count}</div>
+      <div className="text-[10px] opacity-70">batch</div>
+    </div>
+  );
+}
+
 function SummaryItem({ label, value, accent, muted }: { label: string; value: string; accent?: boolean; muted?: boolean }) {
   return (
     <div>
