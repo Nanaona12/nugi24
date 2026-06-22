@@ -148,11 +148,11 @@ function KasirPage() {
     let total = 0;
     let items = 0;
     for (const l of cart) {
-      total += computeLine(l).total;
+      total += computeLine(l, getUnits(l.product, unitsByProduct)).total;
       items += l.qty;
     }
     return { total, items };
-  }, [cart]);
+  }, [cart, unitsByProduct]);
 
   const onPickProduct = (p: Product) => {
     setModePicker(p);
