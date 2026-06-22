@@ -223,7 +223,7 @@ function KasirPage() {
       .single();
     if (txErr || !tx) { toast.error(txErr?.message || "Gagal menyimpan"); setSubmitting(false); return; }
     const items = cart.map((l) => {
-      const c = computeLine(l);
+      const c = computeLine(l, getUnits(l.product, unitsByProduct));
       const avgUnitPrice = l.qty > 0 ? c.total / l.qty : 0;
       return {
         transaction_id: tx.id,
