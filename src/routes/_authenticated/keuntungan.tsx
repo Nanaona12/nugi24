@@ -517,7 +517,7 @@ function KeuntunganPage() {
 
       {/* Charts */}
       {stats.daily.length > 0 && (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div ref={chartsRef} className="grid gap-3 lg:grid-cols-2">
           <Card className="p-4">
             <div className="mb-3 text-sm font-semibold">Tren Omset & Keuntungan Harian</div>
             <ResponsiveContainer width="100%" height={260}>
