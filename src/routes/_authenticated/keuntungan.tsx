@@ -58,12 +58,15 @@ const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#10b981
 
 function KeuntunganPage() {
   const [items, setItems] = useState<Item[]>([]);
+  const [txs, setTxs] = useState<{ created_at: string; total: number; payment_method: string }[]>([]);
   const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
   const [storeName, setStoreName] = useState<string>("Toko");
   const [exportingPdf, setExportingPdf] = useState(false);
+  const [actualCash, setActualCash] = useState<string>("");
+  const [actualQris, setActualQris] = useState<string>("");
   const chartsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,7 +78,7 @@ function KeuntunganPage() {
 
   useEffect(() => {
     (async () => {
-      const [itemsRes, lowRes] = await Promise.all([
+      const [itemsRes, lowRes, txRes] = await Promise.all([
         supabase
           .from("transaction_items")
           .select("qty, unit_price, unit_cost, subtotal, product_name, transactions(created_at)")
@@ -87,14 +90,43 @@ function KeuntunganPage() {
           .lte("stock", LOW_STOCK_THRESHOLD)
           .order("stock", { ascending: true })
           .limit(100),
+        supabase
+          .from("transactions")
+          .select("created_at, total, payment_method")
+          .order("created_at", { ascending: false })
+          .limit(5000),
       ]);
       if (itemsRes.error) toast.error(itemsRes.error.message);
       else setItems((itemsRes.data || []) as unknown as Item[]);
       if (lowRes.error) toast.error(lowRes.error.message);
       else setLowStock((lowRes.data || []) as LowStockProduct[]);
+      if (!txRes.error) setTxs((txRes.data || []) as { created_at: string; total: number; payment_method: string }[]);
       setLoading(false);
     })();
   }, []);
+
+  const reconcile = useMemo(() => {
+    const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
+    const to = toDate ? new Date(toDate + "T23:59:59") : null;
+    let cash = 0, qris = 0, other = 0, cashCount = 0, qrisCount = 0;
+    for (const t of txs) {
+      const d = new Date(t.created_at);
+      if (from && d < from) continue;
+      if (to && d > to) continue;
+      const total = Number(t.total) || 0;
+      const m = (t.payment_method || "cash").toLowerCase();
+      if (m === "cash" || m === "tunai") { cash += total; cashCount++; }
+      else if (m === "qris" || m === "qr") { qris += total; qrisCount++; }
+      else other += total;
+    }
+    const aCash = Number(actualCash.replace(/[^\d-]/g, "")) || 0;
+    const aQris = Number(actualQris.replace(/[^\d-]/g, "")) || 0;
+    return {
+      cash, qris, other, cashCount, qrisCount,
+      actualCash: aCash, actualQris: aQris,
+      diffCash: aCash - cash, diffQris: aQris - qris,
+    };
+  }, [txs, fromDate, toDate, actualCash, actualQris]);
 
   const filteredItems = useMemo(() => {
     if (!fromDate && !toDate) return items;
