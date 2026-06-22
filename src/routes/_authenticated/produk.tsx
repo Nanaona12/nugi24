@@ -69,6 +69,7 @@ function ProdukPage() {
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
+  const [deleteAllPassword, setDeleteAllPassword] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
 
   const load = async () => {
