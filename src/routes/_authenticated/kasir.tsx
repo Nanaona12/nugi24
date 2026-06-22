@@ -53,9 +53,34 @@ function getUnits(p: Product, map: Record<string, ProductUnit[]>): ProductUnit[]
   return [fallbackUnitFromProduct(p)];
 }
 
-/** Hitung subtotal & rincian untuk satu line. */
-function computeLine(l: CartLine): { total: number; packs: number; remainder: number; packPrice: number; ecerPrice: number } {
+/** Hitung subtotal & rincian untuk satu line.
+ *  Untuk mode eceran, jika `allUnits` diberikan, sistem otomatis memakai
+ *  unit grosir terbesar yang muat (greedy) — mis. 13 pcs -> 1 slove + 3 pcs.
+ */
+function computeLine(
+  l: CartLine,
+  allUnits?: ProductUnit[],
+): { total: number; packs: number; remainder: number; packPrice: number; ecerPrice: number; autoUnit?: ProductUnit } {
   if (l.mode === "eceran") {
+    // cari unit grosir terbesar yang muat
+    const grosir = (allUnits || []).filter((u) => u.conversion > 1).sort((a, b) => b.conversion - a.conversion);
+    for (const g of grosir) {
+      if (l.qty >= g.conversion) {
+        const conv = g.conversion;
+        const packs = Math.floor(l.qty / conv);
+        const remainder = l.qty - packs * conv;
+        const packPrice = tierPriceFor(g, Math.max(1, packs)).price;
+        const ecerPrice = tierPriceFor(l.baseUnit, Math.max(1, remainder)).price;
+        return {
+          total: packs * packPrice + remainder * ecerPrice,
+          packs,
+          remainder,
+          packPrice,
+          ecerPrice,
+          autoUnit: g,
+        };
+      }
+    }
     const ecerPrice = tierPriceFor(l.baseUnit, l.qty).price;
     return { total: ecerPrice * l.qty, packs: 0, remainder: l.qty, packPrice: 0, ecerPrice };
   }
@@ -123,11 +148,11 @@ function KasirPage() {
     let total = 0;
     let items = 0;
     for (const l of cart) {
-      total += computeLine(l).total;
+      total += computeLine(l, getUnits(l.product, unitsByProduct)).total;
       items += l.qty;
     }
     return { total, items };
-  }, [cart]);
+  }, [cart, unitsByProduct]);
 
   const onPickProduct = (p: Product) => {
     setModePicker(p);
@@ -198,7 +223,7 @@ function KasirPage() {
       .single();
     if (txErr || !tx) { toast.error(txErr?.message || "Gagal menyimpan"); setSubmitting(false); return; }
     const items = cart.map((l) => {
-      const c = computeLine(l);
+      const c = computeLine(l, getUnits(l.product, unitsByProduct));
       const avgUnitPrice = l.qty > 0 ? c.total / l.qty : 0;
       return {
         transaction_id: tx.id,
@@ -241,11 +266,13 @@ function KasirPage() {
     // generate struk gambar
     try {
       const imgItems: ReceiptItem[] = cart.map((l) => {
-        const c = computeLine(l);
+        const c = computeLine(l, getUnits(l.product, unitsByProduct));
         let detail = "";
-        if (l.mode === "grosiran") {
+        const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
+        const packUnitName = l.mode === "grosiran" ? l.unit.name : (c.autoUnit?.name || "");
+        if (showPack) {
           const parts: string[] = [];
-          if (c.packs > 0) parts.push(`${c.packs} ${l.unit.name} × ${formatRupiah(c.packPrice)}`);
+          parts.push(`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`);
           if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
           detail = parts.join(" + ");
         } else {
@@ -348,9 +375,11 @@ function KasirPage() {
           ) : (
             <ul className="space-y-2">
               {cart.map((l) => {
-                const c = computeLine(l);
                 const allUnits = getUnits(l.product, unitsByProduct);
+                const c = computeLine(l, allUnits);
                 const grosirUnits = allUnits.filter((u) => u.conversion > 1);
+                const packUnitName = l.mode === "grosiran" ? l.unit.name : (c.autoUnit?.name || "");
+                const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
                 return (
                   <li key={l.key} className="rounded-lg border p-3">
                     <div className="flex items-start justify-between gap-2">
@@ -361,15 +390,14 @@ function KasirPage() {
                           </Badge>
                           <span className="truncate text-sm font-medium">{l.product.name}</span>
                         </div>
-                        {l.mode === "eceran" ? (
+                        {showPack ? (
                           <div className="mt-0.5 text-xs text-muted-foreground">
-                            {formatRupiah(c.ecerPrice)} / {l.baseUnit.name}
+                            {c.packs} {packUnitName} × {formatRupiah(c.packPrice)}
+                            {c.remainder > 0 && <> + {c.remainder} {l.baseUnit.name} × {formatRupiah(c.ecerPrice)}</>}
                           </div>
                         ) : (
                           <div className="mt-0.5 text-xs text-muted-foreground">
-                            {c.packs > 0 && <>{c.packs} {l.unit.name} × {formatRupiah(c.packPrice)}</>}
-                            {c.packs > 0 && c.remainder > 0 && <span> + </span>}
-                            {c.remainder > 0 && <>{c.remainder} {l.baseUnit.name} × {formatRupiah(c.ecerPrice)}</>}
+                            {formatRupiah(c.ecerPrice)} / {l.baseUnit.name}
                           </div>
                         )}
                       </div>
@@ -599,10 +627,12 @@ function KasirPage() {
                       lines.push(new Date(r.at).toLocaleString("id-ID"));
                       lines.push(`--------------------------------`);
                       for (const it of r.items) {
-                        const c = computeLine(it);
+                        const c = computeLine(it, getUnits(it.product, unitsByProduct));
+                        const showPack = c.packs > 0 && (it.mode === "grosiran" || c.autoUnit);
+                        const packName = it.mode === "grosiran" ? it.unit.name : (c.autoUnit?.name || "");
                         lines.push(`${it.product.name}`);
-                        if (it.mode === "grosiran" && c.packs > 0) {
-                          lines.push(`  ${c.packs} ${it.unit.name} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
+                        if (showPack) {
+                          lines.push(`  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
                           if (c.remainder > 0) {
                             lines.push(`  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.remainder * c.ecerPrice)}`);
                           }
