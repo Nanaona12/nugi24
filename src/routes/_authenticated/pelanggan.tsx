@@ -98,13 +98,38 @@ function PelangganPage() {
     load();
   };
 
+  const exportExcel = () => {
+    if (filtered.length === 0) { toast.error("Tidak ada data untuk diekspor"); return; }
+    const wb = XLSX.utils.book_new();
+    const header = ["Nama", "No. HP", "Alamat", "Catatan", "Tanggal Daftar"];
+    const data = filtered.map((c) => [
+      c.name,
+      c.phone || "",
+      c.address || "",
+      c.note || "",
+      new Date(c.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
+    ]);
+    const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
+    ws["!cols"] = [{ wch: 24 }, { wch: 16 }, { wch: 32 }, { wch: 24 }, { wch: 14 }];
+    XLSX.utils.book_append_sheet(wb, ws, "Pelanggan");
+    const ts = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `Data-Pelanggan-${ts}.xlsx`);
+    toast.success(`${filtered.length} pelanggan diekspor`);
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="flex items-center gap-2 text-2xl font-bold">
           <Users className="h-6 w-6 text-primary" /> Pelanggan
+          <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground">{rows.length}</span>
         </h1>
-        <Button onClick={openAdd}><Plus className="mr-1 h-4 w-4" />Tambah</Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={exportExcel} disabled={filtered.length === 0}>
+            <FileSpreadsheet className="mr-1 h-4 w-4" />Export Excel
+          </Button>
+          <Button onClick={openAdd}><Plus className="mr-1 h-4 w-4" />Tambah</Button>
+        </div>
       </div>
 
       <div className="relative">
