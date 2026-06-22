@@ -117,6 +117,8 @@ function KasirPage() {
   const sendWaImgFn = useServerFn(sendFonnteWaImage);
   const sendWaUrlFn = useServerFn(sendFonnteWaUrl);
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
+  const [storeName, setStoreName] = useState<string>("Toko");
+  const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null }[]>([]);
 
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
