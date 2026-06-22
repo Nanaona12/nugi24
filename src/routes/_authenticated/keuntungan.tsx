@@ -501,6 +501,51 @@ function KeuntunganPage() {
         <StatCard icon={<ShoppingBag className="h-5 w-5" />} label="Total Keuntungan" value={formatRupiah(stats.allProfit)} sub={`${stats.txCount} transaksi • ${stats.totalQty} item`} />
       </div>
 
+      {/* Rekonsiliasi Kas */}
+      <Card className="p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <DollarSign className="h-4 w-4 text-primary" />
+          Rekonsiliasi Kas — Cocokkan uang fisik dengan data
+        </div>
+        <p className="mb-4 text-xs text-muted-foreground">
+          Masukkan jumlah uang fisik (cash di laci) dan saldo masuk QRIS pada rentang tanggal di atas. Sistem akan menghitung selisihnya dengan data transaksi.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <ReconRow
+            label="CASH / Tunai"
+            count={reconcile.cashCount}
+            system={reconcile.cash}
+            actual={actualCash}
+            onChange={setActualCash}
+            diff={reconcile.diffCash}
+            tone="primary"
+          />
+          <ReconRow
+            label="QRIS"
+            count={reconcile.qrisCount}
+            system={reconcile.qris}
+            actual={actualQris}
+            onChange={setActualQris}
+            diff={reconcile.diffQris}
+            tone="success"
+          />
+        </div>
+        {reconcile.other > 0 && (
+          <div className="mt-3 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
+            Metode lain (transfer/dll): <span className="font-semibold text-foreground">{formatRupiah(reconcile.other)}</span>
+          </div>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => { setActualCash(""); setActualQris(""); }}>
+            Reset Input
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => { setActualCash(String(reconcile.cash)); setActualQris(String(reconcile.qris)); }}>
+            Isi dari Data
+          </Button>
+        </div>
+      </Card>
+
+
       {stats.lossMakers.length > 0 && (
         <Card className="border-destructive/40 bg-destructive/5 p-4">
           <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-destructive">
