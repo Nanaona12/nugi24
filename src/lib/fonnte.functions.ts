@@ -105,9 +105,12 @@ export const sendFonnteWaUrl = createServerFn({ method: "POST" })
         headers: { Authorization: token, "Content-Type": "application/x-www-form-urlencoded" },
         body: form.toString(),
       });
-      const json = await res.json().catch(() => ({}));
+      const text = await res.text();
+      let json: any = {};
+      try { json = JSON.parse(text); } catch {}
+      console.log("[fonnte.url] status=", res.status, "url=", data.url, "resp=", text.slice(0, 500));
       if (!res.ok || json?.status === false) {
-        return { ok: false as const, error: json?.reason || `HTTP ${res.status}` };
+        return { ok: false as const, error: json?.reason || `HTTP ${res.status}: ${text.slice(0, 200)}` };
       }
       return { ok: true as const, detail: json };
     } catch (e: any) {
