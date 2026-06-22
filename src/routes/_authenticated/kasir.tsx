@@ -670,6 +670,7 @@ function KasirPage() {
                       lines.push(`*${storeName || "Toko"}*`);
                       lines.push(`Struk #${r.id.slice(0, 8)}`);
                       lines.push(new Date(r.at).toLocaleString("id-ID"));
+                      if (r.customerName) lines.push(`Pelanggan: ${r.customerName}`);
                       lines.push(`--------------------------------`);
                       for (const it of r.items) {
                         const c = computeLine(it, getUnits(it.product, unitsByProduct));
