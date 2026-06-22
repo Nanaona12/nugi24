@@ -78,11 +78,20 @@ function RiwayatPage() {
   };
 
   const clearAll = async () => {
-    if (!confirm("Hapus SEMUA riwayat transaksi? Tindakan ini tidak bisa dibatalkan.")) return;
+    if (!clearPassword) { toast.error("Masukkan password untuk konfirmasi"); return; }
+    setClearing(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email;
+    if (!email) { setClearing(false); toast.error("Sesi tidak ditemukan"); return; }
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: clearPassword });
+    if (authErr) { setClearing(false); toast.error("Password salah"); return; }
     const { error: e1 } = await supabase.from("transaction_items").delete().not("id", "is", null);
-    if (e1) return toast.error(e1.message);
+    if (e1) { setClearing(false); return toast.error(e1.message); }
     const { error: e2 } = await supabase.from("transactions").delete().not("id", "is", null);
+    setClearing(false);
     if (e2) return toast.error(e2.message);
+    setConfirmClearOpen(false);
+    setClearPassword("");
     toast.success("Riwayat dibersihkan");
     setSelected(null);
     load();
