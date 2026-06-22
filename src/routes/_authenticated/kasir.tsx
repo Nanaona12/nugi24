@@ -109,7 +109,8 @@ function KasirPage() {
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris">("cash");
   const [sendWa, setSendWa] = useState(false);
   const [customerPhone, setCustomerPhone] = useState("");
-  const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date; paymentMethod: "cash" | "qris"; customerPhone: string | null }>(null);
+  const [customerName, setCustomerName] = useState("");
+  const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date; paymentMethod: "cash" | "qris"; customerPhone: string | null; customerName: string | null }>(null);
   const [copied, setCopied] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
   const [modePicker, setModePicker] = useState<Product | null>(null);
@@ -277,6 +278,7 @@ function KasirPage() {
       at: new Date(),
       paymentMethod,
       customerPhone: sendWa && phoneClean ? phoneClean : null,
+      customerName: sendWa && customerName.trim() ? customerName.trim() : null,
     };
     setLastReceipt(receipt);
     // generate struk gambar
@@ -319,7 +321,7 @@ function KasirPage() {
       setReceiptImg(null);
     }
     setCart([]); setPaid(""); setPayOpen(false); setSubmitting(false);
-    setSendWa(false); setCustomerPhone(""); setPaymentMethod("cash");
+    setSendWa(false); setCustomerPhone(""); setCustomerName(""); setPaymentMethod("cash");
     loadProducts();
   };
 
@@ -584,7 +586,10 @@ function KasirPage() {
                       defaultValue=""
                       onChange={(e) => {
                         const c = customers.find((x) => x.id === e.target.value);
-                        if (c?.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+                        if (c) {
+                          setCustomerName(c.name);
+                          if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+                        }
                       }}
                     >
                       <option value="">— Pilih pelanggan tersimpan (opsional) —</option>
@@ -596,13 +601,18 @@ function KasirPage() {
                     </select>
                   )}
                   <Input
+                    placeholder="Nama pelanggan (opsional)"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                  />
+                  <Input
                     inputMode="numeric"
                     placeholder="08xxxxxxxxxx"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value.replace(/[^\d+]/g, ""))}
                   />
                   <div className="text-xs text-muted-foreground">
-                    Setelah selesai, WhatsApp akan terbuka dengan struk siap kirim.
+                    Nama pelanggan akan dicantumkan pada caption WhatsApp.
                   </div>
                 </div>
               )}
@@ -660,6 +670,7 @@ function KasirPage() {
                       lines.push(`*${storeName || "Toko"}*`);
                       lines.push(`Struk #${r.id.slice(0, 8)}`);
                       lines.push(new Date(r.at).toLocaleString("id-ID"));
+                      if (r.customerName) lines.push(`Pelanggan: ${r.customerName}`);
                       lines.push(`--------------------------------`);
                       for (const it of r.items) {
                         const c = computeLine(it, getUnits(it.product, unitsByProduct));
