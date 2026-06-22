@@ -593,11 +593,30 @@ function KasirPage() {
                     onClick={async () => {
                       const r = lastReceipt;
                       const base64 = receiptImg.split(",")[1] || "";
-                      const caption =
-                        `*Dagang Pintar*\n` +
-                        `Struk #${r.id.slice(0, 8)}\n` +
-                        `Total: ${formatRupiah(r.total)} (${r.paymentMethod.toUpperCase()})\n` +
-                        `Terima kasih sudah berbelanja 🙏`;
+                      const lines: string[] = [];
+                      lines.push(`*Dagang Pintar*`);
+                      lines.push(`Struk #${r.id.slice(0, 8)}`);
+                      lines.push(new Date(r.at).toLocaleString("id-ID"));
+                      lines.push(`--------------------------------`);
+                      for (const it of r.items) {
+                        const c = computeLine(it);
+                        lines.push(`${it.product.name}`);
+                        if (it.mode === "grosiran" && c.packs > 0) {
+                          lines.push(`  ${c.packs} ${it.unit.name} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
+                          if (c.remainder > 0) {
+                            lines.push(`  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.remainder * c.ecerPrice)}`);
+                          }
+                        } else {
+                          lines.push(`  ${it.qty} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.total)}`);
+                        }
+                      }
+                      lines.push(`--------------------------------`);
+                      lines.push(`Total   : ${formatRupiah(r.total)}`);
+                      lines.push(`Bayar   : ${formatRupiah(r.paid)} (${r.paymentMethod.toUpperCase()})`);
+                      lines.push(`Kembali : ${formatRupiah(r.change)}`);
+                      lines.push(``);
+                      lines.push(`Terima kasih sudah berbelanja 🙏`);
+                      const caption = lines.join("\n");
                       setSendingWa(true);
                       try {
                         // 1) Upload PNG ke Storage bucket 'receipts'
