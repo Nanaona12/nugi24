@@ -136,6 +136,15 @@ function KasirPage() {
   useEffect(() => {
     loadProducts();
     searchRef.current?.focus();
+    (async () => {
+      const { data: t } = await supabase.from("tenants").select("name").limit(1).maybeSingle();
+      if (t?.name) setStoreName(t.name);
+      const { data: cs } = await supabase
+        .from("customers")
+        .select("id, name, phone")
+        .order("name", { ascending: true });
+      setCustomers((cs || []) as any);
+    })();
   }, []);
 
   const filtered = useMemo(() => {
