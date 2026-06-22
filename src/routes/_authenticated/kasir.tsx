@@ -622,7 +622,19 @@ function KasirPage() {
                         // 1) Upload PNG ke Storage bucket 'receipts'
                         const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
                         const blob = new Blob([bin], { type: "image/png" });
-                        const objectPath = `${r.id}.png`;
+                        // resolve tenant id (so storage path is scoped per tenant)
+                        const { data: tenantRow } = await supabase
+                          .from("tenants")
+                          .select("id")
+                          .limit(1)
+                          .maybeSingle();
+                        const tenantId = tenantRow?.id;
+                        if (!tenantId) {
+                          toast.error("Akun ini tidak terhubung ke toko");
+                          setSendingWa(false);
+                          return;
+                        }
+                        const objectPath = `${tenantId}/${r.id}.png`;
                         const up = await supabase.storage
                           .from("receipts")
                           .upload(objectPath, blob, { upsert: true, contentType: "image/png" });
