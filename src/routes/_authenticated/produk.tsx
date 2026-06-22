@@ -58,6 +58,7 @@ const emptyForm: ProductForm = {
 function ProdukPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
+  const [expiryByProduct, setExpiryByProduct] = useState<Record<string, { minDays: number; totalQty: number; batches: number }>>({});
   const [query, setQuery] = useState("");
   const [editOpen, setEditOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -83,9 +84,27 @@ function ProdukPage() {
     } catch (e: any) {
       toast.error("Gagal memuat satuan: " + e.message);
     }
+    // Load expiry batches summary per product
+    const { data: bs } = await (supabase as any)
+      .from("product_batches")
+      .select("product_id, qty, expiry_date");
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const exp: Record<string, { minDays: number; totalQty: number; batches: number }> = {};
+    for (const b of (bs || []) as { product_id: string; qty: number; expiry_date: string }[]) {
+      const d = Math.ceil((new Date(b.expiry_date + "T00:00:00").getTime() - today.getTime()) / 86400000);
+      const cur = exp[b.product_id];
+      if (!cur) exp[b.product_id] = { minDays: d, totalQty: b.qty, batches: 1 };
+      else {
+        cur.totalQty += b.qty;
+        cur.batches += 1;
+        if (d < cur.minDays) cur.minDays = d;
+      }
+    }
+    setExpiryByProduct(exp);
   };
 
   useEffect(() => { load(); }, []);
+
 
   const filtered = products.filter((p) => {
     const q = query.trim().toLowerCase();
@@ -570,7 +589,28 @@ function ProdukPage() {
                 filtered.map((p) => (
                   <tr key={p.id} className="border-t hover:bg-muted/40">
                     <td className="p-3 font-mono text-xs">{p.code}</td>
-                    <td className="p-3 font-medium">{p.name}</td>
+                    <td className="p-3 font-medium">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span>{p.name}</span>
+                        {(() => {
+                          const ex = expiryByProduct[p.id];
+                          if (!ex) return null;
+                          const tone = ex.minDays < 0
+                            ? "bg-destructive text-destructive-foreground"
+                            : ex.minDays <= 30
+                              ? "bg-red-500 text-white"
+                              : ex.minDays <= 60
+                                ? "bg-orange-500 text-white"
+                                : ex.minDays <= 90
+                                  ? "bg-amber-500 text-white"
+                                  : "bg-muted text-foreground";
+                          const txt = ex.minDays < 0
+                            ? `Expired ${Math.abs(ex.minDays)}h`
+                            : `Exp ${ex.minDays}h • ${ex.batches} batch`;
+                          return <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${tone}`} title={`${ex.totalQty} unit dalam ${ex.batches} batch`}>{txt}</span>;
+                        })()}
+                      </div>
+                    </td>
                     <td className="p-3">{p.category && <Badge variant="secondary">{p.category}</Badge>}</td>
                     <td className="p-3 text-right">{formatRupiah(p.price)}</td>
                     <td className="p-3 text-right text-xs">

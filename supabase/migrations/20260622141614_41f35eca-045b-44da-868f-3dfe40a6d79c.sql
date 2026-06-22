@@ -1,0 +1,1 @@
+REVOKE ALL ON FUNCTION public.fefo_deduct_batches() FROM PUBLIC, anon, authenticated;

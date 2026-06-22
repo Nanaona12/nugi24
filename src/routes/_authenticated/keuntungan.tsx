@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import {
   TrendingUp, DollarSign, ShoppingBag, Calendar, PackageX,
-  ShoppingCart, Download, AlertTriangle, FileSpreadsheet, FileText,
+  ShoppingCart, Download, AlertTriangle, FileSpreadsheet, FileText, AlarmClock,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
@@ -67,6 +67,7 @@ function KeuntunganPage() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [actualCash, setActualCash] = useState<string>("");
   const [actualQris, setActualQris] = useState<string>("");
+  const [expirySummary, setExpirySummary] = useState<{ expired: number; le30: number; le60: number; le90: number }>({ expired: 0, le30: 0, le60: 0, le90: 0 });
   const chartsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,6 +102,21 @@ function KeuntunganPage() {
       if (lowRes.error) toast.error(lowRes.error.message);
       else setLowStock((lowRes.data || []) as LowStockProduct[]);
       if (!txRes.error) setTxs((txRes.data || []) as { created_at: string; total: number; payment_method: string }[]);
+
+      const { data: batches } = await (supabase as any)
+        .from("product_batches")
+        .select("expiry_date");
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const sum = { expired: 0, le30: 0, le60: 0, le90: 0 };
+      for (const b of (batches || []) as { expiry_date: string }[]) {
+        const d = Math.ceil((new Date(b.expiry_date + "T00:00:00").getTime() - today.getTime()) / 86400000);
+        if (d < 0) sum.expired++;
+        else if (d <= 30) sum.le30++;
+        else if (d <= 60) sum.le60++;
+        else if (d <= 90) sum.le90++;
+      }
+      setExpirySummary(sum);
+
       setLoading(false);
     })();
   }, []);
@@ -501,6 +517,25 @@ function KeuntunganPage() {
         <StatCard icon={<ShoppingBag className="h-5 w-5" />} label="Total Keuntungan" value={formatRupiah(stats.allProfit)} sub={`${stats.txCount} transaksi • ${stats.totalQty} item`} />
       </div>
 
+      {/* Ringkasan Kadaluarsa */}
+      {(expirySummary.expired + expirySummary.le30 + expirySummary.le60 + expirySummary.le90) > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <AlarmClock className="h-4 w-4 text-amber-500" />
+              Barang Mendekati Kadaluarsa
+            </div>
+            <Link to="/kadaluarsa" className="text-xs font-medium text-primary hover:underline">Kelola batch →</Link>
+          </div>
+          <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
+            <ExpiryStat label="Expired" count={expirySummary.expired} tone="destructive" />
+            <ExpiryStat label="≤ 30 hari" count={expirySummary.le30} tone="red" />
+            <ExpiryStat label="31 – 60 hari" count={expirySummary.le60} tone="orange" />
+            <ExpiryStat label="61 – 90 hari" count={expirySummary.le90} tone="amber" />
+          </div>
+        </Card>
+      )}
+
       {/* Rekonsiliasi Kas */}
       <Card className="p-4">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
@@ -825,6 +860,22 @@ function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; label
         </table>
       </div>
     </Card>
+  );
+}
+
+function ExpiryStat({ label, count, tone }: { label: string; count: number; tone: "destructive" | "red" | "orange" | "amber" }) {
+  const cls: Record<string, string> = {
+    destructive: "border-destructive/50 bg-destructive/10 text-destructive",
+    red: "border-red-500/50 bg-red-500/10 text-red-600",
+    orange: "border-orange-500/50 bg-orange-500/10 text-orange-600",
+    amber: "border-amber-500/50 bg-amber-500/10 text-amber-700",
+  };
+  return (
+    <div className={`rounded-md border p-2 ${cls[tone]}`}>
+      <div className="text-[11px] font-medium">{label}</div>
+      <div className="mt-0.5 text-xl font-bold">{count}</div>
+      <div className="text-[10px] opacity-70">batch</div>
+    </div>
   );
 }
 
