@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, Search, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Search, Users, FileSpreadsheet } from "lucide-react";
+import * as XLSX from "xlsx";
 
 export const Route = createFileRoute("/_authenticated/pelanggan")({
   component: PelangganPage,
