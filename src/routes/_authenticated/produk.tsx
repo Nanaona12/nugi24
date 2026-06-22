@@ -267,6 +267,7 @@ function ProdukPage() {
         }
         let updated = 0;
         let skipped = 0;
+        let unitsApplied = 0;
         for (const r of withCode) {
           // Only send fields that have a value, so kolom kosong di Excel tidak menimpa data lama.
           const patch: Record<string, any> = {};
@@ -277,16 +278,31 @@ function ProdukPage() {
           if (r.wholesale_price != null) patch.wholesale_price = r.wholesale_price;
           if (r.wholesale_min_qty != null) patch.wholesale_min_qty = r.wholesale_min_qty;
           if (r.stock || r.stock === 0) patch.stock = r.stock;
-          if (Object.keys(patch).length === 0) { skipped++; continue; }
-          const { error, count } = await supabase
-            .from("products")
-            .update(patch as any, { count: "exact" })
-            .eq("code", r.code);
-          if (error) { toast.error(`${r.code}: ${error.message}`); skipped++; }
-          else if ((count ?? 0) === 0) skipped++;
-          else updated++;
+          const hasUnits = r.units && r.units.length > 0;
+          if (Object.keys(patch).length === 0 && !hasUnits) { skipped++; continue; }
+          let prodId: string | null = null;
+          if (Object.keys(patch).length > 0) {
+            const { data, error } = await supabase
+              .from("products")
+              .update(patch as any)
+              .eq("code", r.code)
+              .select("id")
+              .maybeSingle();
+            if (error) { toast.error(`${r.code}: ${error.message}`); skipped++; continue; }
+            if (!data) { skipped++; continue; }
+            prodId = data.id;
+            updated++;
+          } else {
+            const { data } = await supabase.from("products").select("id").eq("code", r.code).maybeSingle();
+            if (!data) { skipped++; continue; }
+            prodId = data.id;
+          }
+          if (hasUnits && prodId) {
+            try { await replaceProductUnits(prodId, r.units); unitsApplied++; }
+            catch (e: any) { toast.error(`${r.code} satuan: ${e.message}`); }
+          }
         }
-        toast.success(`${updated} produk diupdate${skipped ? `, ${skipped} dilewati` : ""}`);
+        toast.success(`${updated} produk diupdate${unitsApplied ? `, ${unitsApplied} dgn satuan` : ""}${skipped ? `, ${skipped} dilewati` : ""}`);
       } else {
         // Upsert: auto-generate code for rows missing one
         const rows = await Promise.all(
@@ -297,9 +313,23 @@ function ProdukPage() {
           }),
         );
         const final = rows.filter((r) => r.code);
-        const { error } = await supabase.from("products").upsert(final, { onConflict: "code" });
+        // Strip non-DB fields before upsert
+        const dbRows = final.map(({ units, satuanStr, ...rest }) => rest);
+        const { data: upserted, error } = await supabase
+          .from("products")
+          .upsert(dbRows, { onConflict: "code" })
+          .select("id, code");
         if (error) { toast.error(error.message); setImporting(false); return; }
-        toast.success(`${final.length} produk diimport`);
+        const idByCode = new Map((upserted || []).map((p: any) => [p.code, p.id]));
+        let unitsApplied = 0;
+        for (const r of final) {
+          if (!r.units || r.units.length === 0) continue;
+          const pid = idByCode.get(r.code);
+          if (!pid) continue;
+          try { await replaceProductUnits(pid, r.units); unitsApplied++; }
+          catch (e: any) { toast.error(`${r.code} satuan: ${e.message}`); }
+        }
+        toast.success(`${final.length} produk diimport${unitsApplied ? `, ${unitsApplied} dgn satuan` : ""}`);
       }
       setImportOpen(false);
       setImportPreview([]);
@@ -312,13 +342,69 @@ function ProdukPage() {
 
   const downloadTemplate = () => {
     const ws = XLSX.utils.json_to_sheet([
-      { Kode: "", Nama: "Beras 5kg", Kategori: "Sembako", "Harga Modal": 58000, Harga: 65000, "Harga Grosir": 62000, "Min Grosir": 5, Stok: 50 },
-      { Kode: "", Nama: "Minyak Goreng 1L", Kategori: "Sembako", "Harga Modal": 15000, Harga: 18000, "Harga Grosir": 17000, "Min Grosir": 12, Stok: 30 },
+      {
+        Kode: "",
+        Nama: "Beras 5kg",
+        Kategori: "Sembako",
+        "Harga Modal": 58000,
+        Harga: 65000,
+        "Harga Grosir": 62000,
+        "Min Grosir": 5,
+        Stok: 50,
+        Satuan: "",
+      },
+      {
+        Kode: "",
+        Nama: "Rokok Contoh",
+        Kategori: "Rokok",
+        "Harga Modal": 14000,
+        Harga: 15000,
+        "Harga Grosir": "",
+        "Min Grosir": "",
+        Stok: 100,
+        Satuan: "pcs*1: 1=15000; 3=14700; 5=14500 | slove*10: 1=143000",
+      },
+      {
+        Kode: "",
+        Nama: "Minyak Goreng 1L",
+        Kategori: "Sembako",
+        "Harga Modal": 15000,
+        Harga: 18000,
+        "Harga Grosir": 17000,
+        "Min Grosir": 12,
+        Stok: 30,
+        Satuan: "pcs*1: 1=18000; 12=17000 | dus*24: 1=400000",
+      },
     ]);
+    // Lebar kolom biar enak dibaca
+    (ws as any)["!cols"] = [
+      { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 10 },
+      { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 60 },
+    ];
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Produk");
+    // Sheet petunjuk format Satuan
+    const help = XLSX.utils.aoa_to_sheet([
+      ["Format kolom Satuan (opsional)"],
+      ["Pisahkan tiap satuan dengan tanda |"],
+      ["Tulis: nama*konversi : minQty=harga ; minQty=harga ; ..."],
+      ["Konversi = berapa unit dasar per 1 satuan. Satuan dgn konversi 1 jadi satuan DASAR."],
+      [""],
+      ["Contoh:"],
+      ["pcs*1: 1=15000; 3=14700; 5=14500 | slove*10: 1=143000 | dus*60: 1=800000"],
+      [""],
+      ["Artinya:"],
+      ["- pcs (dasar): ≥1 = 15.000, ≥3 = 14.700, ≥5 = 14.500"],
+      ["- slove = 10 pcs: harga 143.000"],
+      ["- dus = 60 pcs: harga 800.000"],
+      [""],
+      ["Jika kolom Satuan kosong, sistem pakai kolom Harga + Harga Grosir + Min Grosir."],
+    ]);
+    (help as any)["!cols"] = [{ wch: 90 }];
+    XLSX.utils.book_append_sheet(wb, help, "Petunjuk Satuan");
     XLSX.writeFile(wb, "template-produk-dagang-pintar.xlsx");
   };
+
 
 
   return (
