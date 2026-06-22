@@ -405,6 +405,46 @@ function ProdukPage() {
     XLSX.writeFile(wb, "template-produk-dagang-pintar.xlsx");
   };
 
+  // ---------- EXCEL EXPORT ----------
+  const buildSatuanString = (units: ProductUnit[]): string => {
+    if (!units || units.length === 0) return "";
+    const sorted = [...units].sort((a, b) => a.sort_order - b.sort_order);
+    return sorted
+      .map((u) => {
+        const tiers = [...u.tiers]
+          .sort((a, b) => a.min_qty - b.min_qty)
+          .map((t) => `${t.min_qty}=${t.price}`)
+          .join("; ");
+        return `${u.name}*${u.conversion}: ${tiers}`;
+      })
+      .join(" | ");
+  };
+
+  const exportExcel = () => {
+    if (products.length === 0) { toast.error("Tidak ada produk untuk diexport"); return; }
+    const rows = products.map((p) => ({
+      Kode: p.code,
+      Nama: p.name,
+      Kategori: p.category || "",
+      "Harga Modal": p.cost_price || 0,
+      Harga: p.price || 0,
+      "Harga Grosir": p.wholesale_price ?? "",
+      "Min Grosir": p.wholesale_min_qty ?? "",
+      Stok: p.stock || 0,
+      Satuan: buildSatuanString(unitsByProduct[p.id] || []),
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    (ws as any)["!cols"] = [
+      { wch: 10 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
+      { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 70 },
+    ];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Produk");
+    const today = new Date().toISOString().slice(0, 10);
+    XLSX.writeFile(wb, `produk-${today}.xlsx`);
+    toast.success(`${rows.length} produk diexport`);
+  };
+
 
 
   return (
