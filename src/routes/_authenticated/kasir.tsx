@@ -640,7 +640,7 @@ function KasirPage() {
                       const r = lastReceipt;
                       const base64 = receiptImg.split(",")[1] || "";
                       const lines: string[] = [];
-                      lines.push(`*Dagang Pintar*`);
+                      lines.push(`*${storeName || "Toko"}*`);
                       lines.push(`Struk #${r.id.slice(0, 8)}`);
                       lines.push(new Date(r.at).toLocaleString("id-ID"));
                       lines.push(`--------------------------------`);
