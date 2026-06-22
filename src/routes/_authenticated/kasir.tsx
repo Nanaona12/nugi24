@@ -278,6 +278,7 @@ function KasirPage() {
       at: new Date(),
       paymentMethod,
       customerPhone: sendWa && phoneClean ? phoneClean : null,
+      customerName: sendWa && customerName.trim() ? customerName.trim() : null,
     };
     setLastReceipt(receipt);
     // generate struk gambar
