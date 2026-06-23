@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlarmClock, Plus, Pencil, Trash2, Search, CalendarDays } from "lucide-react";
+import { AlarmClock, Plus, Pencil, Trash2, Search, CalendarDays, Download, Upload } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/kadaluarsa")({
   component: KadaluarsaPage,
