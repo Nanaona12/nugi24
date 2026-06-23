@@ -489,7 +489,51 @@ function KadaluarsaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Preview Import Batch Kadaluarsa</DialogTitle>
+            <DialogDescription>
+              {importPreview.length} baris terdeteksi. {importPreview.filter((r) => !r.error).length} valid, {importPreview.filter((r) => r.error).length} bermasalah (akan dilewati).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-96 overflow-auto rounded border">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-muted text-left">
+                <tr>
+                  <th className="p-2">Kode</th>
+                  <th className="p-2">Nama</th>
+                  <th className="p-2 text-right">Jumlah</th>
+                  <th className="p-2">Tgl Kadaluarsa</th>
+                  <th className="p-2">Catatan</th>
+                  <th className="p-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importPreview.map((r, i) => (
+                  <tr key={i} className={`border-t ${r.error ? "bg-destructive/10" : ""}`}>
+                    <td className="p-2 font-mono">{r.kode}</td>
+                    <td className="p-2">{r.nama}</td>
+                    <td className="p-2 text-right">{r.qty ?? ""}</td>
+                    <td className="p-2">{r.expiry_date || ""}</td>
+                    <td className="p-2">{r.note}</td>
+                    <td className="p-2">{r.error ? <span className="text-destructive">{r.error}</span> : <span className="text-green-600">OK</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportOpen(false)}>Batal</Button>
+            <Button onClick={confirmImport} disabled={importing || importPreview.every((r) => r.error)}>
+              {importing ? "Memproses..." : `Simpan ${importPreview.filter((r) => !r.error).length} batch`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
