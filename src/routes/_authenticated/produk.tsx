@@ -704,6 +704,67 @@ function ProdukPage() {
 
           <UnitsEditor units={formUnits} onChange={setFormUnits} />
 
+          {!form.id && (
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold">Batch Kadaluarsa (opsional)</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Catat jumlah per tanggal expired. Boleh lebih dari 1 baris untuk produk yang sama (mis. 2 pcs exp 22-07-2026, 5 pcs exp 24-07-2027). Stok berkurang otomatis dari batch exp terdekat (FEFO) saat transaksi.
+                  </div>
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={() => setFormBatches([...formBatches, { qty: "1", expiry_date: "", note: "" }])}>
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Baris
+                </Button>
+              </div>
+              {formBatches.length === 0 ? (
+                <div className="text-xs text-muted-foreground italic">Belum ada batch. Tambahkan jika ingin tracking expired.</div>
+              ) : (
+                <div className="space-y-1.5">
+                  {formBatches.map((b, i) => {
+                    const today = new Date().toISOString().slice(0, 10);
+                    const tooOld = b.expiry_date && b.expiry_date < today;
+                    return (
+                      <div key={i} className="flex flex-wrap items-end gap-2">
+                        <div className="w-20">
+                          <Label className="text-[10px]">Jumlah</Label>
+                          <Input type="number" min={1} value={b.qty} onChange={(e) => {
+                            const c = [...formBatches]; c[i] = { ...c[i], qty: e.target.value }; setFormBatches(c);
+                          }} />
+                        </div>
+                        <div className="w-44">
+                          <Label className="text-[10px]">Tgl Kadaluarsa</Label>
+                          <Input type="date" value={b.expiry_date} onChange={(e) => {
+                            const c = [...formBatches]; c[i] = { ...c[i], expiry_date: e.target.value }; setFormBatches(c);
+                          }} className={tooOld ? "border-destructive" : ""} />
+                        </div>
+                        <div className="flex-1 min-w-[140px]">
+                          <Label className="text-[10px]">Catatan</Label>
+                          <Input value={b.note} onChange={(e) => {
+                            const c = [...formBatches]; c[i] = { ...c[i], note: e.target.value }; setFormBatches(c);
+                          }} placeholder="opsional" />
+                        </div>
+                        <Button type="button" size="icon" variant="ghost" onClick={() => setFormBatches(formBatches.filter((_, j) => j !== i))}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {(() => {
+                    const totalBatch = formBatches.reduce((s, b) => s + (parseInt(b.qty || "0", 10) || 0), 0);
+                    const stok = parseInt(form.stock || "0", 10);
+                    if (totalBatch > 0 && stok > 0 && totalBatch !== stok) {
+                      return <div className="text-[11px] text-amber-600">Total batch {totalBatch} ≠ stok awal {stok} (info saja, tidak menghalangi simpan).</div>;
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Batal</Button>
             <Button onClick={saveForm}>Simpan</Button>
