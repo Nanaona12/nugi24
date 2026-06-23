@@ -67,11 +67,13 @@ function ProdukPage() {
   const [importMode, setImportMode] = useState<"upsert" | "update_only">("upsert");
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [formUnits, setFormUnits] = useState<ProductUnit[]>([]);
+  const [formBatches, setFormBatches] = useState<{ qty: string; expiry_date: string; note: string }[]>([]);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [deleteAllPassword, setDeleteAllPassword] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
 
   const load = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
@@ -121,7 +123,7 @@ function ProdukPage() {
     return [{ name: "pcs", conversion: 1, sort_order: 0, is_base: true, tiers: [{ min_qty: 1, price: 0 }] }];
   };
 
-  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setEditOpen(true); };
+  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setEditOpen(true); };
   const openEdit = (p: Product) => {
     setForm({
       id: p.id,
@@ -135,8 +137,10 @@ function ProdukPage() {
       stock: String(p.stock),
     });
     setFormUnits(defaultUnitsFor(p));
+    setFormBatches([]);
     setEditOpen(true);
   };
+
 
   const saveForm = async () => {
     if (!form.name.trim()) {
@@ -200,10 +204,37 @@ function ProdukPage() {
     } catch (e: any) {
       toast.error("Produk tersimpan tapi satuan gagal: " + e.message);
     }
+    // Insert batches kadaluarsa (hanya saat tambah produk baru)
+    if (!form.id && formBatches.length > 0) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const validBatches = formBatches
+        .map((b) => ({ qty: parseInt(b.qty || "0", 10), expiry_date: b.expiry_date, note: b.note.trim() }))
+        .filter((b) => b.qty > 0 && b.expiry_date);
+      if (validBatches.length > 0) {
+        const { data: tenant } = await supabase
+          .from("tenants")
+          .select("id")
+          .eq("owner_user_id", (await supabase.auth.getUser()).data.user?.id || "")
+          .maybeSingle();
+        if (tenant) {
+          const rows = validBatches.map((b) => ({
+            tenant_id: tenant.id,
+            product_id: prodId,
+            qty: b.qty,
+            expiry_date: b.expiry_date,
+            note: b.note || null,
+            source: "manual",
+          }));
+          const { error: bErr } = await (supabase as any).from("product_batches").insert(rows);
+          if (bErr) toast.error("Produk tersimpan tapi batch gagal: " + bErr.message);
+        }
+      }
+    }
     toast.success("Disimpan");
     setEditOpen(false);
     load();
   };
+
 
   const remove = async (p: Product) => {
     if (!confirm(`Hapus "${p.name}"?`)) return;
@@ -672,6 +703,67 @@ function ProdukPage() {
           </div>
 
           <UnitsEditor units={formUnits} onChange={setFormUnits} />
+
+          {!form.id && (
+            <div className="space-y-2 rounded-md border p-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-semibold">Batch Kadaluarsa (opsional)</div>
+                  <div className="text-[11px] text-muted-foreground">
+                    Catat jumlah per tanggal expired. Boleh lebih dari 1 baris untuk produk yang sama (mis. 2 pcs exp 22-07-2026, 5 pcs exp 24-07-2027). Stok berkurang otomatis dari batch exp terdekat (FEFO) saat transaksi.
+                  </div>
+                </div>
+                <Button type="button" size="sm" variant="outline" onClick={() => setFormBatches([...formBatches, { qty: "1", expiry_date: "", note: "" }])}>
+                  <Plus className="mr-1 h-3.5 w-3.5" /> Baris
+                </Button>
+              </div>
+              {formBatches.length === 0 ? (
+                <div className="text-xs text-muted-foreground italic">Belum ada batch. Tambahkan jika ingin tracking expired.</div>
+              ) : (
+                <div className="space-y-1.5">
+                  {formBatches.map((b, i) => {
+                    const today = new Date().toISOString().slice(0, 10);
+                    const tooOld = b.expiry_date && b.expiry_date < today;
+                    return (
+                      <div key={i} className="flex flex-wrap items-end gap-2">
+                        <div className="w-20">
+                          <Label className="text-[10px]">Jumlah</Label>
+                          <Input type="number" min={1} value={b.qty} onChange={(e) => {
+                            const c = [...formBatches]; c[i] = { ...c[i], qty: e.target.value }; setFormBatches(c);
+                          }} />
+                        </div>
+                        <div className="w-44">
+                          <Label className="text-[10px]">Tgl Kadaluarsa</Label>
+                          <Input type="date" value={b.expiry_date} onChange={(e) => {
+                            const c = [...formBatches]; c[i] = { ...c[i], expiry_date: e.target.value }; setFormBatches(c);
+                          }} className={tooOld ? "border-destructive" : ""} />
+                        </div>
+                        <div className="flex-1 min-w-[140px]">
+                          <Label className="text-[10px]">Catatan</Label>
+                          <Input value={b.note} onChange={(e) => {
+                            const c = [...formBatches]; c[i] = { ...c[i], note: e.target.value }; setFormBatches(c);
+                          }} placeholder="opsional" />
+                        </div>
+                        <Button type="button" size="icon" variant="ghost" onClick={() => setFormBatches(formBatches.filter((_, j) => j !== i))}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
+                  {(() => {
+                    const totalBatch = formBatches.reduce((s, b) => s + (parseInt(b.qty || "0", 10) || 0), 0);
+                    const stok = parseInt(form.stock || "0", 10);
+                    if (totalBatch > 0 && stok > 0 && totalBatch !== stok) {
+                      return <div className="text-[11px] text-amber-600">Total batch {totalBatch} ≠ stok awal {stok} (info saja, tidak menghalangi simpan).</div>;
+                    }
+                    return null;
+                  })()}
+                </div>
+              )}
+            </div>
+          )}
+
+
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Batal</Button>

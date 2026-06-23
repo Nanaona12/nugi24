@@ -1,67 +1,67 @@
+## Tujuan
+1. Bisa import banyak batch kadaluarsa sekaligus dari Excel (tanpa input satu-satu).
+2. Saat menambah produk baru di halaman Produk, ada bagian "Batch Kadaluarsa" untuk langsung mengisi jumlah + tanggal expired (boleh lebih dari satu baris untuk produk yang sama, mis. Indomie 2 pcs exp 22-07-2026 dan 5 pcs exp 24-07-2027).
 
-# Rencana: POS → SaaS B2B Multi-Tenant (Rp 14.900/bulan)
+---
 
-## Ringkasan
-Mengubah aplikasi POS single-user ini menjadi SaaS multi-tenant di mana setiap toko (tenant) mendaftar, membayar Rp 14.900/bulan, lalu mendapat akses ke kasir, produk, riwayat, dan laporannya sendiri — terpisah total dari toko lain.
+## 1. Import Excel Batch Kadaluarsa (halaman Kadaluarsa)
 
-## 1. Multi-Tenancy (Pemisahan Data per Toko)
+### UI
+Di `src/routes/_authenticated/kadaluarsa.tsx`, tambah 2 tombol di header (samping "Tambah Batch"):
+- **Download Template** — generate file `template-batch-kadaluarsa.xlsx`.
+- **Import Excel** — buka file picker `.xlsx/.xls`, parse, preview ringkas (jumlah baris valid / error), lalu tombol "Simpan Semua".
 
-Saat ini semua tabel (`products`, `transactions`, `purchase_orders`, dst.) dipakai bersama tanpa pemisahan toko.
+### Format Template
+Kolom (header baris 1):
+| kode_produk | nama_produk (opsional, info) | jumlah | tanggal_kadaluarsa | catatan (opsional) |
 
-Perubahan database:
-- Tabel baru `tenants` (id, nama_toko, owner_user_id, created_at)
-- Tabel baru `tenant_members` (tenant_id, user_id, role) — supaya 1 toko bisa punya banyak kasir
-- Tambah kolom `tenant_id` di semua tabel data: `products`, `product_units`, `product_price_tiers`, `transactions`, `transaction_items`, `purchase_orders`, `purchase_order_items`
-- RLS dirombak: semua policy `auth.uid()` jadi "user harus member dari tenant_id baris ini"
-- Function security definer `current_tenant_id()` untuk dipakai di RLS & default value
+- `kode_produk` wajib, dipakai untuk mencari produk (case-insensitive).
+- `jumlah` wajib, integer ≥ 1 (satuan dasar).
+- `tanggal_kadaluarsa` wajib, terima format Excel date atau string `YYYY-MM-DD` / `DD-MM-YYYY` / `DD/MM/YYYY`.
+- `catatan` opsional.
 
-## 2. Sistem Langganan
+Sheet kedua "Petunjuk" berisi penjelasan singkat + contoh Indomie 2 baris (exp berbeda).
 
-Tabel baru:
-- `subscriptions` (tenant_id, status: trial/active/past_due/canceled, current_period_end, plan)
-- `payments` (tenant_id, amount, status, provider, provider_ref, paid_at)
+### Validasi per baris
+- Kode produk tidak ditemukan → tandai error.
+- Jumlah ≤ 0 atau bukan angka → error.
+- Tanggal tidak bisa diparse → error.
+- Baris valid masuk antrian insert; baris error ditampilkan di tabel preview dengan alasan.
 
-Akses kasir/produk/dll diblokir kalau `subscription.status` bukan `active` atau `trial` dan `current_period_end < now()`.
+### Penyimpanan
+Insert batch valid ke `product_batches` dalam 1 batch (`insert([...])`) dengan `tenant_id` user saat ini, `source = 'import'`. Tampilkan toast hasil (`X batch berhasil, Y gagal`). Refresh list.
 
-## 3. Pembayaran Rp 14.900/bulan
+### Library
+Gunakan `xlsx` (SheetJS) — sudah lazim dipakai produk lain di project (cek dulu, jika belum ada akan di-`bun add` saat build mode).
 
-Karena targetnya pasar Indonesia (rupiah, nominal kecil), Stripe/Paddle kurang cocok. Pilihan:
+---
 
-**Opsi A (rekomendasi): Midtrans / Xendit**
-- Native rupiah, support QRIS, GoPay, DANA, OVO, ShopeePay, VA bank
-- Fee proporsional untuk nominal kecil
-- Perlu API key dari user (akan saya minta via secret saat implementasi)
-- Webhook untuk auto-activate subscription saat bayar
+## 2. Form Batch Saat Tambah Produk Baru (halaman Produk)
 
-**Opsi B: Manual transfer + konfirmasi admin**
-- Lebih sederhana, tanpa integrasi pihak ketiga
-- User transfer ke rekening Anda, lalu Anda approve manual di admin panel
-- Cocok untuk MVP / validasi awal
+Di `src/routes/_authenticated/produk.tsx`, di dialog tambah/edit produk:
 
-## 4. Halaman Baru
+### UI
+Section baru "Batch Kadaluarsa (opsional)" di bawah field stok:
+- List baris dinamis, setiap baris: `[Jumlah]` `[Tanggal Kadaluarsa]` `[Catatan]` `[hapus]`.
+- Tombol "+ Tambah Baris Batch".
+- Catatan kecil: "Total jumlah batch sebaiknya = stok awal. Stok akan otomatis berkurang dari batch dengan exp terdekat (FEFO) saat transaksi."
 
-- `/daftar` — signup toko baru (buat user + tenant + trial 7 hari)
-- `/langganan` — status langganan, tagihan, tombol bayar/perpanjang
-- `/admin` (super-admin only) — lihat semua tenant, approve pembayaran manual, statistik
-- Gate: kalau subscription expired → redirect ke `/langganan`
+### Validasi
+- Tiap baris yang diisi: jumlah ≥ 1 (integer), tanggal valid dan tidak boleh sebelum hari ini (boleh tapi diberi peringatan halus — final rule: minimal hari ini, agar tidak salah ketik tahun).
+- Boleh tidak isi baris sama sekali (produk tanpa exp tracking tetap bisa).
+- Peringatan inline (toast/error helper) jika total batch ≠ stok awal — tidak memblok submit, hanya info.
 
-## 5. Onboarding
+### Penyimpanan
+Setelah produk baru berhasil di-insert dan dapat `product_id`, lakukan `insert` ke `product_batches` untuk semua baris valid sekaligus dengan `tenant_id`, `source = 'manual'`. Jika produk gagal, batch tidak ikut tersimpan. Jika batch gagal, produk tetap ada → toast warning agar user tambah manual via halaman Kadaluarsa.
 
-- Saat signup: otomatis buat tenant + assign user sebagai owner + start trial 7 hari
-- Wizard isi nama toko, alamat, nomor WA (untuk header struk)
-- Setelah trial habis → wajib bayar untuk lanjut
+### Mode Edit
+Untuk edit produk, **tidak** menampilkan section ini di plan ini (manajemen batch existing tetap via halaman Kadaluarsa) — supaya scope tetap fokus pada permintaan ("saat menambah produk baru"). Bila user mau, bisa di-extend nanti.
 
-## Pertanyaan Sebelum Saya Mulai
+---
 
-1. **Metode pembayaran**: Midtrans, Xendit, atau manual transfer dulu (MVP)?
-2. **Trial gratis**: berapa hari? (default saran 7 hari)
-3. **Multi-user per toko**: 1 toko = 1 user (owner saja), atau owner bisa undang kasir?
-4. **Super-admin**: email mana yang jadi super-admin untuk approve & monitoring? (pakai email Anda yang sekarang login?)
-5. **Data toko existing**: data produk/transaksi yang sudah ada sekarang dijadikan milik tenant siapa? (atau hapus & mulai bersih?)
+## File yang akan diubah
+- `src/routes/_authenticated/kadaluarsa.tsx` — tombol Download Template, Import Excel, dialog preview.
+- `src/routes/_authenticated/produk.tsx` — section batch di dialog tambah produk + logic insert batch setelah create.
+- (mungkin) `package.json` — pastikan `xlsx` sudah terpasang; jika belum, tambahkan saat build mode.
 
-## Catatan Teknis (untuk konteks)
-
-- Migration besar — semua tabel dapat kolom `tenant_id NOT NULL`, RLS ditulis ulang
-- Helper `current_tenant_id()` SECURITY DEFINER dipakai di RLS untuk hindari rekursi
-- Cron harian cek `subscriptions.current_period_end` → ubah ke `past_due`
-- Setelah ganti RLS, semua query existing tetap jalan otomatis karena filter di level DB
+Tidak ada perubahan skema database — tabel `product_batches` sudah cukup.

@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlarmClock, Plus, Pencil, Trash2, Search, CalendarDays } from "lucide-react";
+import { AlarmClock, Plus, Pencil, Trash2, Search, CalendarDays, Download, Upload } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/kadaluarsa")({
   component: KadaluarsaPage,
@@ -64,6 +66,39 @@ function bucketBadge(days: number) {
   return <Badge variant="secondary">{days} hari lagi</Badge>;
 }
 
+// Parse berbagai format tanggal Excel/string -> YYYY-MM-DD; null jika gagal
+function parseExpiryCell(v: any): string | null {
+  if (v == null || v === "") return null;
+  // Excel serial number
+  if (typeof v === "number" && isFinite(v)) {
+    // SheetJS epoch (1900) — use XLSX util
+    const d = XLSX.SSF.parse_date_code(v);
+    if (d) {
+      const yyyy = String(d.y).padStart(4, "0");
+      const mm = String(d.m).padStart(2, "0");
+      const dd = String(d.d).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+  }
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return v.toISOString().slice(0, 10);
+  }
+  const s = String(v).trim();
+  // YYYY-MM-DD
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  // DD-MM-YYYY or DD/MM/YYYY
+  m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (m) {
+    let y = m[3]; if (y.length === 2) y = "20" + y;
+    return `${y}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  }
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
+
 function KadaluarsaPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [products, setProducts] = useState<ProductLite[]>([]);
@@ -77,6 +112,11 @@ function KadaluarsaPage() {
     note: "",
   });
   const [productSearch, setProductSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<{ kode: string; nama: string; qty: number | null; expiry_date: string | null; note: string; product_id: string | null; error: string | null }[]>([]);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
 
   const load = async () => {
     const [{ data: b, error: e1 }, { data: p, error: e2 }] = await Promise.all([
@@ -189,6 +229,102 @@ function KadaluarsaPage() {
       .slice(0, 50);
   }, [products, productSearch]);
 
+  const downloadTemplate = () => {
+    const ws = XLSX.utils.json_to_sheet([
+      { kode_produk: "BRG0001", nama_produk: "Indomie Goreng", jumlah: 2, tanggal_kadaluarsa: "2026-07-22", catatan: "batch supplier A" },
+      { kode_produk: "BRG0001", nama_produk: "Indomie Goreng", jumlah: 5, tanggal_kadaluarsa: "2027-07-24", catatan: "" },
+      { kode_produk: "BRG0002", nama_produk: "Susu UHT 1L", jumlah: 10, tanggal_kadaluarsa: "2026-09-15", catatan: "" },
+    ]);
+    (ws as any)["!cols"] = [{ wch: 14 }, { wch: 24 }, { wch: 10 }, { wch: 20 }, { wch: 30 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Batch");
+    const help = XLSX.utils.aoa_to_sheet([
+      ["Petunjuk Import Batch Kadaluarsa"],
+      [""],
+      ["Kolom wajib:"],
+      ["- kode_produk : kode produk yang sudah ada di sistem (mis. BRG0001)"],
+      ["- jumlah      : angka >= 1, dalam satuan dasar (pcs)"],
+      ["- tanggal_kadaluarsa : format YYYY-MM-DD, DD-MM-YYYY, DD/MM/YYYY, atau tanggal Excel"],
+      [""],
+      ["Kolom opsional:"],
+      ["- nama_produk : hanya info, tidak dipakai untuk pencocokan"],
+      ["- catatan     : catatan bebas"],
+      [""],
+      ["Produk yang sama BOLEH muncul di beberapa baris dengan exp date berbeda."],
+      ["Contoh: Indomie 2 pcs exp 22-07-2026 + 5 pcs exp 24-07-2027 -> 2 baris terpisah."],
+      [""],
+      ["Stok akan otomatis berkurang dari batch dengan exp terdekat (FEFO) saat transaksi kasir."],
+    ]);
+    (help as any)["!cols"] = [{ wch: 90 }];
+    XLSX.utils.book_append_sheet(wb, help, "Petunjuk");
+    XLSX.writeFile(wb, "template-batch-kadaluarsa.xlsx");
+  };
+
+  const onFile = async (file: File) => {
+    try {
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json<Record<string, any>>(ws, { defval: "" });
+      if (rows.length === 0) { toast.error("File kosong"); return; }
+      const codeMap = new Map<string, string>();
+      products.forEach((p) => codeMap.set(p.code.toLowerCase(), p.id));
+      const today = new Date().toISOString().slice(0, 10);
+      const normalized = rows.map((r) => {
+        const kode = String(r.kode_produk ?? r.kode ?? r.code ?? "").trim();
+        const nama = String(r.nama_produk ?? r.nama ?? r.name ?? "").trim();
+        const qtyRaw = r.jumlah ?? r.qty ?? r.quantity ?? "";
+        const qty = qtyRaw === "" ? null : parseInt(String(qtyRaw).replace(/\D/g, ""), 10) || null;
+        const expRaw = r.tanggal_kadaluarsa ?? r.expiry_date ?? r.expired ?? r.exp ?? r.tanggal ?? "";
+        const expiry_date = parseExpiryCell(expRaw);
+        const note = String(r.catatan ?? r.note ?? "").trim();
+        const product_id = kode ? codeMap.get(kode.toLowerCase()) || null : null;
+        let error: string | null = null;
+        if (!kode) error = "Kode produk kosong";
+        else if (!product_id) error = `Kode "${kode}" tidak ditemukan`;
+        else if (!qty || qty < 1) error = "Jumlah harus angka >= 1";
+        else if (!expiry_date) error = "Tanggal kadaluarsa tidak valid";
+        else if (expiry_date < today) error = "Tanggal sudah lewat";
+        return { kode, nama, qty, expiry_date, note, product_id, error };
+      });
+      setImportPreview(normalized);
+      setImportOpen(true);
+    } catch (e: any) {
+      toast.error("Gagal baca file: " + e.message);
+    }
+  };
+
+  const confirmImport = async () => {
+    const valid = importPreview.filter((r) => !r.error && r.product_id && r.qty && r.expiry_date);
+    if (valid.length === 0) { toast.error("Tidak ada baris valid"); return; }
+    setImporting(true);
+    try {
+      const { data: tenant } = await supabase
+        .from("tenants")
+        .select("id")
+        .eq("owner_user_id", (await supabase.auth.getUser()).data.user?.id || "")
+        .maybeSingle();
+      if (!tenant) { toast.error("Tenant tidak ditemukan"); setImporting(false); return; }
+      const rows = valid.map((r) => ({
+        tenant_id: tenant.id,
+        product_id: r.product_id,
+        qty: r.qty,
+        expiry_date: r.expiry_date,
+        note: r.note || null,
+        source: "import",
+      }));
+      const { error } = await (supabase as any).from("product_batches").insert(rows);
+      if (error) { toast.error(error.message); setImporting(false); return; }
+      const failed = importPreview.length - valid.length;
+      toast.success(`${valid.length} batch diimport${failed ? `, ${failed} gagal/dilewati` : ""}`);
+      setImportOpen(false);
+      setImportPreview([]);
+      load();
+    } finally {
+      setImporting(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -200,10 +336,26 @@ function KadaluarsaPage() {
             Catat batch produk beserta tanggal expired. Stok berkurang otomatis dari batch terdekat expired (FEFO) saat ada transaksi.
           </p>
         </div>
-        <Button onClick={openNew}>
-          <Plus className="mr-2 h-4 w-4" /> Tambah Batch
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" onClick={downloadTemplate}>
+            <Download className="mr-2 h-4 w-4" /> Template Excel
+          </Button>
+          <Button variant="outline" onClick={() => fileRef.current?.click()}>
+            <Upload className="mr-2 h-4 w-4" /> Import Excel
+          </Button>
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ""; }}
+          />
+          <Button onClick={openNew}>
+            <Plus className="mr-2 h-4 w-4" /> Tambah Batch
+          </Button>
+        </div>
       </div>
+
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryCard label="Expired" count={counts.expired} active={bucket === "expired"} onClick={() => setBucket(bucket === "expired" ? "all" : "expired")} tone="destructive" />
@@ -337,7 +489,51 @@ function KadaluarsaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Preview Import Batch Kadaluarsa</DialogTitle>
+            <DialogDescription>
+              {importPreview.length} baris terdeteksi. {importPreview.filter((r) => !r.error).length} valid, {importPreview.filter((r) => r.error).length} bermasalah (akan dilewati).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-96 overflow-auto rounded border">
+            <table className="w-full text-xs">
+              <thead className="sticky top-0 bg-muted text-left">
+                <tr>
+                  <th className="p-2">Kode</th>
+                  <th className="p-2">Nama</th>
+                  <th className="p-2 text-right">Jumlah</th>
+                  <th className="p-2">Tgl Kadaluarsa</th>
+                  <th className="p-2">Catatan</th>
+                  <th className="p-2">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {importPreview.map((r, i) => (
+                  <tr key={i} className={`border-t ${r.error ? "bg-destructive/10" : ""}`}>
+                    <td className="p-2 font-mono">{r.kode}</td>
+                    <td className="p-2">{r.nama}</td>
+                    <td className="p-2 text-right">{r.qty ?? ""}</td>
+                    <td className="p-2">{r.expiry_date || ""}</td>
+                    <td className="p-2">{r.note}</td>
+                    <td className="p-2">{r.error ? <span className="text-destructive">{r.error}</span> : <span className="text-green-600">OK</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportOpen(false)}>Batal</Button>
+            <Button onClick={confirmImport} disabled={importing || importPreview.every((r) => r.error)}>
+              {importing ? "Memproses..." : `Simpan ${importPreview.filter((r) => !r.error).length} batch`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
 
