@@ -112,6 +112,11 @@ function KadaluarsaPage() {
     note: "",
   });
   const [productSearch, setProductSearch] = useState("");
+  const [importOpen, setImportOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<{ kode: string; nama: string; qty: number | null; expiry_date: string | null; note: string; product_id: string | null; error: string | null }[]>([]);
+  const [importing, setImporting] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
 
   const load = async () => {
     const [{ data: b, error: e1 }, { data: p, error: e2 }] = await Promise.all([
