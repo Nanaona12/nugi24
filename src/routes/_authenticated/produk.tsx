@@ -123,7 +123,7 @@ function ProdukPage() {
     return [{ name: "pcs", conversion: 1, sort_order: 0, is_base: true, tiers: [{ min_qty: 1, price: 0 }] }];
   };
 
-  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setEditOpen(true); };
+  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setEditOpen(true); };
   const openEdit = (p: Product) => {
     setForm({
       id: p.id,
@@ -137,8 +137,10 @@ function ProdukPage() {
       stock: String(p.stock),
     });
     setFormUnits(defaultUnitsFor(p));
+    setFormBatches([]);
     setEditOpen(true);
   };
+
 
   const saveForm = async () => {
     if (!form.name.trim()) {
