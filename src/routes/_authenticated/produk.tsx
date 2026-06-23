@@ -67,11 +67,13 @@ function ProdukPage() {
   const [importMode, setImportMode] = useState<"upsert" | "update_only">("upsert");
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [formUnits, setFormUnits] = useState<ProductUnit[]>([]);
+  const [formBatches, setFormBatches] = useState<{ qty: string; expiry_date: string; note: string }[]>([]);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [deleteAllPassword, setDeleteAllPassword] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
 
   const load = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
