@@ -204,10 +204,37 @@ function ProdukPage() {
     } catch (e: any) {
       toast.error("Produk tersimpan tapi satuan gagal: " + e.message);
     }
+    // Insert batches kadaluarsa (hanya saat tambah produk baru)
+    if (!form.id && formBatches.length > 0) {
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const validBatches = formBatches
+        .map((b) => ({ qty: parseInt(b.qty || "0", 10), expiry_date: b.expiry_date, note: b.note.trim() }))
+        .filter((b) => b.qty > 0 && b.expiry_date);
+      if (validBatches.length > 0) {
+        const { data: tenant } = await supabase
+          .from("tenants")
+          .select("id")
+          .eq("owner_user_id", (await supabase.auth.getUser()).data.user?.id || "")
+          .maybeSingle();
+        if (tenant) {
+          const rows = validBatches.map((b) => ({
+            tenant_id: tenant.id,
+            product_id: prodId,
+            qty: b.qty,
+            expiry_date: b.expiry_date,
+            note: b.note || null,
+            source: "manual",
+          }));
+          const { error: bErr } = await (supabase as any).from("product_batches").insert(rows);
+          if (bErr) toast.error("Produk tersimpan tapi batch gagal: " + bErr.message);
+        }
+      }
+    }
     toast.success("Disimpan");
     setEditOpen(false);
     load();
   };
+
 
   const remove = async (p: Product) => {
     if (!confirm(`Hapus "${p.name}"?`)) return;
