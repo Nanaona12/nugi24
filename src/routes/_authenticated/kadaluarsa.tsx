@@ -66,6 +66,39 @@ function bucketBadge(days: number) {
   return <Badge variant="secondary">{days} hari lagi</Badge>;
 }
 
+// Parse berbagai format tanggal Excel/string -> YYYY-MM-DD; null jika gagal
+function parseExpiryCell(v: any): string | null {
+  if (v == null || v === "") return null;
+  // Excel serial number
+  if (typeof v === "number" && isFinite(v)) {
+    // SheetJS epoch (1900) — use XLSX util
+    const d = XLSX.SSF.parse_date_code(v);
+    if (d) {
+      const yyyy = String(d.y).padStart(4, "0");
+      const mm = String(d.m).padStart(2, "0");
+      const dd = String(d.d).padStart(2, "0");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+  }
+  if (v instanceof Date && !isNaN(v.getTime())) {
+    return v.toISOString().slice(0, 10);
+  }
+  const s = String(v).trim();
+  // YYYY-MM-DD
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if (m) return `${m[1]}-${m[2].padStart(2, "0")}-${m[3].padStart(2, "0")}`;
+  // DD-MM-YYYY or DD/MM/YYYY
+  m = s.match(/^(\d{1,2})[\/\-\.](\d{1,2})[\/\-\.](\d{2,4})$/);
+  if (m) {
+    let y = m[3]; if (y.length === 2) y = "20" + y;
+    return `${y}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+  }
+  const d = new Date(s);
+  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+  return null;
+}
+
+
 function KadaluarsaPage() {
   const [batches, setBatches] = useState<Batch[]>([]);
   const [products, setProducts] = useState<ProductLite[]>([]);
