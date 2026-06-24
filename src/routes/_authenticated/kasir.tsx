@@ -261,6 +261,7 @@ function KasirPage() {
 
 
   const checkout = async () => {
+    if (!activeShift) { toast.error("Kasir belum login"); setLockOpen(true); return; }
     const paidNum = paymentMethod === "qris" ? totals.total : Number(paid.replace(/[^\d]/g, ""));
     if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
     const phoneClean = customerPhone.replace(/[^\d]/g, "");
@@ -274,6 +275,7 @@ function KasirPage() {
       .from("transactions")
       .insert({
         cashier_id: cashierId,
+        shift_id: activeShift.shift_id,
         total: totals.total,
         paid: paidNum,
         change_amount: change,
