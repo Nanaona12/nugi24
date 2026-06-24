@@ -990,6 +990,8 @@ function normalizeRow(r: Record<string, any>) {
     return "";
   };
   const code = String(get("kode", "code", "sku", "kode barang") ?? "").trim();
+  const barcodeRaw = String(get("barcode", "bar code", "ean", "upc") ?? "").trim();
+  const barcode = barcodeRaw || null;
   const name = String(get("nama", "name", "nama barang", "product") ?? "").trim();
   const category = String(get("kategori", "category") ?? "").trim() || null;
   const price = parseNumber(get("harga", "harga jual", "price"));
@@ -1001,7 +1003,7 @@ function normalizeRow(r: Record<string, any>) {
   const stock = parseInt(String(get("stok", "stock", "qty") || "0"), 10) || 0;
   const satuanStr = String(get("satuan", "satuan & harga", "units", "satuan harga") ?? "").trim();
   const units = parseUnitsString(satuanStr);
-  return { code, name, category, price, cost_price, wholesale_price, wholesale_min_qty, stock, units, satuanStr };
+  return { code, barcode, name, category, price, cost_price, wholesale_price, wholesale_min_qty, stock, units, satuanStr };
 }
 
 /**
