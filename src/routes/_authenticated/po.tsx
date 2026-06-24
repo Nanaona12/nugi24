@@ -593,7 +593,7 @@ function POPage() {
                     >
                       <div className="font-medium">{p.name}</div>
                       <div className="text-muted-foreground">
-                        {p.code} • Stok {p.stock} • {formatRupiah(p.price)}
+                        {p.code}{p.barcode ? ` • ${p.barcode}` : ""} • Stok {p.stock} • {formatRupiah(p.price)}
                       </div>
                     </button>
                   ))
