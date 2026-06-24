@@ -374,8 +374,58 @@ function KasirPage() {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
-      {/* Product picker */}
+    <div className="space-y-3">
+      {/* Cashier / shift header */}
+      <Card className="flex flex-wrap items-center justify-between gap-2 p-3">
+        <div className="flex items-center gap-2 text-sm">
+          <Wallet className="h-4 w-4 text-primary" />
+          {activeShift ? (
+            <>
+              <span className="font-medium">Kasir: {activeShift.cashier_name}</span>
+              <span className="text-muted-foreground">• Buka {new Date(activeShift.opened_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span className="text-muted-foreground">• Saldo awal {formatRupiah(activeShift.opening_cash)}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground italic">Belum ada kasir aktif</span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {activeShift && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setCloseOpen(true)}>
+                <ReceiptIcon className="mr-1 h-4 w-4" /> Closing
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { persistShift(null); setLockOpen(true); }}>
+                <LogOutIcon className="mr-1 h-4 w-4" /> Ganti Kasir
+              </Button>
+            </>
+          )}
+          {!activeShift && (
+            <Button size="sm" onClick={() => setLockOpen(true)}>
+              <LockKeyhole className="mr-1 h-4 w-4" /> Login Kasir
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      <CashierLock
+        open={lockOpen}
+        forceLocked={!activeShift}
+        onClose={() => { if (activeShift) setLockOpen(false); }}
+        onUnlocked={(s) => { persistShift(s); setLockOpen(false); }}
+      />
+      {activeShift && (
+        <ShiftCloseDialog
+          open={closeOpen}
+          shift={activeShift}
+          storeName={storeName}
+          onClose={() => setCloseOpen(false)}
+          onClosed={() => { persistShift(null); setCloseOpen(false); setLockOpen(true); }}
+        />
+      )}
+
+      <div className={`grid gap-4 lg:grid-cols-[1fr_420px] ${!activeShift ? "pointer-events-none opacity-50" : ""}`}>
+        {/* Product picker */}
       <Card className="flex flex-col p-4">
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
