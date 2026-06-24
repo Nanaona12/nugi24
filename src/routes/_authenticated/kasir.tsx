@@ -448,12 +448,19 @@ function KasirPage() {
               <Button size="sm" variant="outline" onClick={() => setCloseOpen(true)}>
                 <ReceiptIcon className="mr-1 h-4 w-4" /> Closing
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => { persistShift(null); setLockOpen(true); }}>
-                <LogOutIcon className="mr-1 h-4 w-4" /> Ganti Kasir
-              </Button>
+              {!isCashierSession && (
+                <Button size="sm" variant="ghost" onClick={() => { persistShift(null); setLockOpen(true); }}>
+                  <LogOutIcon className="mr-1 h-4 w-4" /> Ganti Kasir
+                </Button>
+              )}
             </>
           )}
-          {!activeShift && (
+          {!activeShift && isCashierSession && (
+            <Button size="sm" onClick={() => setOpeningDialogOpen(true)}>
+              <LockKeyhole className="mr-1 h-4 w-4" /> Buka Shift
+            </Button>
+          )}
+          {!activeShift && !isCashierSession && (
             <Button size="sm" onClick={() => setLockOpen(true)}>
               <LockKeyhole className="mr-1 h-4 w-4" /> Login Kasir
             </Button>
@@ -461,22 +468,62 @@ function KasirPage() {
         </div>
       </Card>
 
-      <CashierLock
-        open={lockOpen}
-        forceLocked={!activeShift}
-        onClose={() => { if (activeShift) setLockOpen(false); }}
-        onExit={() => router.navigate({ to: "/produk", replace: true })}
-        onUnlocked={(s) => { persistShift(s); setLockOpen(false); }}
-      />
+      {!isCashierSession && (
+        <CashierLock
+          open={lockOpen}
+          forceLocked={!activeShift}
+          onClose={() => { if (activeShift) setLockOpen(false); }}
+          onExit={() => router.navigate({ to: "/produk", replace: true })}
+          onUnlocked={(s) => { persistShift(s); setLockOpen(false); }}
+        />
+      )}
+
+      {isCashierSession && activeCashier && (
+        <Dialog open={openingDialogOpen} onOpenChange={(o) => { if (!o && activeShift) setOpeningDialogOpen(false); }}>
+          <DialogContent
+            className="max-w-sm"
+            onInteractOutside={(e) => { if (!activeShift) e.preventDefault(); }}
+            onEscapeKeyDown={(e) => { if (!activeShift) e.preventDefault(); }}
+          >
+            <DialogHeader>
+              <DialogTitle>Buka Shift — {activeCashier.name}</DialogTitle>
+              <DialogDescription>
+                Masukkan saldo awal kas (uang receh di laci). Bisa 0 jika tidak ada.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label className="text-xs">Saldo Awal Kas</Label>
+              <Input
+                autoFocus
+                inputMode="numeric"
+                value={openingCash}
+                onChange={(e) => setOpeningCash(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleStartShift(); }}
+                placeholder="0"
+              />
+              {openingCash && (
+                <div className="text-xs text-muted-foreground">{formatRupiah(parseNumber(openingCash) || 0)}</div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={handleStartShift} disabled={openingShiftLoading}>
+                {openingShiftLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Mulai Shift
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {activeShift && (
         <ShiftCloseDialog
           open={closeOpen}
           shift={activeShift}
           storeName={storeName}
           onClose={() => setCloseOpen(false)}
-          onClosed={() => { persistShift(null); setCloseOpen(false); setLockOpen(true); }}
+          onClosed={handleShiftClosed}
         />
       )}
+
 
       <div className={`grid gap-4 lg:grid-cols-[1fr_420px] ${!activeShift ? "pointer-events-none opacity-50" : ""}`}>
         {/* Product picker */}
