@@ -149,9 +149,9 @@ function ProdukPage() {
   };
 
   const openDuplicate = (p: Product) => {
-    // Duplikat: pertahankan harga/kategori/satuan, kosongkan kode/barcode/stok, beri nama sementara
+    // Duplikat: salin harga/kategori/satuan/kode dari produk sumber, kosongkan barcode/stok, beri nama sementara
     setForm({
-      code: "",
+      code: p.code,
       barcode: "",
       name: `${p.name} (salin)`,
       category: p.category || "",
@@ -165,7 +165,7 @@ function ProdukPage() {
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
     setEditOpen(true);
-    toast.info("Duplikat siap, ubah nama (rasa) lalu simpan");
+    toast.info("Duplikat siap, ubah kode/nama (rasa) lalu simpan");
   };
 
 
