@@ -19,7 +19,7 @@ import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
-import { openShift as openShiftFn } from "@/lib/cashier.functions";
+import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
 import { parseNumber } from "@/lib/format";
 
 
