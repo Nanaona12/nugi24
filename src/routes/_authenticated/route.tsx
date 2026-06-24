@@ -128,6 +128,7 @@ function AuthedLayout() {
         { to: "/po", icon: ClipboardList, label: "PO" },
         { to: "/kadaluarsa", icon: AlarmClock, label: "Kadaluarsa" },
         { to: "/riwayat", icon: Receipt, label: "Riwayat" },
+        { to: "/pengambilan", icon: Home, label: "Pengambilan" },
         { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
         { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
         { to: "/langganan", icon: CreditCard, label: "Langganan" },
