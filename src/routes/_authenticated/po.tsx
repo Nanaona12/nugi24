@@ -45,6 +45,7 @@ export const Route = createFileRoute("/_authenticated/po")({
 type Product = {
   id: string;
   code: string;
+  barcode: string | null;
   name: string;
   price: number;
   stock: number;
