@@ -155,6 +155,23 @@ function KasirPage() {
     } catch (e: any) {
       toast.error("Gagal memuat satuan: " + e.message);
     }
+    // Load batches → ringkasan expiry per produk (untuk badge warning)
+    const { data: bs } = await (supabase as any)
+      .from("product_batches")
+      .select("product_id, qty, expiry_date");
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const exp: Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }> = {};
+    for (const b of (bs || []) as { product_id: string; qty: number; expiry_date: string }[]) {
+      const d = Math.ceil((new Date(b.expiry_date + "T00:00:00").getTime() - today.getTime()) / 86400000);
+      const cur = exp[b.product_id];
+      if (!cur) exp[b.product_id] = { minDays: d, totalQty: b.qty, batches: 1, nearestDate: b.expiry_date };
+      else {
+        cur.totalQty += b.qty;
+        cur.batches += 1;
+        if (d < cur.minDays) { cur.minDays = d; cur.nearestDate = b.expiry_date; }
+      }
+    }
+    setExpiryByProduct(exp);
   };
 
   useEffect(() => {
