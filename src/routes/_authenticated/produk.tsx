@@ -716,6 +716,7 @@ function ProdukPage() {
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Kode (otomatis jika kosong)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="Biarkan kosong → BRG0001" />
+            <FormField label="Barcode (opsional)" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan / ketik barcode produk" />
             <FormField label="Nama *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
             <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
