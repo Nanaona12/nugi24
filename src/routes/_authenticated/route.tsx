@@ -98,6 +98,10 @@ function AuthedLayout() {
 
   const handleLogout = async () => {
     try {
+      // Clear local state FIRST so the super-admin redirect effect doesn't bounce back to /admin.
+      setUser(null);
+      setSub(null);
+      setTenantName("");
       await queryClient.cancelQueries();
       const { error } = await supabase.auth.signOut();
       if (error) {
