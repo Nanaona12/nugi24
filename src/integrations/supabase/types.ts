@@ -14,6 +14,128 @@ export type Database = {
   }
   public: {
     Tables: {
+      cashier_shifts: {
+        Row: {
+          actual_cash: number
+          cashier_id: string
+          closed_at: string | null
+          created_at: string
+          difference: number
+          expected_cash: number
+          id: string
+          notes: string | null
+          opened_at: string
+          opening_cash: number
+          status: string
+          tenant_id: string
+          total_cash: number
+          total_expenses: number
+          total_other: number
+          total_qris: number
+          total_sales: number
+          total_transactions: number
+          updated_at: string
+        }
+        Insert: {
+          actual_cash?: number
+          cashier_id: string
+          closed_at?: string | null
+          created_at?: string
+          difference?: number
+          expected_cash?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_cash?: number
+          status?: string
+          tenant_id: string
+          total_cash?: number
+          total_expenses?: number
+          total_other?: number
+          total_qris?: number
+          total_sales?: number
+          total_transactions?: number
+          updated_at?: string
+        }
+        Update: {
+          actual_cash?: number
+          cashier_id?: string
+          closed_at?: string | null
+          created_at?: string
+          difference?: number
+          expected_cash?: number
+          id?: string
+          notes?: string | null
+          opened_at?: string
+          opening_cash?: number
+          status?: string
+          tenant_id?: string
+          total_cash?: number
+          total_expenses?: number
+          total_other?: number
+          total_qris?: number
+          total_sales?: number
+          total_transactions?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashier_shifts_cashier_id_fkey"
+            columns: ["cashier_id"]
+            isOneToOne: false
+            referencedRelation: "cashiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashier_shifts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cashiers: {
+        Row: {
+          active: boolean
+          created_at: string
+          id: string
+          name: string
+          pin_hash: string
+          pin_salt: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name: string
+          pin_hash: string
+          pin_salt: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          created_at?: string
+          id?: string
+          name?: string
+          pin_hash?: string
+          pin_salt?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cashiers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       coupons: {
         Row: {
           active: boolean
@@ -570,6 +692,48 @@ export type Database = {
           },
         ]
       }
+      shift_expenses: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          label: string
+          shift_id: string
+          tenant_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          label: string
+          shift_id: string
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          label?: string
+          shift_id?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shift_expenses_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "cashier_shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shift_expenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscriptions: {
         Row: {
           created_at: string
@@ -727,6 +891,7 @@ export type Database = {
           item_count: number
           paid: number
           payment_method: string
+          shift_id: string | null
           tenant_id: string
           total: number
         }
@@ -739,6 +904,7 @@ export type Database = {
           item_count?: number
           paid?: number
           payment_method?: string
+          shift_id?: string | null
           tenant_id?: string
           total?: number
         }
@@ -751,10 +917,18 @@ export type Database = {
           item_count?: number
           paid?: number
           payment_method?: string
+          shift_id?: string | null
           tenant_id?: string
           total?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "cashier_shifts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_tenant_id_fkey"
             columns: ["tenant_id"]

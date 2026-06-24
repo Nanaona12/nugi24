@@ -13,6 +13,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated/produk'
 import { Route as AuthenticatedPoRouteImport } from './routes/_authenticated/po'
@@ -22,6 +23,7 @@ import { Route as AuthenticatedPelangganRouteImport } from './routes/_authentica
 import { Route as AuthenticatedLanggananRouteImport } from './routes/_authenticated/langganan'
 import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authenticated/keuntungan'
 import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
+import { Route as AuthenticatedKaryawanRouteImport } from './routes/_authenticated/karyawan'
 import { Route as AuthenticatedKadaluarsaRouteImport } from './routes/_authenticated/kadaluarsa'
 import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -45,6 +47,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
+  id: '/shift',
+  path: '/shift',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedRiwayatRoute = AuthenticatedRiwayatRouteImport.update({
   id: '/riwayat',
@@ -92,6 +99,11 @@ const AuthenticatedKasirRoute = AuthenticatedKasirRouteImport.update({
   path: '/kasir',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedKaryawanRoute = AuthenticatedKaryawanRouteImport.update({
+  id: '/karyawan',
+  path: '/karyawan',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedKadaluarsaRoute = AuthenticatedKadaluarsaRouteImport.update({
   id: '/kadaluarsa',
   path: '/kadaluarsa',
@@ -121,6 +133,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
+  '/karyawan': typeof AuthenticatedKaryawanRoute
   '/kasir': typeof AuthenticatedKasirRoute
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/langganan': typeof AuthenticatedLanggananRoute
@@ -130,6 +143,7 @@ export interface FileRoutesByFullPath {
   '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
+  '/shift': typeof AuthenticatedShiftRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -139,6 +153,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
+  '/karyawan': typeof AuthenticatedKaryawanRoute
   '/kasir': typeof AuthenticatedKasirRoute
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/langganan': typeof AuthenticatedLanggananRoute
@@ -148,6 +163,7 @@ export interface FileRoutesByTo {
   '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
+  '/shift': typeof AuthenticatedShiftRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
 export interface FileRoutesById {
@@ -159,6 +175,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/_authenticated/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
+  '/_authenticated/karyawan': typeof AuthenticatedKaryawanRoute
   '/_authenticated/kasir': typeof AuthenticatedKasirRoute
   '/_authenticated/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/_authenticated/langganan': typeof AuthenticatedLanggananRoute
@@ -168,6 +185,7 @@ export interface FileRoutesById {
   '/_authenticated/po': typeof AuthenticatedPoRoute
   '/_authenticated/produk': typeof AuthenticatedProdukRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
+  '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
 export interface FileRouteTypes {
@@ -179,6 +197,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cek-koneksi'
     | '/kadaluarsa'
+    | '/karyawan'
     | '/kasir'
     | '/keuntungan'
     | '/langganan'
@@ -188,6 +207,7 @@ export interface FileRouteTypes {
     | '/po'
     | '/produk'
     | '/riwayat'
+    | '/shift'
     | '/api/public/midtrans-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -197,6 +217,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cek-koneksi'
     | '/kadaluarsa'
+    | '/karyawan'
     | '/kasir'
     | '/keuntungan'
     | '/langganan'
@@ -206,6 +227,7 @@ export interface FileRouteTypes {
     | '/po'
     | '/produk'
     | '/riwayat'
+    | '/shift'
     | '/api/public/midtrans-webhook'
   id:
     | '__root__'
@@ -216,6 +238,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/cek-koneksi'
     | '/_authenticated/kadaluarsa'
+    | '/_authenticated/karyawan'
     | '/_authenticated/kasir'
     | '/_authenticated/keuntungan'
     | '/_authenticated/langganan'
@@ -225,6 +248,7 @@ export interface FileRouteTypes {
     | '/_authenticated/po'
     | '/_authenticated/produk'
     | '/_authenticated/riwayat'
+    | '/_authenticated/shift'
     | '/api/public/midtrans-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -265,6 +289,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/shift': {
+      id: '/_authenticated/shift'
+      path: '/shift'
+      fullPath: '/shift'
+      preLoaderRoute: typeof AuthenticatedShiftRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/riwayat': {
       id: '/_authenticated/riwayat'
@@ -329,6 +360,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKasirRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/karyawan': {
+      id: '/_authenticated/karyawan'
+      path: '/karyawan'
+      fullPath: '/karyawan'
+      preLoaderRoute: typeof AuthenticatedKaryawanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kadaluarsa': {
       id: '/_authenticated/kadaluarsa'
       path: '/kadaluarsa'
@@ -364,6 +402,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCekKoneksiRoute: typeof AuthenticatedCekKoneksiRoute
   AuthenticatedKadaluarsaRoute: typeof AuthenticatedKadaluarsaRoute
+  AuthenticatedKaryawanRoute: typeof AuthenticatedKaryawanRoute
   AuthenticatedKasirRoute: typeof AuthenticatedKasirRoute
   AuthenticatedKeuntunganRoute: typeof AuthenticatedKeuntunganRoute
   AuthenticatedLanggananRoute: typeof AuthenticatedLanggananRoute
@@ -373,12 +412,14 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPoRoute: typeof AuthenticatedPoRoute
   AuthenticatedProdukRoute: typeof AuthenticatedProdukRoute
   AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
+  AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCekKoneksiRoute: AuthenticatedCekKoneksiRoute,
   AuthenticatedKadaluarsaRoute: AuthenticatedKadaluarsaRoute,
+  AuthenticatedKaryawanRoute: AuthenticatedKaryawanRoute,
   AuthenticatedKasirRoute: AuthenticatedKasirRoute,
   AuthenticatedKeuntunganRoute: AuthenticatedKeuntunganRoute,
   AuthenticatedLanggananRoute: AuthenticatedLanggananRoute,
@@ -388,6 +429,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPoRoute: AuthenticatedPoRoute,
   AuthenticatedProdukRoute: AuthenticatedProdukRoute,
   AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
+  AuthenticatedShiftRoute: AuthenticatedShiftRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

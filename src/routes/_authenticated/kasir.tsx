@@ -11,12 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check, Loader2 } from "lucide-react";
+import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check, Loader2, LockKeyhole, LogOut as LogOutIcon, Wallet, AlertTriangle } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor, PriceTier } from "@/lib/product-pricing";
 import { useServerFn } from "@tanstack/react-start";
 import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
+import { CashierLock, type ActiveShift } from "@/components/CashierLock";
+import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 
 export const Route = createFileRoute("/_authenticated/kasir")({
   component: KasirPage,
@@ -122,6 +124,26 @@ function KasirPage() {
   const [storeName, setStoreName] = useState<string>("Toko");
   const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null }[]>([]);
 
+  // --- Shift / Cashier lock ---
+  const SHIFT_KEY = "dp.active_shift";
+  const [activeShift, setActiveShift] = useState<ActiveShift | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { const s = localStorage.getItem(SHIFT_KEY); return s ? (JSON.parse(s) as ActiveShift) : null; } catch { return null; }
+  });
+  const [lockOpen, setLockOpen] = useState(!activeShift);
+  const [closeOpen, setCloseOpen] = useState(false);
+
+  const persistShift = (s: ActiveShift | null) => {
+    setActiveShift(s);
+    try {
+      if (s) localStorage.setItem(SHIFT_KEY, JSON.stringify(s));
+      else localStorage.removeItem(SHIFT_KEY);
+    } catch {}
+  };
+
+  // --- Expiry batch summary per product ---
+  const [expiryByProduct, setExpiryByProduct] = useState<Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }>>({});
+
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
     if (error) { toast.error(error.message); return; }
@@ -133,6 +155,23 @@ function KasirPage() {
     } catch (e: any) {
       toast.error("Gagal memuat satuan: " + e.message);
     }
+    // Load batches → ringkasan expiry per produk (untuk badge warning)
+    const { data: bs } = await (supabase as any)
+      .from("product_batches")
+      .select("product_id, qty, expiry_date");
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const exp: Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }> = {};
+    for (const b of (bs || []) as { product_id: string; qty: number; expiry_date: string }[]) {
+      const d = Math.ceil((new Date(b.expiry_date + "T00:00:00").getTime() - today.getTime()) / 86400000);
+      const cur = exp[b.product_id];
+      if (!cur) exp[b.product_id] = { minDays: d, totalQty: b.qty, batches: 1, nearestDate: b.expiry_date };
+      else {
+        cur.totalQty += b.qty;
+        cur.batches += 1;
+        if (d < cur.minDays) { cur.minDays = d; cur.nearestDate = b.expiry_date; }
+      }
+    }
+    setExpiryByProduct(exp);
   };
 
   useEffect(() => {
@@ -222,6 +261,7 @@ function KasirPage() {
 
 
   const checkout = async () => {
+    if (!activeShift) { toast.error("Kasir belum login"); setLockOpen(true); return; }
     const paidNum = paymentMethod === "qris" ? totals.total : Number(paid.replace(/[^\d]/g, ""));
     if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
     const phoneClean = customerPhone.replace(/[^\d]/g, "");
@@ -235,6 +275,7 @@ function KasirPage() {
       .from("transactions")
       .insert({
         cashier_id: cashierId,
+        shift_id: activeShift.shift_id,
         total: totals.total,
         paid: paidNum,
         change_amount: change,
@@ -333,8 +374,58 @@ function KasirPage() {
   };
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
-      {/* Product picker */}
+    <div className="space-y-3">
+      {/* Cashier / shift header */}
+      <Card className="flex flex-wrap items-center justify-between gap-2 p-3">
+        <div className="flex items-center gap-2 text-sm">
+          <Wallet className="h-4 w-4 text-primary" />
+          {activeShift ? (
+            <>
+              <span className="font-medium">Kasir: {activeShift.cashier_name}</span>
+              <span className="text-muted-foreground">• Buka {new Date(activeShift.opened_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span className="text-muted-foreground">• Saldo awal {formatRupiah(activeShift.opening_cash)}</span>
+            </>
+          ) : (
+            <span className="text-muted-foreground italic">Belum ada kasir aktif</span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          {activeShift && (
+            <>
+              <Button size="sm" variant="outline" onClick={() => setCloseOpen(true)}>
+                <ReceiptIcon className="mr-1 h-4 w-4" /> Closing
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => { persistShift(null); setLockOpen(true); }}>
+                <LogOutIcon className="mr-1 h-4 w-4" /> Ganti Kasir
+              </Button>
+            </>
+          )}
+          {!activeShift && (
+            <Button size="sm" onClick={() => setLockOpen(true)}>
+              <LockKeyhole className="mr-1 h-4 w-4" /> Login Kasir
+            </Button>
+          )}
+        </div>
+      </Card>
+
+      <CashierLock
+        open={lockOpen}
+        forceLocked={!activeShift}
+        onClose={() => { if (activeShift) setLockOpen(false); }}
+        onUnlocked={(s) => { persistShift(s); setLockOpen(false); }}
+      />
+      {activeShift && (
+        <ShiftCloseDialog
+          open={closeOpen}
+          shift={activeShift}
+          storeName={storeName}
+          onClose={() => setCloseOpen(false)}
+          onClosed={() => { persistShift(null); setCloseOpen(false); setLockOpen(true); }}
+        />
+      )}
+
+      <div className={`grid gap-4 lg:grid-cols-[1fr_420px] ${!activeShift ? "pointer-events-none opacity-50" : ""}`}>
+        {/* Product picker */}
       <Card className="flex flex-col p-4">
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -359,13 +450,29 @@ function KasirPage() {
                 const base = units.find((u) => u.is_base) || units[0];
                 const ecer = tierPriceFor(base, 1).price;
                 const grosirCount = units.filter((u) => u.conversion > 1).length;
+                const ex = expiryByProduct[p.id];
+                let expBadge: null | { cls: string; txt: string; title: string } = null;
+                if (ex) {
+                  const dateStr = new Date(ex.nearestDate + "T00:00:00").toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+                  if (ex.minDays < 0) expBadge = { cls: "bg-foreground text-background", txt: "Expired", title: `Expired ${Math.abs(ex.minDays)} hari lalu (${dateStr}) • ${ex.totalQty} unit` };
+                  else if (ex.minDays <= 30) expBadge = { cls: "bg-destructive text-destructive-foreground", txt: `≤${ex.minDays}h`, title: `Exp terdekat ${dateStr} (${ex.minDays} hari lagi) • ${ex.totalQty} unit` };
+                  else if (ex.minDays <= 90) expBadge = { cls: "bg-amber-500 text-white", txt: `≤${ex.minDays}h`, title: `Exp terdekat ${dateStr} (${ex.minDays} hari lagi) • ${ex.totalQty} unit` };
+                }
                 return (
                   <button
                     key={p.id}
                     onClick={() => onPickProduct(p)}
-                    className="group flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
+                    className="group relative flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
                   >
-                    <div className="mb-1 line-clamp-2 text-sm font-medium">{p.name}</div>
+                    {expBadge && (
+                      <span
+                        className={`absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold ${expBadge.cls}`}
+                        title={expBadge.title}
+                      >
+                        <AlertTriangle className="h-3 w-3" /> {expBadge.txt}
+                      </span>
+                    )}
+                    <div className="mb-1 line-clamp-2 pr-12 text-sm font-medium">{p.name}</div>
                     <div className="text-xs text-muted-foreground">{p.code}</div>
                     <div className="mt-2 flex w-full items-center justify-between">
                       <div className="text-sm font-semibold text-primary">{formatRupiah(ecer)}<span className="text-[10px] text-muted-foreground">/{base.name}</span></div>
@@ -770,6 +877,7 @@ function KasirPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
