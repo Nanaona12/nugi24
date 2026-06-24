@@ -68,6 +68,7 @@ function KeuntunganPage() {
   const [actualCash, setActualCash] = useState<string>("");
   const [actualQris, setActualQris] = useState<string>("");
   const [expirySummary, setExpirySummary] = useState<{ expired: number; le30: number; le60: number; le90: number }>({ expired: 0, le30: 0, le60: 0, le90: 0 });
+  const [assetSummary, setAssetSummary] = useState<{ totalValue: number; totalUnits: number; productCount: number; topProducts: { name: string; qty: number; value: number }[] }>({ totalValue: 0, totalUnits: 0, productCount: 0, topProducts: [] });
   const chartsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
