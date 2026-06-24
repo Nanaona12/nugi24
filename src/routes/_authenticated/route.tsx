@@ -81,11 +81,12 @@ function AuthedLayout() {
   }, [router]);
 
   useEffect(() => {
-    if (!sub?.isSuperAdmin) return;
+    if (!user || !sub?.isSuperAdmin) return;
+    if (pathname === "/auth" || pathname.startsWith("/auth")) return;
     if (!pathname.startsWith("/admin")) {
       router.navigate({ to: "/admin", replace: true });
     }
-  }, [sub, pathname, router]);
+  }, [user, sub, pathname, router]);
 
   useEffect(() => {
     if (!sub || sub.isSuperAdmin) return;
