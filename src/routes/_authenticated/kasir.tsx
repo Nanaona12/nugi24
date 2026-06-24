@@ -25,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/kasir")({
 type Product = {
   id: string;
   code: string;
+  barcode: string | null;
   name: string;
   category: string | null;
   price: number;
