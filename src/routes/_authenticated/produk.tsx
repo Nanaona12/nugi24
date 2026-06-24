@@ -347,6 +347,7 @@ function ProdukPage() {
           // Only send fields that have a value, so kolom kosong di Excel tidak menimpa data lama.
           const patch: Record<string, any> = {};
           if (r.name) patch.name = r.name;
+          if (r.barcode !== undefined && r.barcode !== null && r.barcode !== "") patch.barcode = r.barcode;
           if (r.category !== null && r.category !== "") patch.category = r.category;
           if (r.price) patch.price = r.price;
           if (r.cost_price) patch.cost_price = r.cost_price;
