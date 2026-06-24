@@ -124,6 +124,26 @@ function KasirPage() {
   const [storeName, setStoreName] = useState<string>("Toko");
   const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null }[]>([]);
 
+  // --- Shift / Cashier lock ---
+  const SHIFT_KEY = "dp.active_shift";
+  const [activeShift, setActiveShift] = useState<ActiveShift | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { const s = localStorage.getItem(SHIFT_KEY); return s ? (JSON.parse(s) as ActiveShift) : null; } catch { return null; }
+  });
+  const [lockOpen, setLockOpen] = useState(!activeShift);
+  const [closeOpen, setCloseOpen] = useState(false);
+
+  const persistShift = (s: ActiveShift | null) => {
+    setActiveShift(s);
+    try {
+      if (s) localStorage.setItem(SHIFT_KEY, JSON.stringify(s));
+      else localStorage.removeItem(SHIFT_KEY);
+    } catch {}
+  };
+
+  // --- Expiry batch summary per product ---
+  const [expiryByProduct, setExpiryByProduct] = useState<Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }>>({});
+
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
     if (error) { toast.error(error.message); return; }
