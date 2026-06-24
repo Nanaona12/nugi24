@@ -167,9 +167,14 @@ export function CashierLock({ open, onUnlocked, forceLocked = true, onClose, onE
                 )}
               </>
             )}
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               {!forceLocked && (
                 <Button variant="ghost" onClick={() => onClose?.()}>Batal</Button>
+              )}
+              {forceLocked && onExit && (
+                <Button variant="outline" onClick={onExit}>
+                  <LogOut className="mr-2 h-4 w-4" /> Keluar
+                </Button>
               )}
               <Button disabled={!pickedId || verifying} onClick={submitPin}>
                 {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Masuk
