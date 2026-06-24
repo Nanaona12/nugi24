@@ -108,6 +108,7 @@ export const createCashier = createServerFn({ method: "POST" })
     if (!data.name?.trim()) throw new Error("Nama kasir wajib");
     validatePin(data.pin);
     const tenantId = await getTenantId(context);
+    await assertActiveSubscription(tenantId);
     const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
     const hash = await pbkdf2(data.pin, salt);
     const { data: row, error } = await context.supabase
