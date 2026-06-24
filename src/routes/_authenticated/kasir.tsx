@@ -19,7 +19,7 @@ import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
-import { openShift as openShiftFn } from "@/lib/cashier.functions";
+import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
 import { parseNumber } from "@/lib/format";
 
 
@@ -145,6 +145,7 @@ function KasirPage() {
   const [openingCash, setOpeningCash] = useState("");
   const [openingShiftLoading, setOpeningShiftLoading] = useState(false);
   const openShiftFnCb = useServerFn(openShiftFn);
+  const deductStockFn = useServerFn(deductProductStockFn);
   const [closeOpen, setCloseOpen] = useState(false);
 
   const persistShift = (s: ActiveShift | null) => {
@@ -360,16 +361,19 @@ function KasirPage() {
     });
     const { error: itErr } = await supabase.from("transaction_items").insert(items as any);
     if (itErr) { toast.error(itErr.message); setSubmitting(false); return; }
-    // gabung pengurangan stok per produk
+    // gabung pengurangan stok per produk — dikerjakan di server (cashier tidak bisa UPDATE products)
     const stockMap = new Map<string, number>();
     for (const l of cart) stockMap.set(l.product.id, (stockMap.get(l.product.id) || 0) + l.qty);
-    await Promise.all(
-      Array.from(stockMap.entries()).map(([pid, used]) => {
-        const p = products.find((x) => x.id === pid);
-        if (!p) return Promise.resolve();
-        return supabase.from("products").update({ stock: Math.max(0, p.stock - used) }).eq("id", pid);
-      }),
-    );
+    try {
+      await deductStockFn({
+        data: {
+          items: Array.from(stockMap.entries()).map(([product_id, qty]) => ({ product_id, qty })),
+        },
+      });
+    } catch (e: any) {
+      toast.error("Gagal kurangi stok: " + (e?.message || "unknown"));
+    }
+
     const receipt = {
       id: tx.id,
       total: totals.total,

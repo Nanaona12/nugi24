@@ -67,6 +67,20 @@ async function isCashierSession(ctx: any): Promise<boolean> {
   return !!data;
 }
 
+/** Server-side subscription gate. Throws if the tenant's subscription has expired. */
+async function assertActiveSubscription(tenantId: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: s } = await supabaseAdmin
+    .from("subscriptions")
+    .select("status, current_period_end")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (!s) throw new Error("Langganan tidak ditemukan");
+  const end = new Date((s as any).current_period_end).getTime();
+  if (!Number.isFinite(end) || end < Date.now()) {
+    throw new Error("Langganan toko sudah berakhir. Silakan perpanjang langganan.");
+  }
+}
 
 function validatePin(pin: string) {
   if (!/^\d{4,6}$/.test(pin)) throw new Error("PIN harus 4-6 angka");
@@ -94,6 +108,7 @@ export const createCashier = createServerFn({ method: "POST" })
     if (!data.name?.trim()) throw new Error("Nama kasir wajib");
     validatePin(data.pin);
     const tenantId = await getTenantId(context);
+    await assertActiveSubscription(tenantId);
     const salt = crypto.getRandomValues(new Uint8Array(SALT_BYTES));
     const hash = await pbkdf2(data.pin, salt);
     const { data: row, error } = await context.supabase
@@ -170,27 +185,29 @@ export const verifyCashierPin = createServerFn({ method: "POST" })
   .inputValidator((d: { cashier_id: string; pin: string }) => d)
   .handler(async ({ data, context }) => {
     const tenantId = await getTenantId(context);
-    const { data: c, error } = await context.supabase
+    await assertActiveSubscription(tenantId);
+    // pin_hash/pin_salt are revoked from authenticated; use admin client after tenant scoping.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: c, error } = await supabaseAdmin
       .from("cashiers")
-      .select("id, name, active, pin_hash, pin_salt")
+      .select("id, name, active, pin_hash, pin_salt, tenant_id")
       .eq("id", data.cashier_id)
       .eq("tenant_id", tenantId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!c) throw new Error("Kasir tidak ditemukan");
     if (!c.active) throw new Error("Kasir tidak aktif");
-    const salt = fromB64(c.pin_salt as string);
+    const salt = fromB64((c as any).pin_salt as string);
     const tryHash = await pbkdf2(data.pin, salt);
-    if (!timingSafeEqualStr(tryHash, c.pin_hash as string)) throw new Error("PIN salah");
-    // Look up any open shift for this cashier
+    if (!timingSafeEqualStr(tryHash, (c as any).pin_hash as string)) throw new Error("PIN salah");
     const { data: openShift } = await context.supabase
       .from("cashier_shifts")
       .select("id, opened_at, opening_cash")
-      .eq("cashier_id", c.id)
+      .eq("cashier_id", (c as any).id)
       .eq("tenant_id", tenantId)
       .eq("status", "open")
       .maybeSingle();
-    return { cashier: { id: c.id, name: c.name }, openShift: openShift ?? null };
+    return { cashier: { id: (c as any).id, name: (c as any).name }, openShift: openShift ?? null };
   });
 
 export const openShift = createServerFn({ method: "POST" })
@@ -198,6 +215,7 @@ export const openShift = createServerFn({ method: "POST" })
   .inputValidator((d: { cashier_id: string; opening_cash: number }) => d)
   .handler(async ({ data, context }) => {
     const tenantId = await getTenantId(context);
+    await assertActiveSubscription(tenantId);
     // Ensure cashier belongs to this tenant
     const { data: c } = await context.supabase
       .from("cashiers").select("id, active").eq("id", data.cashier_id).eq("tenant_id", tenantId).maybeSingle();
@@ -279,6 +297,7 @@ export const addShiftExpense = createServerFn({ method: "POST" })
     const amt = Math.max(0, Number(data.amount) || 0);
     if (amt <= 0) throw new Error("Nominal harus > 0");
     const tenantId = await getTenantId(context);
+    await assertActiveSubscription(tenantId);
     // Confirm shift belongs to tenant & open
     const { data: s } = await context.supabase
       .from("cashier_shifts").select("id, status").eq("id", data.shift_id).eq("tenant_id", tenantId).maybeSingle();
@@ -365,4 +384,39 @@ export const listShifts = createServerFn({ method: "GET" })
       .limit(200);
     if (error) throw new Error(error.message);
     return (data ?? []) as any[];
+  });
+
+// ----- Stock deduction (cashier-safe; only updates stock column via service role) -----
+
+export const deductProductStock = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { items: { product_id: string; qty: number }[] }) => d)
+  .handler(async ({ data, context }) => {
+    const tenantId = await getTenantId(context);
+    await assertActiveSubscription(tenantId);
+    const items = (data.items ?? [])
+      .map((i) => ({ product_id: String(i.product_id), qty: Math.max(0, Number(i.qty) || 0) }))
+      .filter((i) => i.product_id && i.qty > 0);
+    if (items.length === 0) return { ok: true };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const ids = Array.from(new Set(items.map((i) => i.product_id)));
+    const { data: rows, error } = await supabaseAdmin
+      .from("products")
+      .select("id, tenant_id, stock")
+      .in("id", ids);
+    if (error) throw new Error(error.message);
+    const byId = new Map((rows ?? []).map((r: any) => [r.id, r]));
+    for (const it of items) {
+      const p = byId.get(it.product_id);
+      if (!p) continue;
+      if ((p as any).tenant_id !== tenantId) throw new Error("Produk tidak valid");
+      const next = Math.max(0, (Number((p as any).stock) || 0) - it.qty);
+      const { error: upErr } = await supabaseAdmin
+        .from("products")
+        .update({ stock: next })
+        .eq("id", it.product_id)
+        .eq("tenant_id", tenantId);
+      if (upErr) throw new Error(upErr.message);
+    }
+    return { ok: true };
   });
