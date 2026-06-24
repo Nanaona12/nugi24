@@ -10,7 +10,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah, parseNumber } from "@/lib/format";
-import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash, Package, X as XIcon } from "lucide-react";
+import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash, Package, X as XIcon, Copy } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ProductUnit, loadUnitsForProducts, replaceProductUnits, fallbackUnitFromProduct } from "@/lib/product-pricing";
@@ -146,6 +146,26 @@ function ProdukPage() {
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
     setEditOpen(true);
+  };
+
+  const openDuplicate = (p: Product) => {
+    // Duplikat: pertahankan harga/kategori/satuan, kosongkan kode/barcode/stok, beri nama sementara
+    setForm({
+      code: "",
+      barcode: "",
+      name: `${p.name} (salin)`,
+      category: p.category || "",
+      price: String(p.price),
+      cost_price: p.cost_price ? String(p.cost_price) : "",
+      wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
+      wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
+      stock: "0",
+    });
+    // Salin satuan & harga tier dari produk sumber
+    setFormUnits(defaultUnitsFor(p));
+    setFormBatches([]);
+    setEditOpen(true);
+    toast.info("Duplikat siap, ubah nama (rasa) lalu simpan");
   };
 
 
@@ -688,11 +708,14 @@ function ProdukPage() {
                     </td>
                     <td className="p-3 text-right">{p.stock}</td>
                     <td className="p-3">
-                      <div className="flex justify-end gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
+                       <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(p)} title="Edit">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => remove(p)}>
+                        <Button size="icon" variant="ghost" onClick={() => openDuplicate(p)} title="Duplikat (untuk varian rasa)">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => remove(p)} title="Hapus">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
