@@ -640,21 +640,6 @@ function ProdukPage() {
                   <tr key={p.id} className="border-t hover:bg-muted/40">
                     <td className="p-3 font-mono text-xs">{p.code}</td>
                     <td className="p-3 font-mono text-xs text-muted-foreground">{p.barcode || <span className="italic opacity-60">—</span>}</td>
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="p-12 text-center text-muted-foreground">
-                    <FileSpreadsheet className="mx-auto mb-3 h-12 w-12 opacity-30" />
-                    <div>Belum ada produk.</div>
-                    <div className="text-xs">Klik "Import Excel" untuk menambahkan dari file Excel.</div>
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((p) => (
-                  <tr key={p.id} className="border-t hover:bg-muted/40">
-                    <td className="p-3 font-mono text-xs">{p.code}</td>
                     <td className="p-3 font-medium">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span>{p.name}</span>
