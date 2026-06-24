@@ -128,6 +128,14 @@ function AuthedLayout() {
     }
   }, [user, isCashierSession, pathname, router]);
 
+  // Owner gate: /kasir is cashier-only
+  useEffect(() => {
+    if (!user || isCashierSession || sub?.isSuperAdmin) return;
+    if (pathname === "/kasir" || pathname.startsWith("/kasir/")) {
+      router.navigate({ to: "/keuntungan", replace: true });
+    }
+  }, [user, isCashierSession, sub, pathname, router]);
+
   useEffect(() => {
     if (!sub || sub.isSuperAdmin || isCashierSession) return;
     const expired = new Date(sub.current_period_end) < new Date();
@@ -179,7 +187,6 @@ function AuthedLayout() {
         { to: "/riwayat", icon: Receipt, label: "Riwayat" },
       ]
     : [
-        { to: "/kasir", icon: ShoppingCart, label: "Kasir" },
         { to: "/produk", icon: Package, label: "Produk" },
         { to: "/pelanggan", icon: Users, label: "Pelanggan" },
         { to: "/karyawan", icon: UserCog, label: "Karyawan" },
