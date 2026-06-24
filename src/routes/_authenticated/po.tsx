@@ -150,6 +150,14 @@ function POPage() {
     setPickQuery("");
   };
 
+  const lowStockProducts = useMemo(() => {
+    return products
+      .filter((p) => (p.stock ?? 0) <= lowThreshold)
+      .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0));
+  }, [products, lowThreshold]);
+
+  const outOfStockCount = lowStockProducts.filter((p) => (p.stock ?? 0) <= 0).length;
+
   const addProduct = (p: Product) => {
     if (items.some((it) => it.product_id === p.id)) {
       toast.info("Sudah ada di daftar");
@@ -167,12 +175,53 @@ function POPage() {
     ]);
   };
 
+  const buildDraftItem = (p: Product, suggestedQty: number): DraftItem => ({
+    product_id: p.id,
+    product_code: p.code,
+    product_name: p.name,
+    qty: String(Math.max(1, suggestedQty)),
+    unit_cost: String(p.price),
+  });
+
+  const openCreateForLowStock = (mode: "out" | "low") => {
+    const pool = mode === "out"
+      ? lowStockProducts.filter((p) => (p.stock ?? 0) <= 0)
+      : lowStockProducts;
+    if (pool.length === 0) {
+      toast.info("Tidak ada produk yang perlu di-restock");
+      return;
+    }
+    resetForm();
+    // suggested qty: restock to (threshold * 2) - current stock, min 1
+    const target = Math.max(lowThreshold * 2, 10);
+    setItems(pool.map((p) => buildDraftItem(p, target - (p.stock ?? 0))));
+    setCreateOpen(true);
+  };
+
+  const addLowStockToDraft = (p: Product) => {
+    const target = Math.max(lowThreshold * 2, 10);
+    const qty = Math.max(1, target - (p.stock ?? 0));
+    if (!createOpen) {
+      resetForm();
+      setItems([buildDraftItem(p, qty)]);
+      setCreateOpen(true);
+    } else {
+      if (items.some((it) => it.product_id === p.id)) {
+        toast.info("Sudah ada di daftar");
+        return;
+      }
+      setItems((prev) => [...prev, buildDraftItem(p, qty)]);
+      toast.success(`${p.name} ditambahkan ke PO`);
+    }
+  };
+
   const addManual = () => {
     setItems((prev) => [
       ...prev,
       { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0" },
     ]);
   };
+
 
   const updateItem = (i: number, patch: Partial<DraftItem>) => {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
