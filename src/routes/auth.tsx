@@ -22,12 +22,33 @@ function AuthPage() {
   const [mode, setMode] = useState<Mode>("pick");
 
   useEffect(() => {
+    const redirectByRole = async (userId: string) => {
+      const { data: roles } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", userId);
+      if ((roles ?? []).some((r) => r.role === "super_admin")) {
+        router.navigate({ to: "/admin", replace: true });
+        return;
+      }
+      const { data: cm } = await supabase
+        .from("tenant_cashier_users")
+        .select("tenant_id")
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (cm) {
+        router.navigate({ to: "/kasir", replace: true });
+        return;
+      }
+      router.navigate({ to: "/keuntungan", replace: true });
+    };
+
     supabase.auth.getUser().then(({ data }) => {
-      if (data.user) router.navigate({ to: "/kasir", replace: true });
+      if (data.user) redirectByRole(data.user.id);
       else setReady(true);
     });
-    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
-      if (event === "SIGNED_IN") router.navigate({ to: "/kasir", replace: true });
+    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === "SIGNED_IN" && session?.user) redirectByRole(session.user.id);
     });
     return () => sub.subscription.unsubscribe();
   }, [router]);
