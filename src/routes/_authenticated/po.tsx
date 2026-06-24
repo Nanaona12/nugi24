@@ -93,6 +93,10 @@ function POPage() {
   const [detailOpen, setDetailOpen] = useState<PO | null>(null);
   const [detailItems, setDetailItems] = useState<POItem[]>([]);
   const [query, setQuery] = useState("");
+  const [lowThreshold, setLowThreshold] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem("po_low_threshold") || "5", 10);
+    return isNaN(v) ? 5 : v;
+  });
 
   // Form
   const [supplier, setSupplier] = useState("");
@@ -100,6 +104,7 @@ function POPage() {
   const [items, setItems] = useState<DraftItem[]>([]);
   const [pickQuery, setPickQuery] = useState("");
   const [saving, setSaving] = useState(false);
+
 
   const load = async () => {
     const [{ data: poData, error: e1 }, { data: pData, error: e2 }] = await Promise.all([
