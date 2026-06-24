@@ -114,7 +114,10 @@ function ProdukPage() {
   const filtered = products.filter((p) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q);
+    return p.code.toLowerCase().includes(q)
+      || (p.barcode || "").toLowerCase().includes(q)
+      || p.name.toLowerCase().includes(q)
+      || (p.category || "").toLowerCase().includes(q);
   });
 
   const defaultUnitsFor = (p?: Product): ProductUnit[] => {
