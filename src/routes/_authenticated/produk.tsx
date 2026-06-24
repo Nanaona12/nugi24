@@ -163,8 +163,9 @@ function ProdukPage() {
       }
       code = String(data);
     }
-    const payload = {
+    const payload: any = {
       code,
+      barcode: form.barcode.trim() || null,
       name: form.name.trim(),
       category: form.category.trim() || null,
       price: parseNumber(form.price),
