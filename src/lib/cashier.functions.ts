@@ -67,6 +67,20 @@ async function isCashierSession(ctx: any): Promise<boolean> {
   return !!data;
 }
 
+/** Server-side subscription gate. Throws if the tenant's subscription has expired. */
+async function assertActiveSubscription(tenantId: string): Promise<void> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: s } = await supabaseAdmin
+    .from("subscriptions")
+    .select("status, current_period_end")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (!s) throw new Error("Langganan tidak ditemukan");
+  const end = new Date((s as any).current_period_end).getTime();
+  if (!Number.isFinite(end) || end < Date.now()) {
+    throw new Error("Langganan toko sudah berakhir. Silakan perpanjang langganan.");
+  }
+}
 
 function validatePin(pin: string) {
   if (!/^\d{4,6}$/.test(pin)) throw new Error("PIN harus 4-6 angka");
