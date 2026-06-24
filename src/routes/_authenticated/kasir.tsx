@@ -247,6 +247,7 @@ function KasirPage() {
         transaction_id: tx.id,
         product_id: l.product.id,
         product_code: l.product.code,
+        product_barcode: l.product.barcode || null,
         product_name: l.product.name,
         qty: l.qty,
         unit_price: avgUnitPrice,
