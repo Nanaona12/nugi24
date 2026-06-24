@@ -419,6 +419,7 @@ function ProdukPage() {
     const ws = XLSX.utils.json_to_sheet([
       {
         Kode: "",
+        Barcode: "8991002101234",
         Nama: "Beras 5kg",
         Kategori: "Sembako",
         "Harga Modal": 58000,
@@ -430,6 +431,7 @@ function ProdukPage() {
       },
       {
         Kode: "",
+        Barcode: "",
         Nama: "Rokok Contoh",
         Kategori: "Rokok",
         "Harga Modal": 14000,
@@ -441,6 +443,7 @@ function ProdukPage() {
       },
       {
         Kode: "",
+        Barcode: "8993001234567",
         Nama: "Minyak Goreng 1L",
         Kategori: "Sembako",
         "Harga Modal": 15000,
@@ -453,7 +456,7 @@ function ProdukPage() {
     ]);
     // Lebar kolom biar enak dibaca
     (ws as any)["!cols"] = [
-      { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 10 },
+      { wch: 10 }, { wch: 16 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 10 },
       { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 60 },
     ];
     const wb = XLSX.utils.book_new();
