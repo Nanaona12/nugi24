@@ -40,7 +40,7 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
   const [newExpLabel, setNewExpLabel] = useState("");
   const [newExpAmount, setNewExpAmount] = useState("");
   const [addingExp, setAddingExp] = useState(false);
-  const [closed, setClosed] = useState<null | Summary["totals"]>(null);
+  const [closed, setClosed] = useState<null | (Summary["totals"] & { actual_cash: number; difference: number })>(null);
 
   const summaryFn = useServerFn(getShiftSummary);
   const addExpFn = useServerFn(addShiftExpense);
