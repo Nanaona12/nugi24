@@ -148,6 +148,26 @@ function ProdukPage() {
     setEditOpen(true);
   };
 
+  const openDuplicate = (p: Product) => {
+    // Duplikat: pertahankan harga/kategori/satuan, kosongkan kode/barcode/stok, beri nama sementara
+    setForm({
+      code: "",
+      barcode: "",
+      name: `${p.name} (salin)`,
+      category: p.category || "",
+      price: String(p.price),
+      cost_price: p.cost_price ? String(p.cost_price) : "",
+      wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
+      wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
+      stock: "0",
+    });
+    // Salin satuan & harga tier dari produk sumber
+    setFormUnits(defaultUnitsFor(p));
+    setFormBatches([]);
+    setEditOpen(true);
+    toast.info("Duplikat siap, ubah nama (rasa) lalu simpan");
+  };
+
 
   const saveForm = async () => {
     if (!form.name.trim()) {
