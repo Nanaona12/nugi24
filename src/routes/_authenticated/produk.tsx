@@ -134,6 +134,7 @@ function ProdukPage() {
     setForm({
       id: p.id,
       code: p.code,
+      barcode: p.barcode || "",
       name: p.name,
       category: p.category || "",
       price: String(p.price),
