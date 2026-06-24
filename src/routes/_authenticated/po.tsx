@@ -402,6 +402,93 @@ function POPage() {
         </Button>
       </div>
 
+      {/* Produk Habis / Stok Menipis */}
+      {lowStockProducts.length > 0 && (
+        <Card className="overflow-hidden border-destructive/40">
+          <div className="flex flex-wrap items-center gap-2 border-b bg-destructive/5 p-3">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            <div className="flex-1 min-w-[180px]">
+              <div className="text-sm font-semibold">
+                Produk Habis / Stok Menipis
+              </div>
+              <div className="text-xs text-muted-foreground">
+                {outOfStockCount} habis • {lowStockProducts.length - outOfStockCount} menipis
+                {" • "}batas ≤ {lowThreshold}
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs whitespace-nowrap">Batas</Label>
+              <Input
+                type="number"
+                min={0}
+                value={lowThreshold}
+                onChange={(e) => {
+                  const v = Math.max(0, parseInt(e.target.value || "0", 10) || 0);
+                  setLowThreshold(v);
+                  localStorage.setItem("po_low_threshold", String(v));
+                }}
+                className="h-8 w-16 text-xs"
+              />
+            </div>
+            {outOfStockCount > 0 && (
+              <Button
+                size="sm"
+                variant="destructive"
+                onClick={() => openCreateForLowStock("out")}
+              >
+                <PackageX className="mr-2 h-4 w-4" /> Buat PO Habis ({outOfStockCount})
+              </Button>
+            )}
+            <Button
+              size="sm"
+              onClick={() => openCreateForLowStock("low")}
+            >
+              <Plus className="mr-2 h-4 w-4" /> Buat PO Semua ({lowStockProducts.length})
+            </Button>
+          </div>
+          <div className="max-h-72 overflow-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="p-2">Kode</th>
+                  <th className="p-2">Nama</th>
+                  <th className="p-2 text-right">Stok</th>
+                  <th className="p-2 text-right">Harga</th>
+                  <th className="p-2"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {lowStockProducts.map((p) => {
+                  const out = (p.stock ?? 0) <= 0;
+                  return (
+                    <tr key={p.id} className="border-t hover:bg-muted/40">
+                      <td className="p-2 font-mono text-xs">{p.code}</td>
+                      <td className="p-2 font-medium">{p.name}</td>
+                      <td className="p-2 text-right">
+                        <Badge variant={out ? "destructive" : "secondary"}>
+                          {out ? "Habis" : `${p.stock} tersisa`}
+                        </Badge>
+                      </td>
+                      <td className="p-2 text-right">{formatRupiah(p.price)}</td>
+                      <td className="p-2 text-right">
+                        <Button
+                          size="sm"
+                          variant={out ? "destructive" : "outline"}
+                          onClick={() => addLowStockToDraft(p)}
+                        >
+                          <Plus className="mr-1 h-3.5 w-3.5" /> PO
+                        </Button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+
+
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
