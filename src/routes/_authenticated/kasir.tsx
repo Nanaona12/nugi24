@@ -210,11 +210,16 @@ function KasirPage() {
   const removeLine = (key: string) => setCart((c) => c.filter((l) => l.key !== key));
 
   const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter" && filtered.length > 0) {
-      onPickProduct(filtered[0]);
-      setQuery("");
-    }
+    if (e.key !== "Enter" || filtered.length === 0) return;
+    e.preventDefault();
+    const q = query.trim().toLowerCase();
+    // Exact match by barcode/code → langsung tambah eceran. Else: pakai hasil pertama.
+    const exact = products.find((p) => (p.barcode || "").toLowerCase() === q)
+      || products.find((p) => p.code.toLowerCase() === q);
+    addEceran(exact || filtered[0]);
+    setQuery("");
   };
+
 
   const checkout = async () => {
     const paidNum = paymentMethod === "qris" ? totals.total : Number(paid.replace(/[^\d]/g, ""));
