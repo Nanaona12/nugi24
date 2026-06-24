@@ -54,6 +54,12 @@ function AdminPage() {
     retry: false,
   });
 
+  useEffect(() => {
+    if (!roleLoading && isSuperAdmin === false) {
+      router.navigate({ to: "/kasir", replace: true });
+    }
+  }, [roleLoading, isSuperAdmin, router]);
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-tenants"],
     queryFn: () => fn(),
