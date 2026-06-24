@@ -35,6 +35,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 });
 
 function AdminPage() {
+  const router = useRouter();
   const qc = useQueryClient();
   const fn = useServerFn(listAllTenants);
   const extendFn = useServerFn(adminExtendSubscription);
