@@ -808,6 +808,7 @@ function ProdukPage() {
               <thead className="sticky top-0 bg-muted text-left">
                 <tr>
                   <th className="p-2">Kode</th>
+                  <th className="p-2">Barcode</th>
                   <th className="p-2">Nama</th>
                   <th className="p-2">Kategori</th>
                   <th className="p-2 text-right">Modal</th>
