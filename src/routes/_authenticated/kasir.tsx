@@ -964,7 +964,15 @@ function PickerDialog({
 
   return (
     <Dialog open={!!product} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+      <DialogContent
+        className="max-w-md"
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+        }}
+      >
         <DialogHeader>
           <DialogTitle>Tambahkan ke keranjang</DialogTitle>
           <DialogDescription className="font-medium text-foreground">{product.name}</DialogDescription>
