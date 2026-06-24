@@ -235,7 +235,10 @@ function AuthedLayout() {
               {sub?.isSuperAdmin && (
                 <div className="mb-1 inline-block rounded bg-primary px-2 py-0.5 text-primary-foreground">SUPER ADMIN</div>
               )}
-              <div className="truncate">{user.email}</div>
+              {isCashierSession && (
+                <div className="mb-1 inline-block rounded bg-primary px-2 py-0.5 text-primary-foreground">KASIR</div>
+              )}
+              <div className="truncate">{isCashierSession ? (cashierName || "Kasir") : user.email}</div>
             </div>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="justify-start text-sidebar-foreground hover:bg-sidebar-accent">
               <LogOut className="h-4 w-4" />
@@ -247,8 +250,9 @@ function AuthedLayout() {
           <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-4">
             <SidebarTrigger />
             <div className="flex-1 truncate text-sm font-medium">{title}</div>
-            <div className="hidden text-xs text-muted-foreground sm:block">{user.email}</div>
+            <div className="hidden text-xs text-muted-foreground sm:block">{isCashierSession ? (cashierName || "Kasir") : user.email}</div>
           </header>
+
           {!sub?.isSuperAdmin && (showTrialBanner || expired) && (
             <div className={`px-4 py-2 text-center text-sm ${expired ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white"}`}>
               {expired ? (
