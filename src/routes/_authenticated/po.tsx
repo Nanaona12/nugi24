@@ -270,10 +270,12 @@ function POPage() {
     const rows = valid.map((it) => {
       const qty = parseInt(it.qty || "0", 10) || 0;
       const unit_cost = parseNumber(it.unit_cost);
+      const prod = it.product_id ? products.find((p) => p.id === it.product_id) : null;
       return {
         po_id: po.id,
         product_id: it.product_id,
         product_code: it.product_code || "-",
+        product_barcode: prod?.barcode || null,
         product_name: it.product_name,
         qty,
         unit_cost,
