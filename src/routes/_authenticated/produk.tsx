@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/produk")({
 type Product = {
   id: string;
   code: string;
+  barcode: string | null;
   name: string;
   category: string | null;
   price: number;
@@ -34,6 +35,7 @@ type Product = {
 type ProductForm = {
   id?: string;
   code: string;
+  barcode: string;
   name: string;
   category: string;
   price: string;
@@ -45,6 +47,7 @@ type ProductForm = {
 
 const emptyForm: ProductForm = {
   code: "",
+  barcode: "",
   name: "",
   category: "",
   price: "",
@@ -111,7 +114,10 @@ function ProdukPage() {
   const filtered = products.filter((p) => {
     const q = query.trim().toLowerCase();
     if (!q) return true;
-    return p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q) || (p.category || "").toLowerCase().includes(q);
+    return p.code.toLowerCase().includes(q)
+      || (p.barcode || "").toLowerCase().includes(q)
+      || p.name.toLowerCase().includes(q)
+      || (p.category || "").toLowerCase().includes(q);
   });
 
   const defaultUnitsFor = (p?: Product): ProductUnit[] => {
@@ -128,6 +134,7 @@ function ProdukPage() {
     setForm({
       id: p.id,
       code: p.code,
+      barcode: p.barcode || "",
       name: p.name,
       category: p.category || "",
       price: String(p.price),
@@ -156,8 +163,9 @@ function ProdukPage() {
       }
       code = String(data);
     }
-    const payload = {
+    const payload: any = {
       code,
+      barcode: form.barcode.trim() || null,
       name: form.name.trim(),
       category: form.category.trim() || null,
       price: parseNumber(form.price),
@@ -269,28 +277,33 @@ function ProdukPage() {
     }
   };
 
-  const handleScan = async (code: string) => {
+  const handleScan = async (scanned: string) => {
     const mode = scanMode;
     setScanMode(null);
     if (!mode) return;
+    const findByBarcodeOrCode = (s: string) =>
+      products.find((p) => (p.barcode || "") === s) || products.find((p) => p.code === s);
     if (mode === "search") {
-      setQuery(code);
-      const found = products.find((p) => p.code === code);
+      setQuery(scanned);
+      const found = findByBarcodeOrCode(scanned);
       if (found) toast.success(`Ditemukan: ${found.name}`);
       else toast.info("Produk tidak ditemukan");
       return;
     }
     // add mode
-    const existing = products.find((p) => p.code === code);
+    const existing = findByBarcodeOrCode(scanned);
     if (existing) {
       toast.info("Produk sudah ada, membuka edit");
       openEdit(existing);
     } else {
-      setForm({ ...emptyForm, code });
+      setForm({ ...emptyForm, barcode: scanned });
+      setFormUnits(defaultUnitsFor());
+      setFormBatches([]);
       setEditOpen(true);
-      toast.success(`Barcode ${code} siap diisi`);
+      toast.success(`Barcode ${scanned} siap diisi`);
     }
   };
+
 
   // ---------- EXCEL IMPORT ----------
   const onFile = async (file: File) => {
@@ -334,6 +347,7 @@ function ProdukPage() {
           // Only send fields that have a value, so kolom kosong di Excel tidak menimpa data lama.
           const patch: Record<string, any> = {};
           if (r.name) patch.name = r.name;
+          if (r.barcode !== undefined && r.barcode !== null && r.barcode !== "") patch.barcode = r.barcode;
           if (r.category !== null && r.category !== "") patch.category = r.category;
           if (r.price) patch.price = r.price;
           if (r.cost_price) patch.cost_price = r.cost_price;
@@ -406,6 +420,7 @@ function ProdukPage() {
     const ws = XLSX.utils.json_to_sheet([
       {
         Kode: "",
+        Barcode: "8991002101234",
         Nama: "Beras 5kg",
         Kategori: "Sembako",
         "Harga Modal": 58000,
@@ -417,6 +432,7 @@ function ProdukPage() {
       },
       {
         Kode: "",
+        Barcode: "",
         Nama: "Rokok Contoh",
         Kategori: "Rokok",
         "Harga Modal": 14000,
@@ -428,6 +444,7 @@ function ProdukPage() {
       },
       {
         Kode: "",
+        Barcode: "8993001234567",
         Nama: "Minyak Goreng 1L",
         Kategori: "Sembako",
         "Harga Modal": 15000,
@@ -440,7 +457,7 @@ function ProdukPage() {
     ]);
     // Lebar kolom biar enak dibaca
     (ws as any)["!cols"] = [
-      { wch: 10 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 10 },
+      { wch: 10 }, { wch: 16 }, { wch: 24 }, { wch: 14 }, { wch: 12 }, { wch: 10 },
       { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 60 },
     ];
     const wb = XLSX.utils.book_new();
@@ -486,6 +503,7 @@ function ProdukPage() {
     if (products.length === 0) { toast.error("Tidak ada produk untuk diexport"); return; }
     const rows = products.map((p) => ({
       Kode: p.code,
+      Barcode: p.barcode || "",
       Nama: p.name,
       Kategori: p.category || "",
       "Harga Modal": p.cost_price || 0,
@@ -497,7 +515,7 @@ function ProdukPage() {
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     (ws as any)["!cols"] = [
-      { wch: 10 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
+      { wch: 10 }, { wch: 16 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
       { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 70 },
     ];
     const wb = XLSX.utils.book_new();
@@ -599,6 +617,7 @@ function ProdukPage() {
             <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
               <tr>
                 <th className="p-3">Kode</th>
+                <th className="p-3">Barcode</th>
                 <th className="p-3">Nama</th>
                 <th className="p-3">Kategori</th>
                 <th className="p-3 text-right">Harga</th>
@@ -610,7 +629,7 @@ function ProdukPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center text-muted-foreground">
+                  <td colSpan={8} className="p-12 text-center text-muted-foreground">
                     <FileSpreadsheet className="mx-auto mb-3 h-12 w-12 opacity-30" />
                     <div>Belum ada produk.</div>
                     <div className="text-xs">Klik "Import Excel" untuk menambahkan dari file Excel.</div>
@@ -620,6 +639,7 @@ function ProdukPage() {
                 filtered.map((p) => (
                   <tr key={p.id} className="border-t hover:bg-muted/40">
                     <td className="p-3 font-mono text-xs">{p.code}</td>
+                    <td className="p-3 font-mono text-xs text-muted-foreground">{p.barcode || <span className="italic opacity-60">—</span>}</td>
                     <td className="p-3 font-medium">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span>{p.name}</span>
@@ -696,6 +716,7 @@ function ProdukPage() {
           </DialogHeader>
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Kode (otomatis jika kosong)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="Biarkan kosong → BRG0001" />
+            <FormField label="Barcode (opsional)" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan / ketik barcode produk" />
             <FormField label="Nama *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
             <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
@@ -787,6 +808,7 @@ function ProdukPage() {
               <thead className="sticky top-0 bg-muted text-left">
                 <tr>
                   <th className="p-2">Kode</th>
+                  <th className="p-2">Barcode</th>
                   <th className="p-2">Nama</th>
                   <th className="p-2">Kategori</th>
                   <th className="p-2 text-right">Modal</th>
@@ -801,6 +823,7 @@ function ProdukPage() {
                 {importPreview.map((r, i) => (
                   <tr key={i} className={`border-t ${!r.name ? "bg-destructive/10" : ""}`}>
                     <td className="p-2 font-mono">{r.code || <span className="text-muted-foreground italic">otomatis</span>}</td>
+                    <td className="p-2 font-mono">{r.barcode || <span className="text-muted-foreground">—</span>}</td>
                     <td className="p-2">{r.name || <span className="text-destructive">kosong</span>}</td>
                     <td className="p-2">{r.category}</td>
                     <td className="p-2 text-right">{r.cost_price || ""}</td>
@@ -973,6 +996,8 @@ function normalizeRow(r: Record<string, any>) {
     return "";
   };
   const code = String(get("kode", "code", "sku", "kode barang") ?? "").trim();
+  const barcodeRaw = String(get("barcode", "bar code", "ean", "upc") ?? "").trim();
+  const barcode = barcodeRaw || null;
   const name = String(get("nama", "name", "nama barang", "product") ?? "").trim();
   const category = String(get("kategori", "category") ?? "").trim() || null;
   const price = parseNumber(get("harga", "harga jual", "price"));
@@ -984,7 +1009,7 @@ function normalizeRow(r: Record<string, any>) {
   const stock = parseInt(String(get("stok", "stock", "qty") || "0"), 10) || 0;
   const satuanStr = String(get("satuan", "satuan & harga", "units", "satuan harga") ?? "").trim();
   const units = parseUnitsString(satuanStr);
-  return { code, name, category, price, cost_price, wholesale_price, wholesale_min_qty, stock, units, satuanStr };
+  return { code, barcode, name, category, price, cost_price, wholesale_price, wholesale_min_qty, stock, units, satuanStr };
 }
 
 /**

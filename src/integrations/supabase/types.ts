@@ -415,6 +415,7 @@ export type Database = {
       }
       products: {
         Row: {
+          barcode: string | null
           category: string | null
           code: string
           cost_price: number
@@ -429,6 +430,7 @@ export type Database = {
           wholesale_price: number | null
         }
         Insert: {
+          barcode?: string | null
           category?: string | null
           code: string
           cost_price?: number
@@ -443,6 +445,7 @@ export type Database = {
           wholesale_price?: number | null
         }
         Update: {
+          barcode?: string | null
           category?: string | null
           code?: string
           cost_price?: number
@@ -470,6 +473,7 @@ export type Database = {
         Row: {
           id: string
           po_id: string
+          product_barcode: string | null
           product_code: string
           product_id: string | null
           product_name: string
@@ -481,6 +485,7 @@ export type Database = {
         Insert: {
           id?: string
           po_id: string
+          product_barcode?: string | null
           product_code: string
           product_id?: string | null
           product_name: string
@@ -492,6 +497,7 @@ export type Database = {
         Update: {
           id?: string
           po_id?: string
+          product_barcode?: string | null
           product_code?: string
           product_id?: string | null
           product_name?: string
@@ -639,6 +645,7 @@ export type Database = {
         Row: {
           id: string
           is_wholesale: boolean
+          product_barcode: string | null
           product_code: string
           product_id: string | null
           product_name: string
@@ -655,6 +662,7 @@ export type Database = {
         Insert: {
           id?: string
           is_wholesale?: boolean
+          product_barcode?: string | null
           product_code: string
           product_id?: string | null
           product_name: string
@@ -671,6 +679,7 @@ export type Database = {
         Update: {
           id?: string
           is_wholesale?: boolean
+          product_barcode?: string | null
           product_code?: string
           product_id?: string | null
           product_name?: string

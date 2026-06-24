@@ -25,6 +25,7 @@ export const Route = createFileRoute("/_authenticated/kasir")({
 type Product = {
   id: string;
   code: string;
+  barcode: string | null;
   name: string;
   category: string | null;
   price: number;
@@ -152,7 +153,7 @@ function KasirPage() {
     const q = query.trim().toLowerCase();
     if (!q) return products.slice(0, 60);
     return products
-      .filter((p) => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      .filter((p) => p.code.toLowerCase().includes(q) || (p.barcode || "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
       .slice(0, 60);
   }, [products, query]);
 
@@ -246,6 +247,7 @@ function KasirPage() {
         transaction_id: tx.id,
         product_id: l.product.id,
         product_code: l.product.code,
+        product_barcode: l.product.barcode || null,
         product_name: l.product.name,
         qty: l.qty,
         unit_price: avgUnitPrice,

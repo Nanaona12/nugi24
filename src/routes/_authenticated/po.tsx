@@ -45,6 +45,7 @@ export const Route = createFileRoute("/_authenticated/po")({
 type Product = {
   id: string;
   code: string;
+  barcode: string | null;
   name: string;
   price: number;
   stock: number;
@@ -109,7 +110,7 @@ function POPage() {
   const load = async () => {
     const [{ data: poData, error: e1 }, { data: pData, error: e2 }] = await Promise.all([
       supabase.from("purchase_orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("products").select("id,code,name,price,stock").order("name"),
+      supabase.from("products").select("id,code,barcode,name,price,stock").order("name"),
     ]);
     if (e1) toast.error(e1.message);
     else setPos((poData || []) as PO[]);
@@ -133,7 +134,7 @@ function POPage() {
     const q = pickQuery.trim().toLowerCase();
     if (!q) return products.slice(0, 20);
     return products
-      .filter((p) => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      .filter((p) => p.code.toLowerCase().includes(q) || (p.barcode || "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
       .slice(0, 20);
   }, [products, pickQuery]);
 
@@ -269,10 +270,12 @@ function POPage() {
     const rows = valid.map((it) => {
       const qty = parseInt(it.qty || "0", 10) || 0;
       const unit_cost = parseNumber(it.unit_cost);
+      const prod = it.product_id ? products.find((p) => p.id === it.product_id) : null;
       return {
         po_id: po.id,
         product_id: it.product_id,
         product_code: it.product_code || "-",
+        product_barcode: prod?.barcode || null,
         product_name: it.product_name,
         qty,
         unit_cost,
@@ -590,7 +593,7 @@ function POPage() {
                     >
                       <div className="font-medium">{p.name}</div>
                       <div className="text-muted-foreground">
-                        {p.code} • Stok {p.stock} • {formatRupiah(p.price)}
+                        {p.code}{p.barcode ? ` • ${p.barcode}` : ""} • Stok {p.stock} • {formatRupiah(p.price)}
                       </div>
                     </button>
                   ))
