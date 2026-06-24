@@ -1,67 +1,71 @@
-## Tujuan
-1. Bisa import banyak batch kadaluarsa sekaligus dari Excel (tanpa input satu-satu).
-2. Saat menambah produk baru di halaman Produk, ada bagian "Batch Kadaluarsa" untuk langsung mengisi jumlah + tanggal expired (boleh lebih dari satu baris untuk produk yang sama, mis. Indomie 2 pcs exp 22-07-2026 dan 5 pcs exp 24-07-2027).
+
+## Yang akan dibangun
+
+### 1. Akun karyawan/kasir berbasis PIN (1 tenant, banyak kasir)
+
+- Menu baru **Karyawan** (khusus pemilik) untuk menambah / mengubah / menonaktifkan kasir. Tiap kasir punya: Nama, PIN 4–6 digit, status aktif.
+- Saat masuk halaman **Kasir**, muncul layar kunci "Pilih Kasir → Masukkan PIN". Sebelum PIN benar, transaksi tidak bisa dibuka.
+- Setelah kasir terpilih, namanya tampil di header kasir. Tombol **Ganti Kasir** mengunci ulang layar tanpa logout pemilik.
+- Hak akses (UI-level, karena sesi tetap milik pemilik di perangkat toko): kasir hanya bisa pakai menu Kasir & lihat Produk. Menu Keuntungan, Karyawan, Langganan, Pengaturan, Pengambilan, dll. disembunyikan saat sedang dalam mode kasir aktif.
+- PIN disimpan sebagai hash (bukan teks polos) supaya tidak bisa dilihat dari database.
+
+### 2. Closing kasir (lengkap)
+
+- Setiap sesi kasir = **shift**. Saat kasir login PIN pertama kali hari itu, muncul **Buka Shift**: input saldo awal kas (uang receh di laci).
+- Selama shift, semua transaksi otomatis terikat ke shift tsb (kasir + waktu buka).
+- Tombol **Pengeluaran Shift** untuk catat pengeluaran kecil (beli kresek, bayar tukang dll): label + nominal. Tampil di ringkasan closing.
+- Tombol **Closing Shift** membuka dialog dengan ringkasan otomatis:
+  - Saldo awal kas
+  - Total penjualan tunai, QRIS, total transaksi
+  - Total pengeluaran shift
+  - **Kas seharusnya** = saldo awal + penjualan tunai − pengeluaran
+  - Input **Fisik akhir kas** (kasir hitung uang di laci) → sistem hitung **Selisih** otomatis (lebih / kurang / pas), warna hijau / merah.
+  - Catatan opsional.
+- Setelah dikonfirmasi: shift ditutup, kasir wajib PIN lagi untuk shift baru, dan muncul **Struk Closing** yang bisa di-print / disimpan PNG (format mirip struk kasir yang sudah ada).
+- Menu baru **Riwayat Shift** (pemilik) untuk lihat closing-closing sebelumnya per kasir.
+
+### 3. Badge kadaluarsa di kartu produk kasir
+
+- Kasir memuat ringkasan batch per produk (yang sudah ada datanya di tabel `product_batches`).
+- Kartu produk di kasir menampilkan badge kecil di pojok:
+  - Hitam "Expired" jika ada batch sudah lewat
+  - Merah "≤30h" jika batch terdekat ≤ 30 hari
+  - Kuning "≤90h" jika ≤ 90 hari
+  - Tidak ada badge jika > 90 hari atau tanpa data batch
+- Tooltip badge menampilkan tanggal & jumlah unit batch terdekat. Tidak memblokir penjualan (sesuai pilihan).
 
 ---
 
-## 1. Import Excel Batch Kadaluarsa (halaman Kadaluarsa)
+## Detail teknis (untuk referensi)
 
-### UI
-Di `src/routes/_authenticated/kadaluarsa.tsx`, tambah 2 tombol di header (samping "Tambah Batch"):
-- **Download Template** — generate file `template-batch-kadaluarsa.xlsx`.
-- **Import Excel** — buka file picker `.xlsx/.xls`, parse, preview ringkas (jumlah baris valid / error), lalu tombol "Simpan Semua".
+### Database (migration)
 
-### Format Template
-Kolom (header baris 1):
-| kode_produk | nama_produk (opsional, info) | jumlah | tanggal_kadaluarsa | catatan (opsional) |
+- `cashiers` (id, tenant_id, name, pin_hash, active, created_at, updated_at) — RLS: hanya pemilik tenant yang bisa baca/tulis.
+- `cashier_shifts` (id, tenant_id, cashier_id, opened_at, closed_at, opening_cash, expected_cash, actual_cash, difference, total_sales, total_cash, total_qris, total_other, total_transactions, total_expenses, notes, status: 'open'|'closed').
+- `shift_expenses` (id, tenant_id, shift_id, label, amount, created_at).
+- Tambah kolom ke `transactions`: `cashier_id` (nullable), `shift_id` (nullable). Kolom lama tidak terpengaruh — transaksi lama tetap bisa dibaca.
+- RLS semua tabel baru: hanya pemilik tenant via `tenant_id = current_tenant_id()`.
+- Index: `cashier_shifts(tenant_id, status)` untuk lookup shift aktif, `transactions(shift_id)` untuk agregasi closing.
 
-- `kode_produk` wajib, dipakai untuk mencari produk (case-insensitive).
-- `jumlah` wajib, integer ≥ 1 (satuan dasar).
-- `tanggal_kadaluarsa` wajib, terima format Excel date atau string `YYYY-MM-DD` / `DD-MM-YYYY` / `DD/MM/YYYY`.
-- `catatan` opsional.
+### Halaman & komponen
 
-Sheet kedua "Petunjuk" berisi penjelasan singkat + contoh Indomie 2 baris (exp berbeda).
+- `src/routes/_authenticated/karyawan.tsx` — CRUD kasir, set/reset PIN.
+- `src/routes/_authenticated/shift.tsx` — riwayat shift (pemilik), bisa lihat detail per shift.
+- `src/components/CashierLock.tsx` — overlay PIN di kasir; juga handle dialog "Buka Shift".
+- `src/components/ShiftCloseDialog.tsx` — dialog closing + render struk closing PNG (reuse pola dari `renderReceiptPng`).
+- Update `src/routes/_authenticated/kasir.tsx`:
+  - Wrap halaman dgn cek shift aktif; kalau belum, tampilkan CashierLock.
+  - Header tampil: Kasir aktif + tombol "Pengeluaran", "Closing", "Ganti Kasir".
+  - Saat insert `transactions`, isi `cashier_id` & `shift_id`.
+  - Muat ringkasan `product_batches` → badge di kartu produk.
+- Update `src/routes/_authenticated/route.tsx` sidebar: tambah "Karyawan" & "Riwayat Shift" (pemilik). Saat ada shift kasir aktif & user dlm mode kasir, sembunyikan menu non-kasir.
 
-### Validasi per baris
-- Kode produk tidak ditemukan → tandai error.
-- Jumlah ≤ 0 atau bukan angka → error.
-- Tanggal tidak bisa diparse → error.
-- Baris valid masuk antrian insert; baris error ditampilkan di tabel preview dengan alasan.
+### PIN hashing
 
-### Penyimpanan
-Insert batch valid ke `product_batches` dalam 1 batch (`insert([...])`) dengan `tenant_id` user saat ini, `source = 'import'`. Tampilkan toast hasil (`X batch berhasil, Y gagal`). Refresh list.
+- Hash di server pakai `createServerFn` + `crypto.subtle` (PBKDF2-SHA256, 100k iter, salt random per kasir). Verifikasi PIN juga di server function (constant-time compare). PIN tidak pernah keluar dari server, hanya `true/false` ke client.
 
-### Library
-Gunakan `xlsx` (SheetJS) — sudah lazim dipakai produk lain di project (cek dulu, jika belum ada akan di-`bun add` saat build mode).
+### Yang TIDAK dibangun (di luar scope ini)
 
----
-
-## 2. Form Batch Saat Tambah Produk Baru (halaman Produk)
-
-Di `src/routes/_authenticated/produk.tsx`, di dialog tambah/edit produk:
-
-### UI
-Section baru "Batch Kadaluarsa (opsional)" di bawah field stok:
-- List baris dinamis, setiap baris: `[Jumlah]` `[Tanggal Kadaluarsa]` `[Catatan]` `[hapus]`.
-- Tombol "+ Tambah Baris Batch".
-- Catatan kecil: "Total jumlah batch sebaiknya = stok awal. Stok akan otomatis berkurang dari batch dengan exp terdekat (FEFO) saat transaksi."
-
-### Validasi
-- Tiap baris yang diisi: jumlah ≥ 1 (integer), tanggal valid dan tidak boleh sebelum hari ini (boleh tapi diberi peringatan halus — final rule: minimal hari ini, agar tidak salah ketik tahun).
-- Boleh tidak isi baris sama sekali (produk tanpa exp tracking tetap bisa).
-- Peringatan inline (toast/error helper) jika total batch ≠ stok awal — tidak memblok submit, hanya info.
-
-### Penyimpanan
-Setelah produk baru berhasil di-insert dan dapat `product_id`, lakukan `insert` ke `product_batches` untuk semua baris valid sekaligus dengan `tenant_id`, `source = 'manual'`. Jika produk gagal, batch tidak ikut tersimpan. Jika batch gagal, produk tetap ada → toast warning agar user tambah manual via halaman Kadaluarsa.
-
-### Mode Edit
-Untuk edit produk, **tidak** menampilkan section ini di plan ini (manajemen batch existing tetap via halaman Kadaluarsa) — supaya scope tetap fokus pada permintaan ("saat menambah produk baru"). Bila user mau, bisa di-extend nanti.
-
----
-
-## File yang akan diubah
-- `src/routes/_authenticated/kadaluarsa.tsx` — tombol Download Template, Import Excel, dialog preview.
-- `src/routes/_authenticated/produk.tsx` — section batch di dialog tambah produk + logic insert batch setelah create.
-- (mungkin) `package.json` — pastikan `xlsx` sudah terpasang; jika belum, tambahkan saat build mode.
-
-Tidak ada perubahan skema database — tabel `product_batches` sudah cukup.
+- Login email terpisah per karyawan / RLS multi-user-per-tenant. (Bisa ditambah kemudian kalau perlu HP karyawan masing-masing.)
+- Cetak struk closing ke printer thermal hardware-level. Yang dibangun: gambar PNG yg bisa di-print browser.
+- Batasan RLS untuk mencegah kasir bypass UI (karena sesi memang milik pemilik di perangkat toko).
