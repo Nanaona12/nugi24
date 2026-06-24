@@ -1,5 +1,5 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,6 +35,7 @@ export const Route = createFileRoute("/_authenticated/admin")({
 });
 
 function AdminPage() {
+  const router = useRouter();
   const qc = useQueryClient();
   const fn = useServerFn(listAllTenants);
   const extendFn = useServerFn(adminExtendSubscription);
@@ -52,6 +53,12 @@ function AdminPage() {
     staleTime: 60_000,
     retry: false,
   });
+
+  useEffect(() => {
+    if (!roleLoading && isSuperAdmin === false) {
+      router.navigate({ to: "/kasir", replace: true });
+    }
+  }, [roleLoading, isSuperAdmin, router]);
 
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-tenants"],
