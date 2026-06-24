@@ -502,6 +502,7 @@ function ProdukPage() {
     if (products.length === 0) { toast.error("Tidak ada produk untuk diexport"); return; }
     const rows = products.map((p) => ({
       Kode: p.code,
+      Barcode: p.barcode || "",
       Nama: p.name,
       Kategori: p.category || "",
       "Harga Modal": p.cost_price || 0,
@@ -513,7 +514,7 @@ function ProdukPage() {
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     (ws as any)["!cols"] = [
-      { wch: 10 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
+      { wch: 10 }, { wch: 16 }, { wch: 28 }, { wch: 14 }, { wch: 12 }, { wch: 12 },
       { wch: 12 }, { wch: 10 }, { wch: 8 }, { wch: 70 },
     ];
     const wb = XLSX.utils.book_new();
