@@ -79,7 +79,8 @@ function AdminPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  if (isLoading) return <div className="p-6 text-sm text-muted-foreground">Memuat...</div>;
+  if (roleLoading || isLoading) return <div className="p-6 text-sm text-muted-foreground">Memuat...</div>;
+  if (!isSuperAdmin) return <div className="p-6 text-sm text-destructive">Akses ditolak: hanya super admin.</div>;
   if (error) return <div className="p-6 text-sm text-destructive">{(error as Error).message}</div>;
 
   const tenants = data?.tenants ?? [];
