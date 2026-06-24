@@ -22,6 +22,7 @@ export const Route = createFileRoute("/_authenticated/produk")({
 type Product = {
   id: string;
   code: string;
+  barcode: string | null;
   name: string;
   category: string | null;
   price: number;
@@ -34,6 +35,7 @@ type Product = {
 type ProductForm = {
   id?: string;
   code: string;
+  barcode: string;
   name: string;
   category: string;
   price: string;
@@ -45,6 +47,7 @@ type ProductForm = {
 
 const emptyForm: ProductForm = {
   code: "",
+  barcode: "",
   name: "",
   category: "",
   price: "",
