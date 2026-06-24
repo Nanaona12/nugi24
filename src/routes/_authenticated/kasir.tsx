@@ -11,12 +11,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check, Loader2 } from "lucide-react";
+import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check, Loader2, LockKeyhole, LogOut as LogOutIcon, Wallet, AlertTriangle } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor, PriceTier } from "@/lib/product-pricing";
 import { useServerFn } from "@tanstack/react-start";
 import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
+import { CashierLock, type ActiveShift } from "@/components/CashierLock";
+import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 
 export const Route = createFileRoute("/_authenticated/kasir")({
   component: KasirPage,
