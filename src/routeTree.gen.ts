@@ -22,6 +22,7 @@ import { Route as AuthenticatedPelangganRouteImport } from './routes/_authentica
 import { Route as AuthenticatedLanggananRouteImport } from './routes/_authenticated/langganan'
 import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authenticated/keuntungan'
 import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
+import { Route as AuthenticatedKaryawanRouteImport } from './routes/_authenticated/karyawan'
 import { Route as AuthenticatedKadaluarsaRouteImport } from './routes/_authenticated/kadaluarsa'
 import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
@@ -92,6 +93,11 @@ const AuthenticatedKasirRoute = AuthenticatedKasirRouteImport.update({
   path: '/kasir',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedKaryawanRoute = AuthenticatedKaryawanRouteImport.update({
+  id: '/karyawan',
+  path: '/karyawan',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedKadaluarsaRoute = AuthenticatedKadaluarsaRouteImport.update({
   id: '/kadaluarsa',
   path: '/kadaluarsa',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
+  '/karyawan': typeof AuthenticatedKaryawanRoute
   '/kasir': typeof AuthenticatedKasirRoute
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/langganan': typeof AuthenticatedLanggananRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
+  '/karyawan': typeof AuthenticatedKaryawanRoute
   '/kasir': typeof AuthenticatedKasirRoute
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/langganan': typeof AuthenticatedLanggananRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/_authenticated/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
+  '/_authenticated/karyawan': typeof AuthenticatedKaryawanRoute
   '/_authenticated/kasir': typeof AuthenticatedKasirRoute
   '/_authenticated/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/_authenticated/langganan': typeof AuthenticatedLanggananRoute
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cek-koneksi'
     | '/kadaluarsa'
+    | '/karyawan'
     | '/kasir'
     | '/keuntungan'
     | '/langganan'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/cek-koneksi'
     | '/kadaluarsa'
+    | '/karyawan'
     | '/kasir'
     | '/keuntungan'
     | '/langganan'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin'
     | '/_authenticated/cek-koneksi'
     | '/_authenticated/kadaluarsa'
+    | '/_authenticated/karyawan'
     | '/_authenticated/kasir'
     | '/_authenticated/keuntungan'
     | '/_authenticated/langganan'
@@ -329,6 +341,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKasirRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/karyawan': {
+      id: '/_authenticated/karyawan'
+      path: '/karyawan'
+      fullPath: '/karyawan'
+      preLoaderRoute: typeof AuthenticatedKaryawanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/kadaluarsa': {
       id: '/_authenticated/kadaluarsa'
       path: '/kadaluarsa'
@@ -364,6 +383,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCekKoneksiRoute: typeof AuthenticatedCekKoneksiRoute
   AuthenticatedKadaluarsaRoute: typeof AuthenticatedKadaluarsaRoute
+  AuthenticatedKaryawanRoute: typeof AuthenticatedKaryawanRoute
   AuthenticatedKasirRoute: typeof AuthenticatedKasirRoute
   AuthenticatedKeuntunganRoute: typeof AuthenticatedKeuntunganRoute
   AuthenticatedLanggananRoute: typeof AuthenticatedLanggananRoute
@@ -379,6 +399,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCekKoneksiRoute: AuthenticatedCekKoneksiRoute,
   AuthenticatedKadaluarsaRoute: AuthenticatedKadaluarsaRoute,
+  AuthenticatedKaryawanRoute: AuthenticatedKaryawanRoute,
   AuthenticatedKasirRoute: AuthenticatedKasirRoute,
   AuthenticatedKeuntunganRoute: AuthenticatedKeuntunganRoute,
   AuthenticatedLanggananRoute: AuthenticatedLanggananRoute,
