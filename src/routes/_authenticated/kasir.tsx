@@ -145,6 +145,7 @@ function KasirPage() {
   const [openingCash, setOpeningCash] = useState("");
   const [openingShiftLoading, setOpeningShiftLoading] = useState(false);
   const openShiftFnCb = useServerFn(openShiftFn);
+  const deductStockFn = useServerFn(deductProductStockFn);
   const [closeOpen, setCloseOpen] = useState(false);
 
   const persistShift = (s: ActiveShift | null) => {
