@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, LockKeyhole, UserCircle2 } from "lucide-react";
+import { Loader2, LockKeyhole, LogOut, UserCircle2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { listCashiers, verifyCashierPin, openShift } from "@/lib/cashier.functions";
 import { parseNumber, formatRupiah } from "@/lib/format";
@@ -25,9 +25,11 @@ type Props = {
   /** When true, closing/X is disabled — must select a cashier. */
   forceLocked?: boolean;
   onClose?: () => void;
+  /** Optional exit action shown when the dialog is forced-locked (e.g. back to main menu). */
+  onExit?: () => void;
 };
 
-export function CashierLock({ open, onUnlocked, forceLocked = true, onClose }: Props) {
+export function CashierLock({ open, onUnlocked, forceLocked = true, onClose, onExit }: Props) {
   const [cashiers, setCashiers] = useState<Cashier[]>([]);
   const [loading, setLoading] = useState(true);
   const [pickedId, setPickedId] = useState<string | null>(null);
@@ -165,9 +167,14 @@ export function CashierLock({ open, onUnlocked, forceLocked = true, onClose }: P
                 )}
               </>
             )}
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               {!forceLocked && (
                 <Button variant="ghost" onClick={() => onClose?.()}>Batal</Button>
+              )}
+              {forceLocked && onExit && (
+                <Button variant="outline" onClick={onExit}>
+                  <LogOut className="mr-2 h-4 w-4" /> Keluar
+                </Button>
               )}
               <Button disabled={!pickedId || verifying} onClick={submitPin}>
                 {verifying && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Masuk
