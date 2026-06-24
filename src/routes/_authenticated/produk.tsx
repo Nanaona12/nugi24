@@ -823,6 +823,7 @@ function ProdukPage() {
                 {importPreview.map((r, i) => (
                   <tr key={i} className={`border-t ${!r.name ? "bg-destructive/10" : ""}`}>
                     <td className="p-2 font-mono">{r.code || <span className="text-muted-foreground italic">otomatis</span>}</td>
+                    <td className="p-2 font-mono">{r.barcode || <span className="text-muted-foreground">—</span>}</td>
                     <td className="p-2">{r.name || <span className="text-destructive">kosong</span>}</td>
                     <td className="p-2">{r.category}</td>
                     <td className="p-2 text-right">{r.cost_price || ""}</td>
