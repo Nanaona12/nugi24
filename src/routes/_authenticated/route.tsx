@@ -179,7 +179,6 @@ function AuthedLayout() {
         { to: "/riwayat", icon: Receipt, label: "Riwayat" },
       ]
     : [
-        { to: "/kasir", icon: ShoppingCart, label: "Kasir" },
         { to: "/produk", icon: Package, label: "Produk" },
         { to: "/pelanggan", icon: Users, label: "Pelanggan" },
         { to: "/karyawan", icon: UserCog, label: "Karyawan" },
