@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -102,6 +102,7 @@ function computeLine(
 }
 
 function KasirPage() {
+  const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [query, setQuery] = useState("");
@@ -412,6 +413,7 @@ function KasirPage() {
         open={lockOpen}
         forceLocked={!activeShift}
         onClose={() => { if (activeShift) setLockOpen(false); }}
+        onExit={() => router.navigate({ to: "/produk", replace: true })}
         onUnlocked={(s) => { persistShift(s); setLockOpen(false); }}
       />
       {activeShift && (
