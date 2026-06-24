@@ -214,6 +214,7 @@ export const openShift = createServerFn({ method: "POST" })
   .inputValidator((d: { cashier_id: string; opening_cash: number }) => d)
   .handler(async ({ data, context }) => {
     const tenantId = await getTenantId(context);
+    await assertActiveSubscription(tenantId);
     // Ensure cashier belongs to this tenant
     const { data: c } = await context.supabase
       .from("cashiers").select("id, active").eq("id", data.cashier_id).eq("tenant_id", tenantId).maybeSingle();
