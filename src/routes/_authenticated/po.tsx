@@ -134,7 +134,7 @@ function POPage() {
     const q = pickQuery.trim().toLowerCase();
     if (!q) return products.slice(0, 20);
     return products
-      .filter((p) => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      .filter((p) => p.code.toLowerCase().includes(q) || (p.barcode || "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
       .slice(0, 20);
   }, [products, pickQuery]);
 
