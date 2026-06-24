@@ -41,15 +41,32 @@ function timingSafeEqualStr(a: string, b: string) {
 }
 
 async function getTenantId(ctx: any): Promise<string> {
-  const { data, error } = await ctx.supabase
+  const { data: t, error } = await ctx.supabase
     .from("tenants")
     .select("id")
     .eq("owner_user_id", ctx.userId)
     .maybeSingle();
   if (error) throw new Error(error.message);
-  if (!data) throw new Error("Toko tidak ditemukan");
-  return data.id as string;
+  if (t) return t.id as string;
+  // Cashier shared session
+  const { data: m } = await ctx.supabase
+    .from("tenant_cashier_users")
+    .select("tenant_id")
+    .eq("user_id", ctx.userId)
+    .maybeSingle();
+  if (m) return (m as any).tenant_id as string;
+  throw new Error("Toko tidak ditemukan");
 }
+
+async function isCashierSession(ctx: any): Promise<boolean> {
+  const { data } = await ctx.supabase
+    .from("tenant_cashier_users")
+    .select("user_id")
+    .eq("user_id", ctx.userId)
+    .maybeSingle();
+  return !!data;
+}
+
 
 function validatePin(pin: string) {
   if (!/^\d{4,6}$/.test(pin)) throw new Error("PIN harus 4-6 angka");

@@ -4,12 +4,14 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getMyBilling, updateMyTenant, changeMyPassword } from "@/lib/billing.functions";
+import { getMyCashierCode, regenerateMyCashierCode } from "@/lib/cashier-auth.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { User, KeyRound, Store, ArrowLeft, Mail } from "lucide-react";
+import { User, KeyRound, Store, ArrowLeft, Mail, ShieldQuestion, RefreshCcw, Copy, Check } from "lucide-react";
+
 
 export const Route = createFileRoute("/_authenticated/pengaturan")({
   component: PengaturanPage,
@@ -99,6 +101,10 @@ function PengaturanPage() {
         </Card>
       )}
 
+      <CashierCodeCard />
+
+
+
       <Card>
         <CardHeader><CardTitle className="flex items-center gap-2"><KeyRound className="h-5 w-5" />Ubah Password</CardTitle></CardHeader>
         <CardContent className="space-y-3">
@@ -118,3 +124,61 @@ function PengaturanPage() {
     </div>
   );
 }
+
+function CashierCodeCard() {
+  const getCode = useServerFn(getMyCashierCode);
+  const regen = useServerFn(regenerateMyCashierCode);
+  const [code, setCode] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = (await getCode()) as any;
+      setCode(res.code);
+    } catch (e: any) {
+      setCode(null);
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { load(); }, []);
+
+  const doCopy = async () => {
+    if (!code) return;
+    try { await navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
+  };
+
+  const doRegen = async () => {
+    if (!confirm("Ganti kode? Semua kasir wajib memakai kode baru saat login berikutnya.")) return;
+    try {
+      const res = (await regen()) as any;
+      setCode(res.code);
+      toast.success("Kode kasir diperbarui");
+    } catch (e: any) { toast.error(e.message); }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><ShieldQuestion className="h-5 w-5" />Kode Login Kasir</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Berikan kode ini hanya kepada kasir Anda. Mereka memakainya untuk login mandiri di halaman login (pilih "Saya Kasir") tanpa perlu akun pemilik.
+        </p>
+        <div className="flex items-center gap-2">
+          <div className="flex-1 rounded-md border bg-muted px-4 py-3 text-center text-2xl font-mono font-bold tracking-[0.3em]">
+            {loading ? "..." : (code ?? "—")}
+          </div>
+          <Button variant="outline" size="icon" onClick={doCopy} disabled={!code} title="Salin">
+            {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          </Button>
+          <Button variant="outline" size="icon" onClick={doRegen} title="Ganti kode">
+            <RefreshCcw className="h-4 w-4" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+

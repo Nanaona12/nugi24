@@ -19,6 +19,9 @@ import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
+import { openShift as openShiftFn } from "@/lib/cashier.functions";
+import { parseNumber } from "@/lib/format";
+
 
 export const Route = createFileRoute("/_authenticated/kasir")({
   component: KasirPage,
@@ -127,11 +130,21 @@ function KasirPage() {
 
   // --- Shift / Cashier lock ---
   const SHIFT_KEY = "dp.active_shift";
+  const CASHIER_KEY = "dp.active_cashier";
+  const [activeCashier, setActiveCashier] = useState<{ id: string; name: string } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { const s = localStorage.getItem(CASHIER_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const isCashierSession = !!activeCashier;
   const [activeShift, setActiveShift] = useState<ActiveShift | null>(() => {
     if (typeof window === "undefined") return null;
     try { const s = localStorage.getItem(SHIFT_KEY); return s ? (JSON.parse(s) as ActiveShift) : null; } catch { return null; }
   });
-  const [lockOpen, setLockOpen] = useState(!activeShift);
+  const [lockOpen, setLockOpen] = useState(!activeShift && !isCashierSession);
+  const [openingDialogOpen, setOpeningDialogOpen] = useState(isCashierSession && !activeShift);
+  const [openingCash, setOpeningCash] = useState("");
+  const [openingShiftLoading, setOpeningShiftLoading] = useState(false);
+  const openShiftFnCb = useServerFn(openShiftFn);
   const [closeOpen, setCloseOpen] = useState(false);
 
   const persistShift = (s: ActiveShift | null) => {
@@ -141,6 +154,45 @@ function KasirPage() {
       else localStorage.removeItem(SHIFT_KEY);
     } catch {}
   };
+
+  const handleStartShift = async () => {
+    if (!activeCashier) return;
+    const cash = parseNumber(openingCash) || 0;
+    setOpeningShiftLoading(true);
+    try {
+      const res = (await openShiftFnCb({ data: { cashier_id: activeCashier.id, opening_cash: cash } })) as any;
+      persistShift({
+        shift_id: res.shift_id,
+        cashier_id: activeCashier.id,
+        cashier_name: activeCashier.name,
+        opening_cash: cash,
+        opened_at: new Date().toISOString(),
+      });
+      setOpeningDialogOpen(false);
+      setOpeningCash("");
+      toast.success(`Shift dibuka untuk ${activeCashier.name}`);
+    } catch (e: any) {
+      toast.error(e.message || "Gagal buka shift");
+    } finally { setOpeningShiftLoading(false); }
+  };
+
+  const handleShiftClosed = async () => {
+    persistShift(null);
+    setCloseOpen(false);
+    if (isCashierSession) {
+      // Auto-logout cashier session after closing
+      try {
+        localStorage.removeItem(CASHIER_KEY);
+        localStorage.removeItem(SHIFT_KEY);
+      } catch {}
+      setActiveCashier(null);
+      await supabase.auth.signOut();
+      router.navigate({ to: "/auth", replace: true });
+    } else {
+      setLockOpen(true);
+    }
+  };
+
 
   // --- Expiry batch summary per product ---
   const [expiryByProduct, setExpiryByProduct] = useState<Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }>>({});
@@ -396,12 +448,19 @@ function KasirPage() {
               <Button size="sm" variant="outline" onClick={() => setCloseOpen(true)}>
                 <ReceiptIcon className="mr-1 h-4 w-4" /> Closing
               </Button>
-              <Button size="sm" variant="ghost" onClick={() => { persistShift(null); setLockOpen(true); }}>
-                <LogOutIcon className="mr-1 h-4 w-4" /> Ganti Kasir
-              </Button>
+              {!isCashierSession && (
+                <Button size="sm" variant="ghost" onClick={() => { persistShift(null); setLockOpen(true); }}>
+                  <LogOutIcon className="mr-1 h-4 w-4" /> Ganti Kasir
+                </Button>
+              )}
             </>
           )}
-          {!activeShift && (
+          {!activeShift && isCashierSession && (
+            <Button size="sm" onClick={() => setOpeningDialogOpen(true)}>
+              <LockKeyhole className="mr-1 h-4 w-4" /> Buka Shift
+            </Button>
+          )}
+          {!activeShift && !isCashierSession && (
             <Button size="sm" onClick={() => setLockOpen(true)}>
               <LockKeyhole className="mr-1 h-4 w-4" /> Login Kasir
             </Button>
@@ -409,22 +468,62 @@ function KasirPage() {
         </div>
       </Card>
 
-      <CashierLock
-        open={lockOpen}
-        forceLocked={!activeShift}
-        onClose={() => { if (activeShift) setLockOpen(false); }}
-        onExit={() => router.navigate({ to: "/produk", replace: true })}
-        onUnlocked={(s) => { persistShift(s); setLockOpen(false); }}
-      />
+      {!isCashierSession && (
+        <CashierLock
+          open={lockOpen}
+          forceLocked={!activeShift}
+          onClose={() => { if (activeShift) setLockOpen(false); }}
+          onExit={() => router.navigate({ to: "/produk", replace: true })}
+          onUnlocked={(s) => { persistShift(s); setLockOpen(false); }}
+        />
+      )}
+
+      {isCashierSession && activeCashier && (
+        <Dialog open={openingDialogOpen} onOpenChange={(o) => { if (!o && activeShift) setOpeningDialogOpen(false); }}>
+          <DialogContent
+            className="max-w-sm"
+            onInteractOutside={(e) => { if (!activeShift) e.preventDefault(); }}
+            onEscapeKeyDown={(e) => { if (!activeShift) e.preventDefault(); }}
+          >
+            <DialogHeader>
+              <DialogTitle>Buka Shift — {activeCashier.name}</DialogTitle>
+              <DialogDescription>
+                Masukkan saldo awal kas (uang receh di laci). Bisa 0 jika tidak ada.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Label className="text-xs">Saldo Awal Kas</Label>
+              <Input
+                autoFocus
+                inputMode="numeric"
+                value={openingCash}
+                onChange={(e) => setOpeningCash(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleStartShift(); }}
+                placeholder="0"
+              />
+              {openingCash && (
+                <div className="text-xs text-muted-foreground">{formatRupiah(parseNumber(openingCash) || 0)}</div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button onClick={handleStartShift} disabled={openingShiftLoading}>
+                {openingShiftLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Mulai Shift
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {activeShift && (
         <ShiftCloseDialog
           open={closeOpen}
           shift={activeShift}
           storeName={storeName}
           onClose={() => setCloseOpen(false)}
-          onClosed={() => { persistShift(null); setCloseOpen(false); setLockOpen(true); }}
+          onClosed={handleShiftClosed}
         />
       )}
+
 
       <div className={`grid gap-4 lg:grid-cols-[1fr_420px] ${!activeShift ? "pointer-events-none opacity-50" : ""}`}>
         {/* Product picker */}
