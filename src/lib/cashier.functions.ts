@@ -184,27 +184,29 @@ export const verifyCashierPin = createServerFn({ method: "POST" })
   .inputValidator((d: { cashier_id: string; pin: string }) => d)
   .handler(async ({ data, context }) => {
     const tenantId = await getTenantId(context);
-    const { data: c, error } = await context.supabase
+    await assertActiveSubscription(tenantId);
+    // pin_hash/pin_salt are revoked from authenticated; use admin client after tenant scoping.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: c, error } = await supabaseAdmin
       .from("cashiers")
-      .select("id, name, active, pin_hash, pin_salt")
+      .select("id, name, active, pin_hash, pin_salt, tenant_id")
       .eq("id", data.cashier_id)
       .eq("tenant_id", tenantId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!c) throw new Error("Kasir tidak ditemukan");
     if (!c.active) throw new Error("Kasir tidak aktif");
-    const salt = fromB64(c.pin_salt as string);
+    const salt = fromB64((c as any).pin_salt as string);
     const tryHash = await pbkdf2(data.pin, salt);
-    if (!timingSafeEqualStr(tryHash, c.pin_hash as string)) throw new Error("PIN salah");
-    // Look up any open shift for this cashier
+    if (!timingSafeEqualStr(tryHash, (c as any).pin_hash as string)) throw new Error("PIN salah");
     const { data: openShift } = await context.supabase
       .from("cashier_shifts")
       .select("id, opened_at, opening_cash")
-      .eq("cashier_id", c.id)
+      .eq("cashier_id", (c as any).id)
       .eq("tenant_id", tenantId)
       .eq("status", "open")
       .maybeSingle();
-    return { cashier: { id: c.id, name: c.name }, openShift: openShift ?? null };
+    return { cashier: { id: (c as any).id, name: (c as any).name }, openShift: openShift ?? null };
   });
 
 export const openShift = createServerFn({ method: "POST" })
