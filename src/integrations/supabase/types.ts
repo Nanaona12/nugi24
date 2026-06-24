@@ -775,9 +775,38 @@ export type Database = {
           },
         ]
       }
+      tenant_cashier_users: {
+        Row: {
+          created_at: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_cashier_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tenants: {
         Row: {
           address: string | null
+          cashier_auth_password: string | null
+          cashier_auth_user_id: string | null
+          cashier_code: string | null
           created_at: string
           id: string
           name: string
@@ -787,6 +816,9 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          cashier_auth_password?: string | null
+          cashier_auth_user_id?: string | null
+          cashier_code?: string | null
           created_at?: string
           id?: string
           name: string
@@ -796,6 +828,9 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          cashier_auth_password?: string | null
+          cashier_auth_user_id?: string | null
+          cashier_code?: string | null
           created_at?: string
           id?: string
           name?: string
@@ -965,6 +1000,7 @@ export type Database = {
     }
     Functions: {
       current_tenant_id: { Args: never; Returns: string }
+      generate_cashier_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -972,6 +1008,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_cashier_session: { Args: never; Returns: boolean }
       next_product_code: { Args: never; Returns: string }
     }
     Enums: {
