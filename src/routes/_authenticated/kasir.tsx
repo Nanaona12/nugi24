@@ -861,6 +861,7 @@ function KasirPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      </div>
     </div>
   );
 }
