@@ -385,3 +385,38 @@ export const listShifts = createServerFn({ method: "GET" })
     if (error) throw new Error(error.message);
     return (data ?? []) as any[];
   });
+
+// ----- Stock deduction (cashier-safe; only updates stock column via service role) -----
+
+export const deductProductStock = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { items: { product_id: string; qty: number }[] }) => d)
+  .handler(async ({ data, context }) => {
+    const tenantId = await getTenantId(context);
+    await assertActiveSubscription(tenantId);
+    const items = (data.items ?? [])
+      .map((i) => ({ product_id: String(i.product_id), qty: Math.max(0, Number(i.qty) || 0) }))
+      .filter((i) => i.product_id && i.qty > 0);
+    if (items.length === 0) return { ok: true };
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const ids = Array.from(new Set(items.map((i) => i.product_id)));
+    const { data: rows, error } = await supabaseAdmin
+      .from("products")
+      .select("id, tenant_id, stock")
+      .in("id", ids);
+    if (error) throw new Error(error.message);
+    const byId = new Map((rows ?? []).map((r: any) => [r.id, r]));
+    for (const it of items) {
+      const p = byId.get(it.product_id);
+      if (!p) continue;
+      if ((p as any).tenant_id !== tenantId) throw new Error("Produk tidak valid");
+      const next = Math.max(0, (Number((p as any).stock) || 0) - it.qty);
+      const { error: upErr } = await supabaseAdmin
+        .from("products")
+        .update({ stock: next })
+        .eq("id", it.product_id)
+        .eq("tenant_id", tenantId);
+      if (upErr) throw new Error(upErr.message);
+    }
+    return { ok: true };
+  });
