@@ -81,11 +81,12 @@ function AuthedLayout() {
   }, [router]);
 
   useEffect(() => {
-    if (!sub?.isSuperAdmin) return;
+    if (!user || !sub?.isSuperAdmin) return;
+    if (pathname === "/auth" || pathname.startsWith("/auth")) return;
     if (!pathname.startsWith("/admin")) {
       router.navigate({ to: "/admin", replace: true });
     }
-  }, [sub, pathname, router]);
+  }, [user, sub, pathname, router]);
 
   useEffect(() => {
     if (!sub || sub.isSuperAdmin) return;
@@ -97,6 +98,10 @@ function AuthedLayout() {
 
   const handleLogout = async () => {
     try {
+      // Clear local state FIRST so the super-admin redirect effect doesn't bounce back to /admin.
+      setUser(null);
+      setSub(null);
+      setTenantName("");
       await queryClient.cancelQueries();
       const { error } = await supabase.auth.signOut();
       if (error) {
