@@ -108,7 +108,7 @@ export const updateCashier = createServerFn({ method: "POST" })
     if (Object.keys(patch).length === 0) return { ok: true };
     const { error } = await context.supabase
       .from("cashiers")
-      .update(patch)
+      .update(patch as any)
       .eq("id", data.id)
       .eq("tenant_id", tenantId);
     if (error) throw new Error(error.message);
