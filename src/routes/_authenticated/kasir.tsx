@@ -450,13 +450,29 @@ function KasirPage() {
                 const base = units.find((u) => u.is_base) || units[0];
                 const ecer = tierPriceFor(base, 1).price;
                 const grosirCount = units.filter((u) => u.conversion > 1).length;
+                const ex = expiryByProduct[p.id];
+                let expBadge: null | { cls: string; txt: string; title: string } = null;
+                if (ex) {
+                  const dateStr = new Date(ex.nearestDate + "T00:00:00").toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+                  if (ex.minDays < 0) expBadge = { cls: "bg-foreground text-background", txt: "Expired", title: `Expired ${Math.abs(ex.minDays)} hari lalu (${dateStr}) • ${ex.totalQty} unit` };
+                  else if (ex.minDays <= 30) expBadge = { cls: "bg-destructive text-destructive-foreground", txt: `≤${ex.minDays}h`, title: `Exp terdekat ${dateStr} (${ex.minDays} hari lagi) • ${ex.totalQty} unit` };
+                  else if (ex.minDays <= 90) expBadge = { cls: "bg-amber-500 text-white", txt: `≤${ex.minDays}h`, title: `Exp terdekat ${dateStr} (${ex.minDays} hari lagi) • ${ex.totalQty} unit` };
+                }
                 return (
                   <button
                     key={p.id}
                     onClick={() => onPickProduct(p)}
-                    className="group flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
+                    className="group relative flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
                   >
-                    <div className="mb-1 line-clamp-2 text-sm font-medium">{p.name}</div>
+                    {expBadge && (
+                      <span
+                        className={`absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold ${expBadge.cls}`}
+                        title={expBadge.title}
+                      >
+                        <AlertTriangle className="h-3 w-3" /> {expBadge.txt}
+                      </span>
+                    )}
+                    <div className="mb-1 line-clamp-2 pr-12 text-sm font-medium">{p.name}</div>
                     <div className="text-xs text-muted-foreground">{p.code}</div>
                     <div className="mt-2 flex w-full items-center justify-between">
                       <div className="text-sm font-semibold text-primary">{formatRupiah(ecer)}<span className="text-[10px] text-muted-foreground">/{base.name}</span></div>
