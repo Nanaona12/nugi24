@@ -27,6 +27,13 @@ export const Route = createFileRoute("/_authenticated")({
 
 type SubInfo = { status: string; current_period_end: string; isSuperAdmin: boolean } | null;
 
+// Routes a cashier session is allowed to visit (everything else redirects to /kasir)
+const CASHIER_ALLOWED = ["/kasir", "/pelanggan", "/shift", "/riwayat", "/cek-koneksi"];
+
+function isCashierAllowed(pathname: string) {
+  return CASHIER_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
 function AuthedLayout() {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -34,6 +41,8 @@ function AuthedLayout() {
   const [user, setUser] = useState<{ id: string; email: string | null } | null>(null);
   const [sub, setSub] = useState<SubInfo>(null);
   const [tenantName, setTenantName] = useState<string>("");
+  const [isCashierSession, setIsCashierSession] = useState(false);
+  const [cashierName, setCashierName] = useState<string>("");
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -56,6 +65,7 @@ function AuthedLayout() {
       if (isSuperAdmin) {
         setSub({ status: "active", current_period_end: "2999-12-31", isSuperAdmin: true });
       } else {
+        // Owner?
         const { data: tenant } = await supabase
           .from("tenants")
           .select("id, name")
@@ -69,6 +79,28 @@ function AuthedLayout() {
             .eq("tenant_id", tenant.id)
             .maybeSingle();
           if (s) setSub({ status: s.status, current_period_end: s.current_period_end, isSuperAdmin: false });
+        } else {
+          // Maybe cashier shared session
+          const { data: cm } = await supabase
+            .from("tenant_cashier_users")
+            .select("tenant_id")
+            .eq("user_id", data.user.id)
+            .maybeSingle();
+          if (cm) {
+            setIsCashierSession(true);
+            const { data: tn } = await supabase
+              .from("tenants")
+              .select("name")
+              .eq("id", (cm as any).tenant_id)
+              .maybeSingle();
+            setTenantName((tn as any)?.name || "Toko");
+            // No subscription gate for cashier session
+            setSub({ status: "active", current_period_end: "2999-12-31", isSuperAdmin: false });
+            try {
+              const raw = localStorage.getItem("dp.active_cashier");
+              if (raw) setCashierName(JSON.parse(raw).name || "");
+            } catch {}
+          }
         }
       }
       setChecking(false);
@@ -88,20 +120,29 @@ function AuthedLayout() {
     }
   }, [user, sub, pathname, router]);
 
+  // Cashier session route gate
   useEffect(() => {
-    if (!sub || sub.isSuperAdmin) return;
+    if (!user || !isCashierSession) return;
+    if (!isCashierAllowed(pathname)) {
+      router.navigate({ to: "/kasir", replace: true });
+    }
+  }, [user, isCashierSession, pathname, router]);
+
+  useEffect(() => {
+    if (!sub || sub.isSuperAdmin || isCashierSession) return;
     const expired = new Date(sub.current_period_end) < new Date();
     if (expired && !pathname.startsWith("/langganan")) {
       router.navigate({ to: "/langganan", replace: true });
     }
-  }, [sub, pathname, router]);
+  }, [sub, pathname, router, isCashierSession]);
 
   const handleLogout = async () => {
     try {
-      // Clear local state FIRST so the super-admin redirect effect doesn't bounce back to /admin.
       setUser(null);
       setSub(null);
       setTenantName("");
+      setIsCashierSession(false);
+      setCashierName("");
       await queryClient.cancelQueries();
       const { error } = await supabase.auth.signOut();
       if (error) {
@@ -109,7 +150,11 @@ function AuthedLayout() {
         return;
       }
       queryClient.clear();
-      try { localStorage.removeItem("sb-auth-token"); } catch {}
+      try {
+        localStorage.removeItem("sb-auth-token");
+        localStorage.removeItem("dp.active_cashier");
+        localStorage.removeItem("dp.active_shift");
+      } catch {}
       router.navigate({ to: "/auth", replace: true });
     } catch {
       toast.error("Gagal keluar. Coba lagi.");
@@ -121,11 +166,18 @@ function AuthedLayout() {
   }
 
   const daysLeft = sub ? Math.ceil((new Date(sub.current_period_end).getTime() - Date.now()) / 86400000) : 0;
-  const showTrialBanner = sub && (sub.status === "trialing" || daysLeft <= 3) && daysLeft > 0;
-  const expired = sub && new Date(sub.current_period_end) < new Date();
+  const showTrialBanner = !isCashierSession && sub && (sub.status === "trialing" || daysLeft <= 3) && daysLeft > 0;
+  const expired = !isCashierSession && sub && new Date(sub.current_period_end) < new Date();
 
   const navItems = sub?.isSuperAdmin
     ? [{ to: "/admin", icon: Shield, label: "Admin" }]
+    : isCashierSession
+    ? [
+        { to: "/kasir", icon: ShoppingCart, label: "Kasir" },
+        { to: "/pelanggan", icon: Users, label: "Pelanggan" },
+        { to: "/shift", icon: Layers, label: "Shift Saya" },
+        { to: "/riwayat", icon: Receipt, label: "Riwayat" },
+      ]
     : [
         { to: "/kasir", icon: ShoppingCart, label: "Kasir" },
         { to: "/produk", icon: Package, label: "Produk" },
@@ -143,6 +195,7 @@ function AuthedLayout() {
       ];
 
   const title = sub?.isSuperAdmin ? "Dagang Pintar" : (tenantName || "Toko Saya");
+
 
   return (
     <SidebarProvider>
