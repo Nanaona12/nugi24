@@ -106,10 +106,12 @@ function KeuntunganPage() {
 
       const { data: batches } = await (supabase as any)
         .from("product_batches")
-        .select("expiry_date");
+        .select("product_id, qty, expiry_date");
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const sum = { expired: 0, le30: 0, le60: 0, le90: 0 };
-      for (const b of (batches || []) as { expiry_date: string }[]) {
+      const batchQtyByProduct = new Map<string, number>();
+      for (const b of (batches || []) as { product_id: string; qty: number; expiry_date: string }[]) {
+        batchQtyByProduct.set(b.product_id, (batchQtyByProduct.get(b.product_id) || 0) + (Number(b.qty) || 0));
         const d = Math.ceil((new Date(b.expiry_date + "T00:00:00").getTime() - today.getTime()) / 86400000);
         if (d < 0) sum.expired++;
         else if (d <= 30) sum.le30++;
@@ -117,6 +119,25 @@ function KeuntunganPage() {
         else if (d <= 90) sum.le90++;
       }
       setExpirySummary(sum);
+
+      // Total Aset: harga modal × qty (pakai batch kalau ada, fallback stok produk)
+      const { data: allProducts } = await supabase
+        .from("products")
+        .select("id, name, cost_price, stock");
+      let totalValue = 0, totalUnits = 0, productCount = 0;
+      const assetRows: { name: string; qty: number; value: number }[] = [];
+      for (const p of (allProducts || []) as { id: string; name: string; cost_price: number; stock: number }[]) {
+        const batchQty = batchQtyByProduct.get(p.id) || 0;
+        const qty = batchQty > 0 ? batchQty : (Number(p.stock) || 0);
+        if (qty <= 0) continue;
+        const value = (Number(p.cost_price) || 0) * qty;
+        totalValue += value;
+        totalUnits += qty;
+        productCount++;
+        assetRows.push({ name: p.name, qty, value });
+      }
+      assetRows.sort((a, b) => b.value - a.value);
+      setAssetSummary({ totalValue, totalUnits, productCount, topProducts: assetRows.slice(0, 10) });
 
       setLoading(false);
     })();
