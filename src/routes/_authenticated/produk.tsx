@@ -277,28 +277,33 @@ function ProdukPage() {
     }
   };
 
-  const handleScan = async (code: string) => {
+  const handleScan = async (scanned: string) => {
     const mode = scanMode;
     setScanMode(null);
     if (!mode) return;
+    const findByBarcodeOrCode = (s: string) =>
+      products.find((p) => (p.barcode || "") === s) || products.find((p) => p.code === s);
     if (mode === "search") {
-      setQuery(code);
-      const found = products.find((p) => p.code === code);
+      setQuery(scanned);
+      const found = findByBarcodeOrCode(scanned);
       if (found) toast.success(`Ditemukan: ${found.name}`);
       else toast.info("Produk tidak ditemukan");
       return;
     }
     // add mode
-    const existing = products.find((p) => p.code === code);
+    const existing = findByBarcodeOrCode(scanned);
     if (existing) {
       toast.info("Produk sudah ada, membuka edit");
       openEdit(existing);
     } else {
-      setForm({ ...emptyForm, code });
+      setForm({ ...emptyForm, barcode: scanned });
+      setFormUnits(defaultUnitsFor());
+      setFormBatches([]);
       setEditOpen(true);
-      toast.success(`Barcode ${code} siap diisi`);
+      toast.success(`Barcode ${scanned} siap diisi`);
     }
   };
+
 
   // ---------- EXCEL IMPORT ----------
   const onFile = async (file: File) => {
