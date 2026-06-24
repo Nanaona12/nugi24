@@ -130,11 +130,21 @@ function KasirPage() {
 
   // --- Shift / Cashier lock ---
   const SHIFT_KEY = "dp.active_shift";
+  const CASHIER_KEY = "dp.active_cashier";
+  const [activeCashier, setActiveCashier] = useState<{ id: string; name: string } | null>(() => {
+    if (typeof window === "undefined") return null;
+    try { const s = localStorage.getItem(CASHIER_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
+  });
+  const isCashierSession = !!activeCashier;
   const [activeShift, setActiveShift] = useState<ActiveShift | null>(() => {
     if (typeof window === "undefined") return null;
     try { const s = localStorage.getItem(SHIFT_KEY); return s ? (JSON.parse(s) as ActiveShift) : null; } catch { return null; }
   });
-  const [lockOpen, setLockOpen] = useState(!activeShift);
+  const [lockOpen, setLockOpen] = useState(!activeShift && !isCashierSession);
+  const [openingDialogOpen, setOpeningDialogOpen] = useState(isCashierSession && !activeShift);
+  const [openingCash, setOpeningCash] = useState("");
+  const [openingShiftLoading, setOpeningShiftLoading] = useState(false);
+  const openShiftFnCb = useServerFn(openShiftFn);
   const [closeOpen, setCloseOpen] = useState(false);
 
   const persistShift = (s: ActiveShift | null) => {
@@ -144,6 +154,45 @@ function KasirPage() {
       else localStorage.removeItem(SHIFT_KEY);
     } catch {}
   };
+
+  const handleStartShift = async () => {
+    if (!activeCashier) return;
+    const cash = parseNumber(openingCash) || 0;
+    setOpeningShiftLoading(true);
+    try {
+      const res = (await openShiftFnCb({ data: { cashier_id: activeCashier.id, opening_cash: cash } })) as any;
+      persistShift({
+        shift_id: res.shift_id,
+        cashier_id: activeCashier.id,
+        cashier_name: activeCashier.name,
+        opening_cash: cash,
+        opened_at: new Date().toISOString(),
+      });
+      setOpeningDialogOpen(false);
+      setOpeningCash("");
+      toast.success(`Shift dibuka untuk ${activeCashier.name}`);
+    } catch (e: any) {
+      toast.error(e.message || "Gagal buka shift");
+    } finally { setOpeningShiftLoading(false); }
+  };
+
+  const handleShiftClosed = async () => {
+    persistShift(null);
+    setCloseOpen(false);
+    if (isCashierSession) {
+      // Auto-logout cashier session after closing
+      try {
+        localStorage.removeItem(CASHIER_KEY);
+        localStorage.removeItem(SHIFT_KEY);
+      } catch {}
+      setActiveCashier(null);
+      await supabase.auth.signOut();
+      router.navigate({ to: "/auth", replace: true });
+    } else {
+      setLockOpen(true);
+    }
+  };
+
 
   // --- Expiry batch summary per product ---
   const [expiryByProduct, setExpiryByProduct] = useState<Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }>>({});
