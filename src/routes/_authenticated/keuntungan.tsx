@@ -14,7 +14,7 @@ import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import {
   TrendingUp, DollarSign, ShoppingBag, Calendar, PackageX,
-  ShoppingCart, Download, AlertTriangle, FileSpreadsheet, FileText, AlarmClock,
+  ShoppingCart, Download, AlertTriangle, FileSpreadsheet, FileText, AlarmClock, Boxes,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
@@ -68,6 +68,7 @@ function KeuntunganPage() {
   const [actualCash, setActualCash] = useState<string>("");
   const [actualQris, setActualQris] = useState<string>("");
   const [expirySummary, setExpirySummary] = useState<{ expired: number; le30: number; le60: number; le90: number }>({ expired: 0, le30: 0, le60: 0, le90: 0 });
+  const [assetSummary, setAssetSummary] = useState<{ totalValue: number; totalUnits: number; productCount: number; topProducts: { name: string; qty: number; value: number }[] }>({ totalValue: 0, totalUnits: 0, productCount: 0, topProducts: [] });
   const chartsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -105,10 +106,12 @@ function KeuntunganPage() {
 
       const { data: batches } = await (supabase as any)
         .from("product_batches")
-        .select("expiry_date");
+        .select("product_id, qty, expiry_date");
       const today = new Date(); today.setHours(0, 0, 0, 0);
       const sum = { expired: 0, le30: 0, le60: 0, le90: 0 };
-      for (const b of (batches || []) as { expiry_date: string }[]) {
+      const batchQtyByProduct = new Map<string, number>();
+      for (const b of (batches || []) as { product_id: string; qty: number; expiry_date: string }[]) {
+        batchQtyByProduct.set(b.product_id, (batchQtyByProduct.get(b.product_id) || 0) + (Number(b.qty) || 0));
         const d = Math.ceil((new Date(b.expiry_date + "T00:00:00").getTime() - today.getTime()) / 86400000);
         if (d < 0) sum.expired++;
         else if (d <= 30) sum.le30++;
@@ -116,6 +119,25 @@ function KeuntunganPage() {
         else if (d <= 90) sum.le90++;
       }
       setExpirySummary(sum);
+
+      // Total Aset: harga modal × qty (pakai batch kalau ada, fallback stok produk)
+      const { data: allProducts } = await supabase
+        .from("products")
+        .select("id, name, cost_price, stock");
+      let totalValue = 0, totalUnits = 0, productCount = 0;
+      const assetRows: { name: string; qty: number; value: number }[] = [];
+      for (const p of (allProducts || []) as { id: string; name: string; cost_price: number; stock: number }[]) {
+        const batchQty = batchQtyByProduct.get(p.id) || 0;
+        const qty = batchQty > 0 ? batchQty : (Number(p.stock) || 0);
+        if (qty <= 0) continue;
+        const value = (Number(p.cost_price) || 0) * qty;
+        totalValue += value;
+        totalUnits += qty;
+        productCount++;
+        assetRows.push({ name: p.name, qty, value });
+      }
+      assetRows.sort((a, b) => b.value - a.value);
+      setAssetSummary({ totalValue, totalUnits, productCount, topProducts: assetRows.slice(0, 10) });
 
       setLoading(false);
     })();
@@ -516,6 +538,57 @@ function KeuntunganPage() {
         <StatCard icon={<DollarSign className="h-5 w-5" />} label="Keuntungan Tahun Ini" value={formatRupiah(stats.yearProfit)} sub={`Omset ${formatRupiah(stats.yearRev)}`} />
         <StatCard icon={<ShoppingBag className="h-5 w-5" />} label="Total Keuntungan" value={formatRupiah(stats.allProfit)} sub={`${stats.txCount} transaksi • ${stats.totalQty} item`} />
       </div>
+
+      {/* Total Aset (Nilai Inventori) */}
+      <Card className="p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Boxes className="h-4 w-4 text-primary" />
+            Total Aset Inventori (Harga Modal × Stok)
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            Memakai jumlah batch kadaluarsa bila tersedia, fallback ke stok produk. Otomatis ikut barang masuk baru.
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-md border bg-primary/5 p-3">
+            <div className="text-xs uppercase text-muted-foreground">Nilai Aset</div>
+            <div className="mt-1 text-2xl font-bold text-primary">{formatRupiah(assetSummary.totalValue)}</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs uppercase text-muted-foreground">Total Unit</div>
+            <div className="mt-1 text-2xl font-bold">{assetSummary.totalUnits.toLocaleString("id-ID")}</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs uppercase text-muted-foreground">Jenis Produk</div>
+            <div className="mt-1 text-2xl font-bold">{assetSummary.productCount}</div>
+          </div>
+        </div>
+        {assetSummary.topProducts.length > 0 && (
+          <div className="mt-4 overflow-x-auto">
+            <div className="mb-2 text-xs font-semibold text-muted-foreground">Top 10 Produk Berdasarkan Nilai Aset</div>
+            <table className="w-full text-sm">
+              <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="p-2">Produk</th>
+                  <th className="p-2 text-right">Qty</th>
+                  <th className="p-2 text-right">Nilai Aset</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assetSummary.topProducts.map((p) => (
+                  <tr key={p.name} className="border-t">
+                    <td className="p-2 font-medium">{p.name}</td>
+                    <td className="p-2 text-right">{p.qty}</td>
+                    <td className="p-2 text-right font-semibold text-primary">{formatRupiah(p.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
 
       {/* Ringkasan Kadaluarsa */}
       {(expirySummary.expired + expirySummary.le30 + expirySummary.le60 + expirySummary.le90) > 0 && (
