@@ -297,6 +297,7 @@ export const addShiftExpense = createServerFn({ method: "POST" })
     const amt = Math.max(0, Number(data.amount) || 0);
     if (amt <= 0) throw new Error("Nominal harus > 0");
     const tenantId = await getTenantId(context);
+    await assertActiveSubscription(tenantId);
     // Confirm shift belongs to tenant & open
     const { data: s } = await context.supabase
       .from("cashier_shifts").select("id, status").eq("id", data.shift_id).eq("tenant_id", tenantId).maybeSingle();
