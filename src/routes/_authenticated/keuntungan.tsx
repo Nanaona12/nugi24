@@ -539,6 +539,57 @@ function KeuntunganPage() {
         <StatCard icon={<ShoppingBag className="h-5 w-5" />} label="Total Keuntungan" value={formatRupiah(stats.allProfit)} sub={`${stats.txCount} transaksi • ${stats.totalQty} item`} />
       </div>
 
+      {/* Total Aset (Nilai Inventori) */}
+      <Card className="p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <Boxes className="h-4 w-4 text-primary" />
+            Total Aset Inventori (Harga Modal × Stok)
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            Memakai jumlah batch kadaluarsa bila tersedia, fallback ke stok produk. Otomatis ikut barang masuk baru.
+          </div>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="rounded-md border bg-primary/5 p-3">
+            <div className="text-xs uppercase text-muted-foreground">Nilai Aset</div>
+            <div className="mt-1 text-2xl font-bold text-primary">{formatRupiah(assetSummary.totalValue)}</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs uppercase text-muted-foreground">Total Unit</div>
+            <div className="mt-1 text-2xl font-bold">{assetSummary.totalUnits.toLocaleString("id-ID")}</div>
+          </div>
+          <div className="rounded-md border p-3">
+            <div className="text-xs uppercase text-muted-foreground">Jenis Produk</div>
+            <div className="mt-1 text-2xl font-bold">{assetSummary.productCount}</div>
+          </div>
+        </div>
+        {assetSummary.topProducts.length > 0 && (
+          <div className="mt-4 overflow-x-auto">
+            <div className="mb-2 text-xs font-semibold text-muted-foreground">Top 10 Produk Berdasarkan Nilai Aset</div>
+            <table className="w-full text-sm">
+              <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="p-2">Produk</th>
+                  <th className="p-2 text-right">Qty</th>
+                  <th className="p-2 text-right">Nilai Aset</th>
+                </tr>
+              </thead>
+              <tbody>
+                {assetSummary.topProducts.map((p) => (
+                  <tr key={p.name} className="border-t">
+                    <td className="p-2 font-medium">{p.name}</td>
+                    <td className="p-2 text-right">{p.qty}</td>
+                    <td className="p-2 text-right font-semibold text-primary">{formatRupiah(p.value)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+
       {/* Ringkasan Kadaluarsa */}
       {(expirySummary.expired + expirySummary.le30 + expirySummary.le60 + expirySummary.le90) > 0 && (
         <Card className="p-4">
