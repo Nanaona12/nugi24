@@ -41,12 +41,25 @@ function AdminPage() {
   const statusFn = useServerFn(adminSetSubscriptionStatus);
   const deleteFn = useServerFn(adminDeleteTenant);
 
+  const { data: isSuperAdmin, isLoading: roleLoading } = useQuery({
+    queryKey: ["is-super-admin"],
+    queryFn: async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u.user) return false;
+      const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", u.user.id);
+      return (roles ?? []).some((r) => r.role === "super_admin");
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+
   const { data, isLoading, error } = useQuery({
     queryKey: ["admin-tenants"],
     queryFn: () => fn(),
     retry: false,
-    refetchInterval: 15000,
-    refetchOnWindowFocus: true,
+    enabled: !!isSuperAdmin,
+    refetchInterval: isSuperAdmin ? 15000 : false,
+    refetchOnWindowFocus: !!isSuperAdmin,
   });
   const invalidate = () => qc.invalidateQueries({ queryKey: ["admin-tenants"] });
 
