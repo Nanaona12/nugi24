@@ -708,11 +708,14 @@ function ProdukPage() {
                     </td>
                     <td className="p-3 text-right">{p.stock}</td>
                     <td className="p-3">
-                      <div className="flex justify-end gap-1">
-                        <Button size="icon" variant="ghost" onClick={() => openEdit(p)}>
+                       <div className="flex justify-end gap-1">
+                        <Button size="icon" variant="ghost" onClick={() => openEdit(p)} title="Edit">
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => remove(p)}>
+                        <Button size="icon" variant="ghost" onClick={() => openDuplicate(p)} title="Duplikat (untuk varian rasa)">
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                        <Button size="icon" variant="ghost" onClick={() => remove(p)} title="Hapus">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
