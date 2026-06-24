@@ -153,7 +153,7 @@ function KasirPage() {
     const q = query.trim().toLowerCase();
     if (!q) return products.slice(0, 60);
     return products
-      .filter((p) => p.code.toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      .filter((p) => p.code.toLowerCase().includes(q) || (p.barcode || "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
       .slice(0, 60);
   }, [products, query]);
 
