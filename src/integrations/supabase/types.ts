@@ -121,6 +121,69 @@ export type Database = {
         }
         Relationships: []
       }
+      household_withdrawals: {
+        Row: {
+          amount_due: number
+          amount_paid: number
+          created_at: string
+          id: string
+          note: string | null
+          product_id: string
+          qty: number
+          status: string
+          taken_at: string
+          taken_by: string | null
+          tenant_id: string
+          unit_conversion: number
+          updated_at: string
+        }
+        Insert: {
+          amount_due?: number
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          product_id: string
+          qty: number
+          status?: string
+          taken_at?: string
+          taken_by?: string | null
+          tenant_id?: string
+          unit_conversion?: number
+          updated_at?: string
+        }
+        Update: {
+          amount_due?: number
+          amount_paid?: number
+          created_at?: string
+          id?: string
+          note?: string | null
+          product_id?: string
+          qty?: number
+          status?: string
+          taken_at?: string
+          taken_by?: string | null
+          tenant_id?: string
+          unit_conversion?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "household_withdrawals_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "household_withdrawals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
