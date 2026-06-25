@@ -1,7 +1,7 @@
 // Subscription plans & pricing for Dagang Pintar
 // Yearly = ~10x monthly (hemat 2 bulan)
 
-export type PlanId = "warung" | "grosir";
+export type PlanId = "coba" | "warung" | "grosir";
 export type BillingPeriod = "monthly" | "yearly";
 
 export type PlanDef = {
