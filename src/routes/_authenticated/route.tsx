@@ -263,9 +263,35 @@ function AuthedLayout() {
           {!sub?.isSuperAdmin && (showTrialBanner || expired) && (
             <div className={`px-4 py-2 text-center text-sm ${expired ? "bg-destructive text-destructive-foreground" : "bg-amber-500 text-white"}`}>
               {expired ? (
-                <>Langganan Anda berakhir. <Link to="/langganan" className="underline font-semibold">Perpanjang sekarang</Link></>
+                <>Langganan Anda berakhir.{" "}
+                  <Link
+                    to="/langganan"
+                    hash="pilih-paket"
+                    className="underline font-semibold"
+                    onClick={() => {
+                      if (pathname.startsWith("/langganan")) {
+                        setTimeout(() => {
+                          document.getElementById("pilih-paket")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }, 50);
+                      }
+                    }}
+                  >Perpanjang sekarang</Link>
+                </>
               ) : (
-                <>Trial berakhir dalam {daysLeft} hari. <Link to="/langganan" className="underline font-semibold">Berlangganan Rp 14.900/bulan</Link></>
+                <>Trial berakhir dalam {daysLeft} hari.{" "}
+                  <Link
+                    to="/langganan"
+                    hash="pilih-paket"
+                    className="underline font-semibold"
+                    onClick={() => {
+                      if (pathname.startsWith("/langganan")) {
+                        setTimeout(() => {
+                          document.getElementById("pilih-paket")?.scrollIntoView({ behavior: "smooth", block: "start" });
+                        }, 50);
+                      }
+                    }}
+                  >Berlangganan Rp 14.900/bulan</Link>
+                </>
               )}
             </div>
           )}
