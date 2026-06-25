@@ -25,13 +25,19 @@ export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
 });
 
-type SubInfo = { status: string; current_period_end: string; isSuperAdmin: boolean } | null;
+type SubInfo = { status: string; current_period_end: string; isSuperAdmin: boolean; plan?: string | null } | null;
 
 // Routes a cashier session is allowed to visit (everything else redirects to /kasir)
 const CASHIER_ALLOWED = ["/kasir", "/pelanggan", "/shift", "/riwayat", "/cek-koneksi"];
+// Routes locked for Paket Warung (only available on Paket Grosiran)
+const GROSIR_ONLY_ROUTES = ["/po", "/kadaluarsa", "/pengambilan", "/karyawan"];
 
 function isCashierAllowed(pathname: string) {
   return CASHIER_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+function isGrosirOnlyRoute(pathname: string) {
+  return GROSIR_ONLY_ROUTES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 function AuthedLayout() {
@@ -75,10 +81,10 @@ function AuthedLayout() {
           setTenantName(tenant.name || "");
           const { data: s } = await supabase
             .from("subscriptions")
-            .select("status, current_period_end")
+            .select("status, current_period_end, plan")
             .eq("tenant_id", tenant.id)
             .maybeSingle();
-          if (s) setSub({ status: s.status, current_period_end: s.current_period_end, isSuperAdmin: false });
+          if (s) setSub({ status: s.status, current_period_end: s.current_period_end, plan: (s as any).plan ?? "warung", isSuperAdmin: false });
         } else {
           // Maybe cashier shared session
           const { data: cm } = await supabase
@@ -144,6 +150,17 @@ function AuthedLayout() {
     }
   }, [sub, pathname, router, isCashierSession]);
 
+  // Plan gate: Paket Warung cannot access Grosiran-only routes
+  useEffect(() => {
+    if (!user || isCashierSession || sub?.isSuperAdmin) return;
+    if (!sub) return;
+    const plan = sub.plan ?? "warung";
+    if (plan !== "grosir" && isGrosirOnlyRoute(pathname)) {
+      toast.error("Fitur ini hanya tersedia di Paket Grosiran. Upgrade untuk mengaksesnya.");
+      router.navigate({ to: "/langganan", replace: true });
+    }
+  }, [user, isCashierSession, sub, pathname, router]);
+
   const handleLogout = async () => {
     try {
       setUser(null);
@@ -177,6 +194,23 @@ function AuthedLayout() {
   const showTrialBanner = !isCashierSession && sub && (sub.status === "trialing" || daysLeft <= 3) && daysLeft > 0;
   const expired = !isCashierSession && sub && new Date(sub.current_period_end) < new Date();
 
+  const ownerPlan = sub?.plan ?? "warung";
+  const isGrosir = ownerPlan === "grosir";
+  const ownerNav: Array<{ to: string; icon: any; label: string }> = [
+    { to: "/produk", icon: Package, label: "Produk" },
+    { to: "/pelanggan", icon: Users, label: "Pelanggan" },
+    ...(isGrosir ? [{ to: "/karyawan", icon: UserCog, label: "Karyawan" }] : []),
+    ...(isGrosir ? [{ to: "/po", icon: ClipboardList, label: "PO" }] : []),
+    ...(isGrosir ? [{ to: "/kadaluarsa", icon: AlarmClock, label: "Kadaluarsa" }] : []),
+    { to: "/riwayat", icon: Receipt, label: "Riwayat" },
+    { to: "/shift", icon: Layers, label: "Riwayat Shift" },
+    ...(isGrosir ? [{ to: "/pengambilan", icon: Home, label: "Pengambilan" }] : []),
+    { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
+    { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
+    { to: "/langganan", icon: CreditCard, label: "Langganan" },
+    { to: "/pengaturan", icon: Settings, label: "Pengaturan" },
+  ];
+
   const navItems = sub?.isSuperAdmin
     ? [{ to: "/admin", icon: Shield, label: "Admin" }]
     : isCashierSession
@@ -186,20 +220,7 @@ function AuthedLayout() {
         { to: "/shift", icon: Layers, label: "Shift Saya" },
         { to: "/riwayat", icon: Receipt, label: "Riwayat" },
       ]
-    : [
-        { to: "/produk", icon: Package, label: "Produk" },
-        { to: "/pelanggan", icon: Users, label: "Pelanggan" },
-        { to: "/karyawan", icon: UserCog, label: "Karyawan" },
-        { to: "/po", icon: ClipboardList, label: "PO" },
-        { to: "/kadaluarsa", icon: AlarmClock, label: "Kadaluarsa" },
-        { to: "/riwayat", icon: Receipt, label: "Riwayat" },
-        { to: "/shift", icon: Layers, label: "Riwayat Shift" },
-        { to: "/pengambilan", icon: Home, label: "Pengambilan" },
-        { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
-        { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
-        { to: "/langganan", icon: CreditCard, label: "Langganan" },
-        { to: "/pengaturan", icon: Settings, label: "Pengaturan" },
-      ];
+    : ownerNav;
 
   const title = sub?.isSuperAdmin ? "Dagang Pintar" : (tenantName || "Toko Saya");
 
@@ -244,6 +265,11 @@ function AuthedLayout() {
               )}
               {isCashierSession && (
                 <div className="mb-1 inline-block rounded bg-primary px-2 py-0.5 text-primary-foreground">KASIR</div>
+              )}
+              {!sub?.isSuperAdmin && !isCashierSession && sub && (
+                <div className={`mb-1 inline-block rounded px-2 py-0.5 ${isGrosir ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                  {isGrosir ? "PAKET GROSIRAN" : "PAKET WARUNG"}
+                </div>
               )}
               <div className="truncate">{isCashierSession ? (cashierName || "Kasir") : user.email}</div>
             </div>

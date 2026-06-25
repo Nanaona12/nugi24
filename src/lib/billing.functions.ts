@@ -264,7 +264,7 @@ export const listAllTenants = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: tenants } = await supabaseAdmin
       .from("tenants")
-      .select("id, name, phone, address, owner_user_id, created_at, subscriptions(status, current_period_end)")
+      .select("id, name, phone, address, owner_user_id, created_at, subscriptions(status, current_period_end, plan, period)")
       .order("created_at", { ascending: false });
 
     const { data: pays } = await supabaseAdmin
@@ -311,6 +311,21 @@ export const adminSetSubscriptionStatus = createServerFn({ method: "POST" })
     const { error } = await supabaseAdmin
       .from("subscriptions")
       .update({ status: data.status })
+      .eq("tenant_id", data.tenant_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const adminSetPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { tenant_id: string; plan: PlanId }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    if (data.plan !== "warung" && data.plan !== "grosir") throw new Error("Paket tidak valid");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("subscriptions")
+      .update({ plan: data.plan })
       .eq("tenant_id", data.tenant_id);
     if (error) throw new Error(error.message);
     return { ok: true };

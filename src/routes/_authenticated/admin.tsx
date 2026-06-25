@@ -7,6 +7,7 @@ import {
   listAllTenants,
   adminExtendSubscription,
   adminSetSubscriptionStatus,
+  adminSetPlan,
   adminUpdateTenant,
   adminDeleteTenant,
   adminGetTenantStats,
@@ -40,6 +41,7 @@ function AdminPage() {
   const fn = useServerFn(listAllTenants);
   const extendFn = useServerFn(adminExtendSubscription);
   const statusFn = useServerFn(adminSetSubscriptionStatus);
+  const planFn = useServerFn(adminSetPlan);
   const deleteFn = useServerFn(adminDeleteTenant);
 
   const { data: isSuperAdmin, isLoading: roleLoading } = useQuery({
@@ -78,6 +80,11 @@ function AdminPage() {
   const setStatus = useMutation({
     mutationFn: (v: { tenant_id: string; status: any }) => statusFn({ data: v }),
     onSuccess: () => { toast.success("Status diperbarui"); invalidate(); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const setPlan = useMutation({
+    mutationFn: (v: { tenant_id: string; plan: "warung" | "grosir" }) => planFn({ data: v }),
+    onSuccess: () => { toast.success("Paket diperbarui"); invalidate(); },
     onError: (e: any) => toast.error(e.message),
   });
   const del = useMutation({
@@ -145,12 +152,13 @@ function AdminPage() {
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="text-left text-xs uppercase text-muted-foreground">
-                <tr><th className="py-2">Nama Toko</th><th>WA</th><th>Status</th><th>Berakhir</th><th>Daftar</th><th className="text-right">Aksi</th></tr>
+                <tr><th className="py-2">Nama Toko</th><th>WA</th><th>Status</th><th>Paket</th><th>Berakhir</th><th>Daftar</th><th className="text-right">Aksi</th></tr>
               </thead>
               <tbody>
                 {tenants.map((t: any) => {
                   const s = t.subscriptions?.[0];
                   const isActive = s?.status === "active";
+                  const currentPlan = (s?.plan === "grosir" ? "grosir" : "warung") as "warung" | "grosir";
                   return (
                     <tr key={t.id} className="border-t">
                       <td className="py-2 font-medium">
@@ -161,6 +169,19 @@ function AdminPage() {
                       </td>
                       <td>{t.phone ?? "-"}</td>
                       <td><Badge variant={isActive ? "default" : s?.status === "trialing" ? "secondary" : "destructive"}>{s?.status ?? "-"}</Badge></td>
+                      <td>
+                        <Select
+                          value={currentPlan}
+                          onValueChange={(v) => setPlan.mutate({ tenant_id: t.id, plan: v as "warung" | "grosir" })}
+                          disabled={setPlan.isPending}
+                        >
+                          <SelectTrigger className="h-7 w-[130px] text-xs"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="warung">Warung</SelectItem>
+                            <SelectItem value="grosir">Grosiran</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </td>
                       <td>{s ? new Date(s.current_period_end).toLocaleDateString("id-ID") : "-"}</td>
                       <td>{new Date(t.created_at).toLocaleDateString("id-ID")}</td>
                       <td className="text-right">
