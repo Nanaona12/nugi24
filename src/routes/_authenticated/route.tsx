@@ -266,6 +266,11 @@ function AuthedLayout() {
               {isCashierSession && (
                 <div className="mb-1 inline-block rounded bg-primary px-2 py-0.5 text-primary-foreground">KASIR</div>
               )}
+              {!sub?.isSuperAdmin && !isCashierSession && sub && (
+                <div className={`mb-1 inline-block rounded px-2 py-0.5 ${isGrosir ? "bg-primary text-primary-foreground" : "bg-muted text-foreground"}`}>
+                  {isGrosir ? "PAKET GROSIRAN" : "PAKET WARUNG"}
+                </div>
+              )}
               <div className="truncate">{isCashierSession ? (cashierName || "Kasir") : user.email}</div>
             </div>
             <Button variant="ghost" size="sm" onClick={handleLogout} className="justify-start text-sidebar-foreground hover:bg-sidebar-accent">
