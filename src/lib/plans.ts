@@ -19,22 +19,6 @@ export type PlanDef = {
 };
 
 export const PLANS: Record<PlanId, PlanDef> = {
-  coba: {
-    id: "coba",
-    name: "Paket Coba-Coba",
-    tagline: "Untuk mencoba aplikasi sebelum upgrade — bulanan saja",
-    monthly: 20_000,
-    yearly: 20_000, // not offered; kept for type compatibility
-    monthlyOnly: true,
-    features: [
-      "Kasir + cetak struk thermal",
-      "Manajemen produk & stok dasar",
-      "Riwayat transaksi (30 hari terakhir)",
-      "1 akun kasir aktif",
-      "Scan barcode (kamera & USB)",
-      "Cocok untuk uji coba fitur inti",
-    ],
-  },
   warung: {
     id: "warung",
     name: "Paket Warung",
