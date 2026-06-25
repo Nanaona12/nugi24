@@ -146,38 +146,71 @@ function Features() {
 }
 
 function Pricing({ signedIn }: { signedIn: boolean }) {
-  const benefits = [
-    "Transaksi & produk tanpa batas",
-    "Laporan keuntungan otomatis",
-    "Struk WhatsApp ke pelanggan",
-    "Backup cloud otomatis",
-    "Dukungan via WhatsApp",
-  ];
+  const [period, setPeriod] = useState<"monthly" | "yearly">("yearly");
   return (
     <section id="harga" className="border-y bg-muted/30 py-20">
-      <div className="mx-auto max-w-3xl px-4 text-center">
-        <h2 className="text-3xl font-bold md:text-4xl">Harga Sederhana, Fitur Lengkap</h2>
-        <p className="mt-3 text-muted-foreground">Satu paket untuk semua kebutuhan toko Anda.</p>
-        <Card className="mx-auto mt-8 max-w-sm border-primary/50 shadow-lg">
-          <CardContent className="pt-8">
-            <Badge className="mb-2">Paket Basic</Badge>
-            <div className="text-5xl font-bold">{formatRupiah(14900)}</div>
-            <div className="text-sm text-muted-foreground">per bulan</div>
-            <ul className="mt-6 space-y-2 text-left text-sm">
-              {benefits.map((b) => (
-                <li key={b} className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-primary" /> {b}
-                </li>
-              ))}
-            </ul>
-            <Link to={signedIn ? "/langganan" : "/auth"}>
-              <Button className="mt-6 w-full" size="lg">
-                {signedIn ? "Aktifkan Sekarang" : "Daftar & Mulai"}
-              </Button>
-            </Link>
-            <p className="mt-3 text-xs text-muted-foreground">Punya kode kupon? Bisa diskon hingga 100%.</p>
-          </CardContent>
-        </Card>
+      <div className="mx-auto max-w-5xl px-4">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold md:text-4xl">Pilih Paket yang Sesuai</h2>
+          <p className="mt-3 text-muted-foreground">Hemat hingga {yearlySavingPct("grosir")}% jika bayar tahunan.</p>
+        </div>
+
+        <div className="mt-6 flex justify-center">
+          <div className="inline-flex items-center rounded-full border bg-background p-1 text-xs font-medium">
+            <button
+              type="button"
+              onClick={() => setPeriod("monthly")}
+              className={`rounded-full px-3 py-1.5 transition ${period === "monthly" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}
+            >Bulanan</button>
+            <button
+              type="button"
+              onClick={() => setPeriod("yearly")}
+              className={`flex items-center gap-1 rounded-full px-3 py-1.5 transition ${period === "yearly" ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground"}`}
+            >
+              Tahunan
+              <span className="rounded-full bg-emerald-500/20 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700">Hemat 2 bln</span>
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-8 grid gap-5 md:grid-cols-2">
+          {Object.values(PLANS).map((p) => {
+            const price = period === "yearly" ? p.yearly : p.monthly;
+            return (
+              <Card key={p.id} className={`relative ${p.highlight ? "border-primary/60 shadow-lg" : ""}`}>
+                {p.highlight && (
+                  <div className="absolute right-3 top-3 rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">Populer</div>
+                )}
+                <CardContent className="pt-8">
+                  <Badge variant={p.highlight ? "default" : "secondary"} className="mb-2">{p.name}</Badge>
+                  <p className="text-xs text-muted-foreground">{p.tagline}</p>
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-4xl font-bold">{formatRupiah(price)}</span>
+                    <span className="text-sm text-muted-foreground">/ {period === "yearly" ? "tahun" : "bulan"}</span>
+                  </div>
+                  {period === "yearly" && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      ≈ {formatRupiah(Math.round(price / 12))} / bulan
+                    </div>
+                  )}
+                  <ul className="mt-5 space-y-2 text-left text-sm">
+                    {p.features.map((f) => (
+                      <li key={f} className="flex items-start gap-2">
+                        <CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /> <span>{f}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Link to={signedIn ? "/langganan" : "/auth"}>
+                    <Button className="mt-6 w-full" size="lg" variant={p.highlight ? "default" : "outline"}>
+                      {signedIn ? `Pilih ${p.name}` : "Daftar & Mulai"}
+                    </Button>
+                  </Link>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-center text-xs text-muted-foreground">Punya kode kupon? Bisa diskon hingga 100%.</p>
       </div>
     </section>
   );
