@@ -156,7 +156,8 @@ function LanggananPage() {
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {(Object.values(PLANS)).map((p) => {
-            const price = priceFor(p.id, period);
+            const effectivePeriod: BillingPeriod = p.monthlyOnly ? "monthly" : period;
+            const price = priceFor(p.id, effectivePeriod);
             const isCurrent = currentPlan === p.id;
             const isSelected = selectedPlan === p.id;
             return (
@@ -181,9 +182,12 @@ function LanggananPage() {
                 <div className="mt-4">
                   <div className="flex items-baseline gap-1">
                     <span className="text-3xl font-extrabold tracking-tight">{formatRupiah(price)}</span>
-                    <span className="text-sm text-muted-foreground">/ {period === "yearly" ? "tahun" : "bulan"}</span>
+                    <span className="text-sm text-muted-foreground">/ {effectivePeriod === "yearly" ? "tahun" : "bulan"}</span>
                   </div>
-                  {period === "yearly" && (
+                  {p.monthlyOnly && (
+                    <div className="mt-1 text-xs text-muted-foreground">Hanya tersedia bulanan</div>
+                  )}
+                  {!p.monthlyOnly && effectivePeriod === "yearly" && (
                     <div className="mt-1 text-xs text-muted-foreground">
                       ≈ {formatRupiah(Math.round(price / 12))} / bulan
                       <span className="ml-2 rounded bg-emerald-500/15 px-1.5 py-0.5 font-semibold text-emerald-600">
@@ -192,6 +196,7 @@ function LanggananPage() {
                     </div>
                   )}
                 </div>
+
 
                 <ul className="mt-4 space-y-1.5 text-sm">
                   {p.features.map((f) => (
