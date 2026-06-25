@@ -10,6 +10,8 @@ export type PlanDef = {
   tagline: string;
   monthly: number;
   yearly: number;
+  /** If true, plan can only be billed monthly (no yearly option). */
+  monthlyOnly?: boolean;
   highlight?: boolean;
   features: string[];
   /** Features unique to this tier vs the lower one. */
@@ -20,9 +22,10 @@ export const PLANS: Record<PlanId, PlanDef> = {
   coba: {
     id: "coba",
     name: "Paket Coba-Coba",
-    tagline: "Untuk mencoba aplikasi sebelum upgrade",
+    tagline: "Untuk mencoba aplikasi sebelum upgrade — bulanan saja",
     monthly: 20_000,
-    yearly: 200_000, // hemat 2 bulan
+    yearly: 20_000, // not offered; kept for type compatibility
+    monthlyOnly: true,
     features: [
       "Kasir + cetak struk thermal",
       "Manajemen produk & stok dasar",
