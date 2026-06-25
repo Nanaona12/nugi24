@@ -81,10 +81,10 @@ function AuthedLayout() {
           setTenantName(tenant.name || "");
           const { data: s } = await supabase
             .from("subscriptions")
-            .select("status, current_period_end")
+            .select("status, current_period_end, plan")
             .eq("tenant_id", tenant.id)
             .maybeSingle();
-          if (s) setSub({ status: s.status, current_period_end: s.current_period_end, isSuperAdmin: false });
+          if (s) setSub({ status: s.status, current_period_end: s.current_period_end, plan: (s as any).plan ?? "warung", isSuperAdmin: false });
         } else {
           // Maybe cashier shared session
           const { data: cm } = await supabase
