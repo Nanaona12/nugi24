@@ -8,26 +8,28 @@ export const getMyBilling = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    // Resolve tenant via RPC so this works for both owners and cashier sessions,
-    // and matches the tenant shown in the rest of the app (sidebar).
-    const { data: tenantId } = await supabase.rpc("current_tenant_id");
+    // Resolve tenant: try owner lookup first (most reliable, no RPC needed),
+    // then fall back to RPC current_tenant_id() for cashier sessions.
     let tenant: { id: string; name: string; phone: string | null; address: string | null } | null = null;
-    if (tenantId) {
-      const { data: t } = await supabase
-        .from("tenants")
-        .select("id, name, phone, address")
-        .eq("id", tenantId as string)
-        .maybeSingle();
-      tenant = t as any;
-    }
+    const { data: tOwner, error: tOwnerErr } = await supabase
+      .from("tenants")
+      .select("id, name, phone, address")
+      .eq("owner_user_id", userId)
+      .maybeSingle();
+    if (tOwnerErr) console.error("[getMyBilling] owner lookup error", tOwnerErr);
+    tenant = (tOwner as any) ?? null;
+
     if (!tenant) {
-      // Fallback: owner lookup (covers cases where RPC returns null due to RLS edge cases)
-      const { data: t2 } = await supabase
-        .from("tenants")
-        .select("id, name, phone, address")
-        .eq("owner_user_id", userId)
-        .maybeSingle();
-      tenant = t2 as any;
+      const { data: tenantId, error: rpcErr } = await supabase.rpc("current_tenant_id");
+      if (rpcErr) console.error("[getMyBilling] current_tenant_id rpc error", rpcErr);
+      if (tenantId) {
+        const { data: t } = await supabase
+          .from("tenants")
+          .select("id, name, phone, address")
+          .eq("id", tenantId as string)
+          .maybeSingle();
+        tenant = (t as any) ?? null;
+      }
     }
     if (!tenant) return { tenant: null, subscription: null, payments: [], isSuperAdmin: false };
 
