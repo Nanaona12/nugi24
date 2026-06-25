@@ -176,7 +176,8 @@ function Pricing({ signedIn }: { signedIn: boolean }) {
 
         <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {(Object.values(PLANS) as PlanDef[]).map((p) => {
-            const price = period === "yearly" ? p.yearly : p.monthly;
+            const effectivePeriod = p.monthlyOnly ? "monthly" : period;
+            const price = effectivePeriod === "yearly" ? p.yearly : p.monthly;
             return (
               <Card key={p.id} className={`relative ${p.highlight ? "border-primary/60 shadow-lg" : ""}`}>
                 {p.highlight && (
@@ -187,9 +188,12 @@ function Pricing({ signedIn }: { signedIn: boolean }) {
                   <p className="text-xs text-muted-foreground">{p.tagline}</p>
                   <div className="mt-4 flex items-baseline gap-1">
                     <span className="text-4xl font-bold">{formatRupiah(price)}</span>
-                    <span className="text-sm text-muted-foreground">/ {period === "yearly" ? "tahun" : "bulan"}</span>
+                    <span className="text-sm text-muted-foreground">/ {effectivePeriod === "yearly" ? "tahun" : "bulan"}</span>
                   </div>
-                  {period === "yearly" && (
+                  {p.monthlyOnly && (
+                    <div className="mt-1 text-xs text-muted-foreground">Hanya tersedia bulanan</div>
+                  )}
+                  {!p.monthlyOnly && effectivePeriod === "yearly" && (
                     <div className="mt-1 text-xs text-muted-foreground">
                       ≈ {formatRupiah(Math.round(price / 12))} / bulan
                     </div>

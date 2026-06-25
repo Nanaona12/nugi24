@@ -10,6 +10,8 @@ export type PlanDef = {
   tagline: string;
   monthly: number;
   yearly: number;
+  /** If true, plan can only be billed monthly (no yearly option). */
+  monthlyOnly?: boolean;
   highlight?: boolean;
   features: string[];
   /** Features unique to this tier vs the lower one. */
@@ -20,9 +22,10 @@ export const PLANS: Record<PlanId, PlanDef> = {
   coba: {
     id: "coba",
     name: "Paket Coba-Coba",
-    tagline: "Untuk mencoba aplikasi sebelum upgrade",
+    tagline: "Untuk mencoba aplikasi sebelum upgrade — bulanan saja",
     monthly: 20_000,
-    yearly: 200_000, // hemat 2 bulan
+    yearly: 20_000, // not offered; kept for type compatibility
+    monthlyOnly: true,
     features: [
       "Kasir + cetak struk thermal",
       "Manajemen produk & stok dasar",
@@ -82,7 +85,9 @@ export const PLANS: Record<PlanId, PlanDef> = {
 };
 
 export function priceFor(plan: PlanId, period: BillingPeriod): number {
-  return period === "yearly" ? PLANS[plan].yearly : PLANS[plan].monthly;
+  const p = PLANS[plan];
+  if (p.monthlyOnly) return p.monthly;
+  return period === "yearly" ? p.yearly : p.monthly;
 }
 
 export function daysFor(period: BillingPeriod): number {
