@@ -1,7 +1,7 @@
 // Subscription plans & pricing for Dagang Pintar
 // Yearly = ~10x monthly (hemat 2 bulan)
 
-export type PlanId = "warung" | "grosir";
+export type PlanId = "coba" | "warung" | "grosir";
 export type BillingPeriod = "monthly" | "yearly";
 
 export type PlanDef = {
@@ -17,6 +17,21 @@ export type PlanDef = {
 };
 
 export const PLANS: Record<PlanId, PlanDef> = {
+  coba: {
+    id: "coba",
+    name: "Paket Coba-Coba",
+    tagline: "Untuk mencoba aplikasi sebelum upgrade",
+    monthly: 20_000,
+    yearly: 200_000, // hemat 2 bulan
+    features: [
+      "Kasir + cetak struk thermal",
+      "Manajemen produk & stok dasar",
+      "Riwayat transaksi (30 hari terakhir)",
+      "1 akun kasir aktif",
+      "Scan barcode (kamera & USB)",
+      "Cocok untuk uji coba fitur inti",
+    ],
+  },
   warung: {
     id: "warung",
     name: "Paket Warung",

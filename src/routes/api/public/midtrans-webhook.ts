@@ -49,7 +49,7 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
         if (newStatus === "paid") {
           const period = prevMeta.period === "yearly" ? "yearly" : "monthly";
           const extendDays = period === "yearly" ? 365 : 30;
-          const planId = prevMeta.plan === "grosir" ? "grosir" : "warung";
+          const planId = prevMeta.plan === "grosir" ? "grosir" : prevMeta.plan === "coba" ? "coba" : "warung";
 
           const { data: sub } = await supabaseAdmin
             .from("subscriptions")

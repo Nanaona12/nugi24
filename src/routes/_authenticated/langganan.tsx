@@ -154,7 +154,7 @@ function LanggananPage() {
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {(Object.values(PLANS)).map((p) => {
             const price = priceFor(p.id, period);
             const isCurrent = currentPlan === p.id;
