@@ -87,3 +87,47 @@ export function yearlySavingPct(plan: PlanId): number {
 export function isGrosirPlan(plan?: string | null): boolean {
   return plan === "grosir";
 }
+
+/** Feature flags per plan. Used to gate UI and routes. */
+export type FeatureKey =
+  | "po"
+  | "kadaluarsa"
+  | "pengambilan"
+  | "multi_cashier"
+  | "multi_unit"
+  | "closing_shift_detail"
+  | "total_aset"
+  | "import_export_excel_full";
+
+const FEATURES: Record<PlanId, Record<FeatureKey, boolean>> = {
+  warung: {
+    po: false,
+    kadaluarsa: false,
+    pengambilan: false,
+    multi_cashier: false,
+    multi_unit: false,
+    closing_shift_detail: false,
+    total_aset: false,
+    import_export_excel_full: false,
+  },
+  grosir: {
+    po: true,
+    kadaluarsa: true,
+    pengambilan: true,
+    multi_cashier: true,
+    multi_unit: true,
+    closing_shift_detail: true,
+    total_aset: true,
+    import_export_excel_full: true,
+  },
+};
+
+export function planAllows(plan: string | null | undefined, feature: FeatureKey): boolean {
+  const p: PlanId = plan === "grosir" ? "grosir" : "warung";
+  return FEATURES[p][feature];
+}
+
+export function planLabel(plan?: string | null): string {
+  if (plan === "grosir") return "Paket Grosiran";
+  return "Paket Warung";
+}
