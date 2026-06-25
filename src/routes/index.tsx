@@ -174,7 +174,7 @@ function Pricing({ signedIn }: { signedIn: boolean }) {
           </div>
         </div>
 
-        <div className="mt-8 grid gap-5 md:grid-cols-2">
+        <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
           {(Object.values(PLANS) as PlanDef[]).map((p) => {
             const price = period === "yearly" ? p.yearly : p.monthly;
             return (
