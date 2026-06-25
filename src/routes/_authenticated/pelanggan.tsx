@@ -23,6 +23,7 @@ type Customer = {
   phone: string | null;
   address: string | null;
   note: string | null;
+  points: number;
   created_at: string;
 };
 
