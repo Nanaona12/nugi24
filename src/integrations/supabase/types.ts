@@ -183,6 +183,7 @@ export type Database = {
           name: string
           note: string | null
           phone: string | null
+          points: number
           tenant_id: string
           updated_at: string
         }
@@ -193,6 +194,7 @@ export type Database = {
           name: string
           note?: string | null
           phone?: string | null
+          points?: number
           tenant_id: string
           updated_at?: string
         }
@@ -203,6 +205,7 @@ export type Database = {
           name?: string
           note?: string | null
           phone?: string | null
+          points?: number
           tenant_id?: string
           updated_at?: string
         }
@@ -739,6 +742,7 @@ export type Database = {
           created_at: string
           current_period_end: string
           id: string
+          period: string
           plan: string
           price_idr: number
           status: Database["public"]["Enums"]["subscription_status"]
@@ -749,6 +753,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string
           id?: string
+          period?: string
           plan?: string
           price_idr?: number
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -759,6 +764,7 @@ export type Database = {
           created_at?: string
           current_period_end?: string
           id?: string
+          period?: string
           plan?: string
           price_idr?: number
           status?: Database["public"]["Enums"]["subscription_status"]
@@ -1000,6 +1006,15 @@ export type Database = {
     }
     Functions: {
       current_tenant_id: { Args: never; Returns: string }
+      current_tenant_info: {
+        Args: never
+        Returns: {
+          address: string
+          id: string
+          name: string
+          phone: string
+        }[]
+      }
       generate_cashier_code: { Args: never; Returns: string }
       has_role: {
         Args: {
