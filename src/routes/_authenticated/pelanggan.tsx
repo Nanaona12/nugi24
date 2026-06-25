@@ -102,16 +102,17 @@ function PelangganPage() {
   const exportExcel = () => {
     if (filtered.length === 0) { toast.error("Tidak ada data untuk diekspor"); return; }
     const wb = XLSX.utils.book_new();
-    const header = ["Nama", "No. HP", "Alamat", "Catatan", "Tanggal Daftar"];
+    const header = ["Nama", "No. HP", "Alamat", "Poin", "Catatan", "Tanggal Daftar"];
     const data = filtered.map((c) => [
       c.name,
       c.phone || "",
       c.address || "",
+      c.points ?? 0,
       c.note || "",
       new Date(c.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }),
     ]);
     const ws = XLSX.utils.aoa_to_sheet([header, ...data]);
-    ws["!cols"] = [{ wch: 24 }, { wch: 16 }, { wch: 32 }, { wch: 24 }, { wch: 14 }];
+    ws["!cols"] = [{ wch: 24 }, { wch: 16 }, { wch: 32 }, { wch: 8 }, { wch: 24 }, { wch: 14 }];
     XLSX.utils.book_append_sheet(wb, ws, "Pelanggan");
     const ts = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `Data-Pelanggan-${ts}.xlsx`);
