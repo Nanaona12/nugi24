@@ -99,7 +99,7 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
       base.setDate(base.getDate() + extendDays);
       await supabaseAdmin.from("subscriptions").update({
         status: "active", current_period_end: base.toISOString(),
-        plan: planId, price_idr: basePrice,
+        plan: planId, price_idr: basePrice, period,
       }).eq("tenant_id", tenant.id);
       await supabaseAdmin.from("coupons").update({ used_count: coupon.used_count + 1 }).eq("id", coupon.id);
       return { free: true as const, order_id: orderId };
