@@ -82,6 +82,11 @@ function AdminPage() {
     onSuccess: () => { toast.success("Status diperbarui"); invalidate(); },
     onError: (e: any) => toast.error(e.message),
   });
+  const setPlan = useMutation({
+    mutationFn: (v: { tenant_id: string; plan: "warung" | "grosir" }) => planFn({ data: v }),
+    onSuccess: () => { toast.success("Paket diperbarui"); invalidate(); },
+    onError: (e: any) => toast.error(e.message),
+  });
   const del = useMutation({
     mutationFn: (tenant_id: string) => deleteFn({ data: { tenant_id } }),
     onSuccess: () => { toast.success("Toko dihapus"); invalidate(); },
