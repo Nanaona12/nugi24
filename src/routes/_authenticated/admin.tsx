@@ -7,6 +7,7 @@ import {
   listAllTenants,
   adminExtendSubscription,
   adminSetSubscriptionStatus,
+  adminSetPlan,
   adminUpdateTenant,
   adminDeleteTenant,
   adminGetTenantStats,
