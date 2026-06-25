@@ -51,9 +51,8 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) throw new Error("MIDTRANS_SERVER_KEY belum diatur");
 
-    const planId: PlanId = (data.plan === "grosir" || data.plan === "warung" || data.plan === "coba") ? data.plan : "warung";
+    const planId: PlanId = (data.plan === "grosir" || data.plan === "warung") ? data.plan : "warung";
     const requestedPeriod: BillingPeriod = data.period === "yearly" ? "yearly" : "monthly";
-    // Coba plan is monthly-only
     const period: BillingPeriod = PLANS[planId].monthlyOnly ? "monthly" : requestedPeriod;
     const plan = PLANS[planId];
     const basePrice = priceFor(planId, period);
