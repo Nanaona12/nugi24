@@ -150,6 +150,17 @@ function AuthedLayout() {
     }
   }, [sub, pathname, router, isCashierSession]);
 
+  // Plan gate: Paket Warung cannot access Grosiran-only routes
+  useEffect(() => {
+    if (!user || isCashierSession || sub?.isSuperAdmin) return;
+    if (!sub) return;
+    const plan = sub.plan ?? "warung";
+    if (plan !== "grosir" && isGrosirOnlyRoute(pathname)) {
+      toast.error("Fitur ini hanya tersedia di Paket Grosiran. Upgrade untuk mengaksesnya.");
+      router.navigate({ to: "/langganan", replace: true });
+    }
+  }, [user, isCashierSession, sub, pathname, router]);
+
   const handleLogout = async () => {
     try {
       setUser(null);
