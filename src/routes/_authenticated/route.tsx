@@ -53,6 +53,37 @@ function AuthedLayout() {
 
   useEffect(() => {
     let mounted = true;
+    let realtimeCh: ReturnType<typeof supabase.channel> | null = null;
+    let currentTenantId: string | null = null;
+
+    const loadSubForTenant = async (tenantId: string) => {
+      const { data: s } = await supabase
+        .from("subscriptions")
+        .select("status, current_period_end, plan")
+        .eq("tenant_id", tenantId)
+        .maybeSingle();
+      if (!mounted) return;
+      if (s) setSub({
+        status: s.status,
+        current_period_end: s.current_period_end,
+        plan: (s as any).plan ?? "warung",
+        isSuperAdmin: false,
+      });
+    };
+
+    const subscribeRealtime = (tenantId: string) => {
+      if (currentTenantId === tenantId) return;
+      currentTenantId = tenantId;
+      if (realtimeCh) supabase.removeChannel(realtimeCh);
+      realtimeCh = supabase
+        .channel(`sub-${tenantId}`)
+        .on("postgres_changes", {
+          event: "*", schema: "public", table: "subscriptions",
+          filter: `tenant_id=eq.${tenantId}`,
+        }, () => { loadSubForTenant(tenantId); })
+        .subscribe();
+    };
+
     (async () => {
       const { data, error } = await supabase.auth.getUser();
       if (!mounted) return;
@@ -71,7 +102,6 @@ function AuthedLayout() {
       if (isSuperAdmin) {
         setSub({ status: "active", current_period_end: "2999-12-31", isSuperAdmin: true });
       } else {
-        // Owner?
         const { data: tenant } = await supabase
           .from("tenants")
           .select("id, name")
@@ -79,14 +109,9 @@ function AuthedLayout() {
           .maybeSingle();
         if (tenant) {
           setTenantName(tenant.name || "");
-          const { data: s } = await supabase
-            .from("subscriptions")
-            .select("status, current_period_end, plan")
-            .eq("tenant_id", tenant.id)
-            .maybeSingle();
-          if (s) setSub({ status: s.status, current_period_end: s.current_period_end, plan: (s as any).plan ?? "warung", isSuperAdmin: false });
+          await loadSubForTenant(tenant.id);
+          subscribeRealtime(tenant.id);
         } else {
-          // Maybe cashier shared session
           const { data: cm } = await supabase
             .from("tenant_cashier_users")
             .select("tenant_id")
@@ -100,7 +125,6 @@ function AuthedLayout() {
               .eq("id", (cm as any).tenant_id)
               .maybeSingle();
             setTenantName((tn as any)?.name || "Toko");
-            // No subscription gate for cashier session
             setSub({ status: "active", current_period_end: "2999-12-31", isSuperAdmin: false });
             try {
               const raw = localStorage.getItem("dp.active_cashier");
@@ -112,10 +136,20 @@ function AuthedLayout() {
       setChecking(false);
     })();
 
+    const onBillingRefresh = () => {
+      if (currentTenantId) loadSubForTenant(currentTenantId);
+    };
+    window.addEventListener("billing:refresh", onBillingRefresh);
+
     const { data: authSub } = supabase.auth.onAuthStateChange((event, session) => {
       if (event === "SIGNED_OUT" || !session) router.navigate({ to: "/auth", replace: true });
     });
-    return () => { mounted = false; authSub.subscription.unsubscribe(); };
+    return () => {
+      mounted = false;
+      window.removeEventListener("billing:refresh", onBillingRefresh);
+      if (realtimeCh) supabase.removeChannel(realtimeCh);
+      authSub.subscription.unsubscribe();
+    };
   }, [router]);
 
   useEffect(() => {
