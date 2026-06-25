@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
+import { PLANS, yearlySavingPct, type PlanDef } from "@/lib/plans";
 import {
   ShoppingCart, Package, BarChart3, Receipt, Smartphone, ShieldCheck,
   CheckCircle2, Star, MessageSquare, ArrowRight, Zap,
