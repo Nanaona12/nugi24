@@ -64,6 +64,7 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
               status: "active",
               current_period_end: next.toISOString(),
               plan: planId,
+              period,
               price_idr: prevMeta.base_price ?? undefined,
             })
             .eq("tenant_id", pay.tenant_id);
