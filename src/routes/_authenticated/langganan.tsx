@@ -47,6 +47,17 @@ function LanggananPage() {
     if (data?.subscription?.plan === "grosir") setSelectedPlan("grosir");
   }, [data?.tenant, data?.subscription?.plan]);
 
+  // Scroll to plan selector when arriving with #pilih-paket (or via banner)
+  useEffect(() => {
+    if (isLoading) return;
+    if (typeof window === "undefined") return;
+    if (window.location.hash === "#pilih-paket") {
+      setTimeout(() => {
+        document.getElementById("pilih-paket")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 100);
+    }
+  }, [isLoading]);
+
   useEffect(() => {
     if (!data?.midtransClientKey) return;
     const isProd = data.midtransIsProduction;
