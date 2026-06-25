@@ -8,11 +8,27 @@ export const getMyBilling = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const { supabase, userId } = context;
-    const { data: tenant } = await supabase
-      .from("tenants")
-      .select("id, name, phone, address")
-      .eq("owner_user_id", userId)
-      .maybeSingle();
+    // Resolve tenant via RPC so this works for both owners and cashier sessions,
+    // and matches the tenant shown in the rest of the app (sidebar).
+    const { data: tenantId } = await supabase.rpc("current_tenant_id");
+    let tenant: { id: string; name: string; phone: string | null; address: string | null } | null = null;
+    if (tenantId) {
+      const { data: t } = await supabase
+        .from("tenants")
+        .select("id, name, phone, address")
+        .eq("id", tenantId as string)
+        .maybeSingle();
+      tenant = t as any;
+    }
+    if (!tenant) {
+      // Fallback: owner lookup (covers cases where RPC returns null due to RLS edge cases)
+      const { data: t2 } = await supabase
+        .from("tenants")
+        .select("id, name, phone, address")
+        .eq("owner_user_id", userId)
+        .maybeSingle();
+      tenant = t2 as any;
+    }
     if (!tenant) return { tenant: null, subscription: null, payments: [], isSuperAdmin: false };
 
     const [{ data: sub }, { data: pays }, { data: roles }] = await Promise.all([
