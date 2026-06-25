@@ -85,7 +85,9 @@ export const PLANS: Record<PlanId, PlanDef> = {
 };
 
 export function priceFor(plan: PlanId, period: BillingPeriod): number {
-  return period === "yearly" ? PLANS[plan].yearly : PLANS[plan].monthly;
+  const p = PLANS[plan];
+  if (p.monthlyOnly) return p.monthly;
+  return period === "yearly" ? p.yearly : p.monthly;
 }
 
 export function daysFor(period: BillingPeriod): number {
