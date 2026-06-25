@@ -13,8 +13,8 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import {
-  TrendingUp, DollarSign, ShoppingBag, Calendar, PackageX,
-  ShoppingCart, Download, AlertTriangle, FileSpreadsheet, FileText, AlarmClock, Boxes,
+  TrendingUp, DollarSign, ShoppingBag, Calendar,
+  Download, AlertTriangle, FileSpreadsheet, FileText, AlarmClock, Boxes,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
@@ -44,22 +44,11 @@ type Bucket = {
   count: number;
 };
 
-type LowStockProduct = {
-  id: string;
-  code: string;
-  name: string;
-  category: string | null;
-  stock: number;
-  price: number;
-};
-
-const LOW_STOCK_THRESHOLD = 5;
 const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#14b8a6", "#f97316"];
 
 function KeuntunganPage() {
   const [items, setItems] = useState<Item[]>([]);
   const [txs, setTxs] = useState<{ created_at: string; total: number; payment_method: string }[]>([]);
-  const [lowStock, setLowStock] = useState<LowStockProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [fromDate, setFromDate] = useState<string>("");
   const [toDate, setToDate] = useState<string>("");
@@ -80,18 +69,12 @@ function KeuntunganPage() {
 
   useEffect(() => {
     (async () => {
-      const [itemsRes, lowRes, txRes] = await Promise.all([
+      const [itemsRes, txRes] = await Promise.all([
         supabase
           .from("transaction_items")
           .select("qty, unit_price, unit_cost, subtotal, product_name, transactions(created_at)")
           .order("id", { ascending: false })
           .limit(5000),
-        supabase
-          .from("products")
-          .select("id, code, name, category, stock, price")
-          .lte("stock", LOW_STOCK_THRESHOLD)
-          .order("stock", { ascending: true })
-          .limit(100),
         supabase
           .from("transactions")
           .select("created_at, total, payment_method")
@@ -100,8 +83,6 @@ function KeuntunganPage() {
       ]);
       if (itemsRes.error) toast.error(itemsRes.error.message);
       else setItems((itemsRes.data || []) as unknown as Item[]);
-      if (lowRes.error) toast.error(lowRes.error.message);
-      else setLowStock((lowRes.data || []) as LowStockProduct[]);
       if (!txRes.error) setTxs((txRes.data || []) as { created_at: string; total: number; payment_method: string }[]);
 
       const { data: batches } = await (supabase as any)
@@ -297,13 +278,6 @@ function KeuntunganPage() {
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lossRows), "Rugi");
     }
 
-    if (lowStock.length > 0) {
-      const lowRows = [
-        ["Kode", "Nama", "Kategori", "Sisa Stok", "Harga", "Status"],
-        ...lowStock.map((p) => [p.code, p.name, p.category || "-", p.stock, Number(p.price), p.stock <= 0 ? "Habis" : "Menipis"]),
-      ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lowRows), "Stok Menipis");
-    }
 
     const ts = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `Laporan-Keuntungan-${ts}.xlsx`);
@@ -770,52 +744,6 @@ function KeuntunganPage() {
         </div>
       )}
 
-      <Card className="overflow-hidden">
-        <div className="flex items-center justify-between gap-3 border-b bg-muted/40 p-3">
-          <div className="flex items-center gap-2 text-sm font-semibold">
-            <PackageX className="h-4 w-4 text-destructive" />
-            Produk Habis / Stok Menipis
-            <Badge variant="secondary">{lowStock.length}</Badge>
-          </div>
-          <Button asChild size="sm" variant="default">
-            <Link to="/po"><ShoppingCart className="mr-1 h-4 w-4" />Buat PO</Link>
-          </Button>
-        </div>
-        {lowStock.length === 0 ? (
-          <div className="p-6 text-center text-sm text-muted-foreground">
-            Semua produk masih memiliki stok aman (&gt; {LOW_STOCK_THRESHOLD}).
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="p-3">Kode</th>
-                  <th className="p-3">Nama Produk</th>
-                  <th className="p-3">Kategori</th>
-                  <th className="p-3 text-right">Sisa Stok</th>
-                  <th className="p-3 text-right">Harga</th>
-                  <th className="p-3 text-right">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {lowStock.map((p) => (
-                  <tr key={p.id} className="border-t hover:bg-muted/40">
-                    <td className="p-3 font-mono text-xs">{p.code}</td>
-                    <td className="p-3 font-medium">{p.name}</td>
-                    <td className="p-3 text-muted-foreground">{p.category || "-"}</td>
-                    <td className="p-3 text-right font-semibold">{p.stock}</td>
-                    <td className="p-3 text-right">{formatRupiah(Number(p.price))}</td>
-                    <td className="p-3 text-right">
-                      {p.stock <= 0 ? <Badge variant="destructive">Habis</Badge> : <Badge variant="secondary">Menipis</Badge>}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
 
       <Tabs defaultValue="daily">
         <TabsList>

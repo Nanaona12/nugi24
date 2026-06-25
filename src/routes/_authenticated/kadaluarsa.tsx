@@ -356,6 +356,22 @@ function KadaluarsaPage() {
         </div>
       </div>
 
+      {typeof window !== "undefined" && localStorage.getItem("dp.active_cashier") && (
+        <Card className="border-amber-500/40 bg-amber-50 p-3 text-xs text-amber-900 dark:bg-amber-950/30 dark:text-amber-200">
+          <div className="mb-1 flex items-center gap-2 font-semibold">
+            <AlarmClock className="h-4 w-4" /> Catatan untuk Kasir
+          </div>
+          <ul className="ml-5 list-disc space-y-0.5">
+            <li><b>Merah / Expired</b> — produk sudah lewat tanggal, <b>jangan dijual</b> dan laporkan ke pemilik.</li>
+            <li><b>Oranye (≤ 30 hari)</b> — utamakan untuk dijual lebih dulu (FEFO), tawarkan ke pelanggan.</li>
+            <li><b>Kuning (31–60 / 61–90 hari)</b> — masih aman, tetap pantau.</li>
+            <li>Saat scan produk di kasir, badge tanggal kadaluarsa akan muncul otomatis pada kartu produk.</li>
+            <li>Sistem otomatis mengurangi batch terdekat expired saat transaksi, jadi pastikan urut barang di rak juga.</li>
+          </ul>
+        </Card>
+      )}
+
+
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <SummaryCard label="Expired" count={counts.expired} active={bucket === "expired"} onClick={() => setBucket(bucket === "expired" ? "all" : "expired")} tone="destructive" />
