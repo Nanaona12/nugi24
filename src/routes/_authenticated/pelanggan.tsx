@@ -151,6 +151,7 @@ function PelangganPage() {
                 <th className="p-3">Nama</th>
                 <th className="p-3">No. HP</th>
                 <th className="p-3">Alamat</th>
+                <th className="p-3 text-right">Poin</th>
                 <th className="p-3">Catatan</th>
                 <th className="p-3"></th>
               </tr>
@@ -158,7 +159,7 @@ function PelangganPage() {
             <tbody>
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-12 text-center text-muted-foreground">
+                  <td colSpan={6} className="p-12 text-center text-muted-foreground">
                     <Users className="mx-auto mb-3 h-12 w-12 opacity-30" />
                     Belum ada pelanggan
                   </td>
@@ -169,6 +170,11 @@ function PelangganPage() {
                     <td className="p-3 font-medium">{c.name}</td>
                     <td className="p-3">{c.phone || "-"}</td>
                     <td className="p-3">{c.address || "-"}</td>
+                    <td className="p-3 text-right">
+                      <span className="inline-flex items-center rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-600">
+                        {c.points ?? 0}
+                      </span>
+                    </td>
                     <td className="p-3 text-muted-foreground">{c.note || "-"}</td>
                     <td className="p-3">
                       <div className="flex justify-end gap-1">
