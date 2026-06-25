@@ -194,6 +194,23 @@ function AuthedLayout() {
   const showTrialBanner = !isCashierSession && sub && (sub.status === "trialing" || daysLeft <= 3) && daysLeft > 0;
   const expired = !isCashierSession && sub && new Date(sub.current_period_end) < new Date();
 
+  const ownerPlan = sub?.plan ?? "warung";
+  const isGrosir = ownerPlan === "grosir";
+  const ownerNav: Array<{ to: string; icon: any; label: string }> = [
+    { to: "/produk", icon: Package, label: "Produk" },
+    { to: "/pelanggan", icon: Users, label: "Pelanggan" },
+    ...(isGrosir ? [{ to: "/karyawan", icon: UserCog, label: "Karyawan" }] : []),
+    ...(isGrosir ? [{ to: "/po", icon: ClipboardList, label: "PO" }] : []),
+    ...(isGrosir ? [{ to: "/kadaluarsa", icon: AlarmClock, label: "Kadaluarsa" }] : []),
+    { to: "/riwayat", icon: Receipt, label: "Riwayat" },
+    { to: "/shift", icon: Layers, label: "Riwayat Shift" },
+    ...(isGrosir ? [{ to: "/pengambilan", icon: Home, label: "Pengambilan" }] : []),
+    { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
+    { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
+    { to: "/langganan", icon: CreditCard, label: "Langganan" },
+    { to: "/pengaturan", icon: Settings, label: "Pengaturan" },
+  ];
+
   const navItems = sub?.isSuperAdmin
     ? [{ to: "/admin", icon: Shield, label: "Admin" }]
     : isCashierSession
@@ -203,20 +220,7 @@ function AuthedLayout() {
         { to: "/shift", icon: Layers, label: "Shift Saya" },
         { to: "/riwayat", icon: Receipt, label: "Riwayat" },
       ]
-    : [
-        { to: "/produk", icon: Package, label: "Produk" },
-        { to: "/pelanggan", icon: Users, label: "Pelanggan" },
-        { to: "/karyawan", icon: UserCog, label: "Karyawan" },
-        { to: "/po", icon: ClipboardList, label: "PO" },
-        { to: "/kadaluarsa", icon: AlarmClock, label: "Kadaluarsa" },
-        { to: "/riwayat", icon: Receipt, label: "Riwayat" },
-        { to: "/shift", icon: Layers, label: "Riwayat Shift" },
-        { to: "/pengambilan", icon: Home, label: "Pengambilan" },
-        { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
-        { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
-        { to: "/langganan", icon: CreditCard, label: "Langganan" },
-        { to: "/pengaturan", icon: Settings, label: "Pengaturan" },
-      ];
+    : ownerNav;
 
   const title = sub?.isSuperAdmin ? "Dagang Pintar" : (tenantName || "Toko Saya");
 
