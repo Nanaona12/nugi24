@@ -264,7 +264,7 @@ export const listAllTenants = createServerFn({ method: "GET" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: tenants } = await supabaseAdmin
       .from("tenants")
-      .select("id, name, phone, address, owner_user_id, created_at, subscriptions(status, current_period_end)")
+      .select("id, name, phone, address, owner_user_id, created_at, subscriptions(status, current_period_end, plan, period)")
       .order("created_at", { ascending: false });
 
     const { data: pays } = await supabaseAdmin
