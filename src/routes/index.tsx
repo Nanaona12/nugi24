@@ -175,7 +175,7 @@ function Pricing({ signedIn }: { signedIn: boolean }) {
         </div>
 
         <div className="mt-8 grid gap-5 md:grid-cols-2">
-          {Object.values(PLANS).map((p) => {
+          {(Object.values(PLANS) as PlanDef[]).map((p) => {
             const price = period === "yearly" ? p.yearly : p.monthly;
             return (
               <Card key={p.id} className={`relative ${p.highlight ? "border-primary/60 shadow-lg" : ""}`}>
