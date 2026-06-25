@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PLANS, priceFor, daysFor, type PlanId, type BillingPeriod } from "@/lib/plans";
 
-const LEGACY_PRICE_IDR = 14900;
+
 
 export const getMyBilling = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
