@@ -897,15 +897,11 @@ function KasirPage() {
                         // 1) Upload PNG ke Storage bucket 'receipts'
                         const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
                         const blob = new Blob([bin], { type: "image/png" });
-                        // resolve tenant id (so storage path is scoped per tenant)
-                        const { data: tenantRow } = await supabase
-                          .from("tenants")
-                          .select("id")
-                          .limit(1)
-                          .maybeSingle();
-                        const tenantId = tenantRow?.id;
+                        // resolve tenant id via RPC (works for owner & cashier session)
+                        const { data: tid, error: tidErr } = await supabase.rpc("current_tenant_id");
+                        const tenantId = tid as string | null;
                         if (!tenantId) {
-                          toast.error("Akun ini tidak terhubung ke toko");
+                          toast.error("Akun ini tidak terhubung ke toko" + (tidErr ? `: ${tidErr.message}` : ""));
                           setSendingWa(false);
                           return;
                         }
