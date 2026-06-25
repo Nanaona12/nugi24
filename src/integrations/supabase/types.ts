@@ -378,6 +378,56 @@ export type Database = {
           },
         ]
       }
+      plan_change_audit: {
+        Row: {
+          changed_by: string | null
+          changed_by_email: string | null
+          created_at: string
+          id: string
+          new_period: string | null
+          new_plan: string
+          note: string | null
+          old_period: string | null
+          old_plan: string | null
+          source: string
+          tenant_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          id?: string
+          new_period?: string | null
+          new_plan: string
+          note?: string | null
+          old_period?: string | null
+          old_plan?: string | null
+          source?: string
+          tenant_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          changed_by_email?: string | null
+          created_at?: string
+          id?: string
+          new_period?: string | null
+          new_plan?: string
+          note?: string | null
+          old_period?: string | null
+          old_plan?: string | null
+          source?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_change_audit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_batches: {
         Row: {
           created_at: string
