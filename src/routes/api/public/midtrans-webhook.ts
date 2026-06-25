@@ -53,7 +53,7 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
 
           const { data: sub } = await supabaseAdmin
             .from("subscriptions")
-            .select("current_period_end")
+            .select("current_period_end, plan, period")
             .eq("tenant_id", pay.tenant_id)
             .maybeSingle();
           const base = sub && new Date(sub.current_period_end) > new Date() ? new Date(sub.current_period_end) : new Date();
@@ -68,6 +68,21 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
               price_idr: prevMeta.base_price ?? undefined,
             })
             .eq("tenant_id", pay.tenant_id);
+
+          // Audit log when plan or period actually changes via payment
+          if ((sub?.plan ?? null) !== planId || (sub?.period ?? null) !== period) {
+            await supabaseAdmin.from("plan_change_audit").insert({
+              tenant_id: pay.tenant_id,
+              changed_by: null,
+              changed_by_email: "midtrans-webhook",
+              source: "midtrans",
+              old_plan: sub?.plan ?? null,
+              new_plan: planId,
+              old_period: sub?.period ?? null,
+              new_period: period,
+              note: `Order ${order_id}`,
+            });
+          }
         }
 
         return Response.json({ ok: true });

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getMyBilling, createMidtransPayment, updateMyTenant } from "@/lib/billing.functions";
+import { getMyBilling, createMidtransPayment, updateMyTenant, listPlanAudit } from "@/lib/billing.functions";
 import { PLANS, priceFor, yearlySavingPct, type PlanId, type BillingPeriod } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -74,18 +74,23 @@ function LanggananPage() {
     mutationFn: async (vars: { plan: PlanId }) =>
       createPay({ data: { coupon_code: couponCode.trim() || undefined, plan: vars.plan, period } }),
     onSuccess: (res: any) => {
+      const refresh = () => {
+        qc.invalidateQueries({ queryKey: ["billing"] });
+        qc.invalidateQueries({ queryKey: ["plan-audit"] });
+        if (typeof window !== "undefined") window.dispatchEvent(new Event("billing:refresh"));
+      };
       if (res.free) {
         toast.success("Aktivasi berhasil dengan kupon 100%!");
         setCouponCode("");
-        qc.invalidateQueries({ queryKey: ["billing"] });
+        refresh();
         return;
       }
       if (window.snap && snapReady && res.token) {
         window.snap.pay(res.token, {
-          onSuccess: () => { toast.success("Pembayaran sukses!"); qc.invalidateQueries({ queryKey: ["billing"] }); },
-          onPending: () => { toast.info("Menunggu pembayaran..."); qc.invalidateQueries({ queryKey: ["billing"] }); },
+          onSuccess: () => { toast.success("Pembayaran sukses!"); refresh(); },
+          onPending: () => { toast.info("Menunggu pembayaran..."); refresh(); },
           onError: () => toast.error("Pembayaran gagal"),
-          onClose: () => qc.invalidateQueries({ queryKey: ["billing"] }),
+          onClose: () => refresh(),
         });
       } else if (res.redirect_url) {
         window.open(res.redirect_url, "_blank");
@@ -289,9 +294,51 @@ function LanggananPage() {
         </CardContent>
       </Card>
 
+      <PlanAuditCard />
+
       {data.isSuperAdmin && (
         <div><Link to="/admin"><Button variant="outline">Buka Panel Super Admin</Button></Link></div>
       )}
     </div>
+  );
+}
+
+function PlanAuditCard() {
+  const listAudit = useServerFn(listPlanAudit);
+  const { data, isLoading } = useQuery({
+    queryKey: ["plan-audit", "self"],
+    queryFn: () => listAudit({ data: {} }),
+  });
+  return (
+    <Card>
+      <CardHeader><CardTitle>Riwayat Perubahan Paket</CardTitle></CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Memuat...</p>
+        ) : !data || data.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Belum ada perubahan paket.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs uppercase text-muted-foreground">
+                <tr><th className="py-2">Tanggal</th><th>Dari</th><th>Ke</th><th>Sumber</th><th>Oleh</th><th>Catatan</th></tr>
+              </thead>
+              <tbody>
+                {data.map((r: any) => (
+                  <tr key={r.id} className="border-t">
+                    <td className="py-2">{new Date(r.created_at).toLocaleString("id-ID")}</td>
+                    <td className="capitalize">{r.old_plan ?? "-"}</td>
+                    <td className="capitalize font-medium">{r.new_plan}</td>
+                    <td><Badge variant={r.source === "midtrans" ? "default" : "secondary"} className="text-[10px] uppercase">{r.source}</Badge></td>
+                    <td className="text-xs text-muted-foreground">{r.changed_by_email ?? "-"}</td>
+                    <td className="text-xs">{r.note ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

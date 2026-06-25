@@ -318,17 +318,76 @@ export const adminSetSubscriptionStatus = createServerFn({ method: "POST" })
 
 export const adminSetPlan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { tenant_id: string; plan: PlanId }) => d)
+  .inputValidator((d: { tenant_id: string; plan: PlanId; note?: string }) => d)
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context);
     if (data.plan !== "warung" && data.plan !== "grosir") throw new Error("Paket tidak valid");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: prev } = await supabaseAdmin
+      .from("subscriptions")
+      .select("plan, period")
+      .eq("tenant_id", data.tenant_id)
+      .maybeSingle();
+
     const { error } = await supabaseAdmin
       .from("subscriptions")
       .update({ plan: data.plan })
       .eq("tenant_id", data.tenant_id);
     if (error) throw new Error(error.message);
+
+    if ((prev?.plan ?? null) !== data.plan) {
+      const { data: u } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+      await supabaseAdmin.from("plan_change_audit").insert({
+        tenant_id: data.tenant_id,
+        changed_by: context.userId,
+        changed_by_email: u?.user?.email ?? null,
+        source: "admin",
+        old_plan: prev?.plan ?? null,
+        new_plan: data.plan,
+        old_period: prev?.period ?? null,
+        new_period: prev?.period ?? null,
+        note: data.note ?? null,
+      });
+    }
     return { ok: true };
+  });
+
+export const listPlanAudit = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { tenant_id?: string } | undefined) => d ?? {})
+  .handler(async ({ data, context }) => {
+    const { data: roles } = await context.supabase
+      .from("user_roles").select("role").eq("user_id", context.userId);
+    const isSuper = (roles ?? []).some((r: any) => r.role === "super_admin");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let tenantId = data.tenant_id ?? null;
+    if (!isSuper) {
+      const { data: own } = await supabaseAdmin
+        .from("tenants").select("id").eq("owner_user_id", context.userId).maybeSingle();
+      if (!own) return [];
+      tenantId = own.id;
+    }
+
+    let q = supabaseAdmin
+      .from("plan_change_audit")
+      .select("id, tenant_id, changed_by_email, source, old_plan, new_plan, old_period, new_period, note, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    if (tenantId) q = q.eq("tenant_id", tenantId);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+
+    if (isSuper && !data.tenant_id) {
+      const ids = Array.from(new Set((rows ?? []).map((r: any) => r.tenant_id)));
+      if (ids.length) {
+        const { data: ts } = await supabaseAdmin.from("tenants").select("id, name").in("id", ids);
+        const map = new Map((ts ?? []).map((t: any) => [t.id, t.name]));
+        return (rows ?? []).map((r: any) => ({ ...r, tenant_name: map.get(r.tenant_id) ?? null }));
+      }
+    }
+    return rows ?? [];
   });
 
 export const adminUpdateTenant = createServerFn({ method: "POST" })

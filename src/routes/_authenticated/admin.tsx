@@ -17,6 +17,7 @@ import {
   adminCreateCoupon,
   adminToggleCoupon,
   adminDeleteCoupon,
+  listPlanAudit,
 } from "@/lib/billing.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -243,8 +244,52 @@ function AdminPage() {
         </CardContent>
       </Card>
 
+      <PlanAuditAdminCard />
+
       <FeedbackCard />
     </div>
+  );
+}
+
+function PlanAuditAdminCard() {
+  const listAudit = useServerFn(listPlanAudit);
+  const { data, isLoading } = useQuery({
+    queryKey: ["plan-audit", "all"],
+    queryFn: () => listAudit({ data: {} }),
+    refetchInterval: 30000,
+  });
+  return (
+    <Card>
+      <CardHeader><CardTitle>Riwayat Perubahan Paket Tenant</CardTitle></CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground">Memuat...</p>
+        ) : !data || data.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Belum ada perubahan paket.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs uppercase text-muted-foreground">
+                <tr><th className="py-2">Tanggal</th><th>Tenant</th><th>Dari</th><th>Ke</th><th>Sumber</th><th>Oleh</th><th>Catatan</th></tr>
+              </thead>
+              <tbody>
+                {data.map((r: any) => (
+                  <tr key={r.id} className="border-t">
+                    <td className="py-2">{new Date(r.created_at).toLocaleString("id-ID")}</td>
+                    <td className="font-medium">{r.tenant_name ?? r.tenant_id.slice(0, 8)}</td>
+                    <td className="capitalize">{r.old_plan ?? "-"}</td>
+                    <td className="capitalize font-medium">{r.new_plan}</td>
+                    <td><Badge variant={r.source === "midtrans" ? "default" : "secondary"} className="text-[10px] uppercase">{r.source}</Badge></td>
+                    <td className="text-xs text-muted-foreground">{r.changed_by_email ?? "-"}</td>
+                    <td className="text-xs">{r.note ?? "-"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
