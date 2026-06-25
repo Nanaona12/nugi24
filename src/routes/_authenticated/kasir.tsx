@@ -232,8 +232,9 @@ function KasirPage() {
     loadProducts();
     searchRef.current?.focus();
     (async () => {
-      const { data: t } = await supabase.from("tenants").select("name").limit(1).maybeSingle();
-      if (t?.name) setStoreName(t.name);
+      const { data: ti } = await supabase.rpc("current_tenant_info");
+      const row = Array.isArray(ti) ? ti[0] : ti;
+      if (row?.name) setStoreName(row.name as string);
       const { data: cs } = await supabase
         .from("customers")
         .select("id, name, phone")
