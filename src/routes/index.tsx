@@ -215,7 +215,7 @@ function Pricing({ signedIn }: { signedIn: boolean }) {
             );
           })}
         </div>
-        <p className="mt-4 text-center text-xs text-muted-foreground">Punya kode kupon? Bisa diskon hingga 100%.</p>
+        
       </div>
     </section>
   );
