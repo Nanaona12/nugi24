@@ -63,7 +63,7 @@ export function renderReceiptPng(r: ReceiptData): { dataUrl: string; base64: str
   const itemMeasures: { lines: string[]; detailLines: string[] }[] = [];
   for (const it of r.items) {
     measure.font = `600 ${itemFs}px ui-sans-serif, system-ui, sans-serif`;
-    const head = `${it.name} × ${it.qty} ${it.unit}${it.isWholesale ? " (grosir)" : ""}`;
+    const head = `${it.name}${it.isWholesale ? " (grosir)" : ""}`;
     const hl = wrap(measure, head, contentW - 110);
     measure.font = `${detailFs}px ui-sans-serif, system-ui, sans-serif`;
     const dl = it.detail ? wrap(measure, it.detail, contentW) : [];
