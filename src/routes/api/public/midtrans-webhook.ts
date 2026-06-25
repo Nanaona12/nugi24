@@ -23,7 +23,7 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
 
         const { data: pay } = await supabaseAdmin
           .from("payments")
-          .select("id, tenant_id")
+          .select("id, tenant_id, raw_response")
           .eq("midtrans_order_id", order_id)
           .maybeSingle();
         if (!pay) return new Response("order not found", { status: 404 });
@@ -33,6 +33,8 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
         else if (transaction_status === "deny" || transaction_status === "cancel" || transaction_status === "failure") newStatus = "failed";
         else if (transaction_status === "expire") newStatus = "expired";
 
+        // Preserve plan/period metadata stored when the order was created.
+        const prevMeta = (pay.raw_response ?? {}) as { plan?: string; period?: string; base_price?: number };
         await supabaseAdmin
           .from("payments")
           .update({
@@ -40,22 +42,30 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
             payment_type,
             midtrans_transaction_id: transaction_id,
             paid_at: newStatus === "paid" ? new Date().toISOString() : null,
-            raw_response: body,
+            raw_response: { ...prevMeta, webhook: body },
           })
           .eq("id", pay.id);
 
         if (newStatus === "paid") {
-          // Extend subscription by 30 days from current period end (or now if expired)
+          const period = prevMeta.period === "yearly" ? "yearly" : "monthly";
+          const extendDays = period === "yearly" ? 365 : 30;
+          const planId = prevMeta.plan === "grosir" ? "grosir" : "warung";
+
           const { data: sub } = await supabaseAdmin
             .from("subscriptions")
             .select("current_period_end")
             .eq("tenant_id", pay.tenant_id)
             .maybeSingle();
           const base = sub && new Date(sub.current_period_end) > new Date() ? new Date(sub.current_period_end) : new Date();
-          const next = new Date(base.getTime() + 30 * 24 * 60 * 60 * 1000);
+          const next = new Date(base.getTime() + extendDays * 24 * 60 * 60 * 1000);
           await supabaseAdmin
             .from("subscriptions")
-            .update({ status: "active", current_period_end: next.toISOString() })
+            .update({
+              status: "active",
+              current_period_end: next.toISOString(),
+              plan: planId,
+              price_idr: prevMeta.base_price ?? undefined,
+            })
             .eq("tenant_id", pay.tenant_id);
         }
 
