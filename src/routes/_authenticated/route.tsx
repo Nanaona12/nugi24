@@ -25,13 +25,19 @@ export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
 });
 
-type SubInfo = { status: string; current_period_end: string; isSuperAdmin: boolean } | null;
+type SubInfo = { status: string; current_period_end: string; isSuperAdmin: boolean; plan?: string | null } | null;
 
 // Routes a cashier session is allowed to visit (everything else redirects to /kasir)
 const CASHIER_ALLOWED = ["/kasir", "/pelanggan", "/shift", "/riwayat", "/cek-koneksi"];
+// Routes locked for Paket Warung (only available on Paket Grosiran)
+const GROSIR_ONLY_ROUTES = ["/po", "/kadaluarsa", "/pengambilan", "/karyawan"];
 
 function isCashierAllowed(pathname: string) {
   return CASHIER_ALLOWED.some((p) => pathname === p || pathname.startsWith(p + "/"));
+}
+
+function isGrosirOnlyRoute(pathname: string) {
+  return GROSIR_ONLY_ROUTES.some((p) => pathname === p || pathname.startsWith(p + "/"));
 }
 
 function AuthedLayout() {
