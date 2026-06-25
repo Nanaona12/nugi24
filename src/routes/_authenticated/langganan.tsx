@@ -206,7 +206,7 @@ function LanggananPage() {
                   className="mt-5 w-full"
                   variant={p.highlight ? "default" : "outline"}
                   onClick={() => { setSelectedPlan(p.id); payMut.mutate({ plan: p.id }); }}
-                  disabled={payMut.isPending || !snapReady}
+                  disabled={payMut.isPending}
                 >
                   <CreditCard className="mr-2 h-4 w-4" />
                   {payMut.isPending && selectedPlan === p.id
@@ -215,6 +215,9 @@ function LanggananPage() {
                       ? `Perpanjang ${period === "yearly" ? "1 Tahun" : "30 Hari"}`
                       : `Pilih ${p.name}`}
                 </Button>
+                {!snapReady && (
+                  <p className="mt-2 text-center text-[11px] text-muted-foreground">Memuat sistem pembayaran...</p>
+                )}
               </Card>
             );
           })}
