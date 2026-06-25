@@ -41,6 +41,7 @@ function AdminPage() {
   const fn = useServerFn(listAllTenants);
   const extendFn = useServerFn(adminExtendSubscription);
   const statusFn = useServerFn(adminSetSubscriptionStatus);
+  const planFn = useServerFn(adminSetPlan);
   const deleteFn = useServerFn(adminDeleteTenant);
 
   const { data: isSuperAdmin, isLoading: roleLoading } = useQuery({
