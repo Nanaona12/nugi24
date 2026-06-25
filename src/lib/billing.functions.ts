@@ -1,7 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { PLANS, priceFor, daysFor, type PlanId, type BillingPeriod } from "@/lib/plans";
 
-const PRICE_IDR = 14900;
+
 
 export const getMyBilling = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -45,10 +46,16 @@ export const updateMyTenant = createServerFn({ method: "POST" })
 
 export const createMidtransPayment = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { coupon_code?: string } | undefined) => d ?? {})
+  .inputValidator((d: { coupon_code?: string; plan?: PlanId; period?: BillingPeriod } | undefined) => d ?? {})
   .handler(async ({ data, context }) => {
     const serverKey = process.env.MIDTRANS_SERVER_KEY;
     if (!serverKey) throw new Error("MIDTRANS_SERVER_KEY belum diatur");
+
+    const planId: PlanId = (data.plan === "grosir" || data.plan === "warung") ? data.plan : "warung";
+    const period: BillingPeriod = data.period === "yearly" ? "yearly" : "monthly";
+    const plan = PLANS[planId];
+    const basePrice = priceFor(planId, period);
+    const extendDays = daysFor(period);
 
     const { data: tenant } = await context.supabase
       .from("tenants")
@@ -61,7 +68,7 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
 
     // Validate coupon if provided
     let coupon: any = null;
-    let amount = PRICE_IDR;
+    let amount = basePrice;
     if (data.coupon_code) {
       const { data: c } = await supabaseAdmin
         .from("coupons").select("*").eq("code", data.coupon_code.trim().toUpperCase()).maybeSingle();
@@ -70,8 +77,11 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
       if (c.expires_at && new Date(c.expires_at) < new Date()) throw new Error("Kupon sudah kedaluwarsa");
       if (c.max_uses && c.used_count >= c.max_uses) throw new Error("Kupon sudah habis digunakan");
       coupon = c;
-      amount = Math.max(0, Math.round(PRICE_IDR * (100 - c.discount_percent) / 100));
+      amount = Math.max(0, Math.round(basePrice * (100 - c.discount_percent) / 100));
     }
+
+    const periodLabel = period === "yearly" ? "Tahunan" : "Bulanan";
+    const itemName = `${plan.name} ${periodLabel}${coupon ? ` (Kupon ${coupon.code} -${coupon.discount_percent}%)` : ""}`;
 
     // 100% discount → activate directly without Midtrans
     if (coupon && amount === 0) {
@@ -85,9 +95,10 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
       const { data: sub } = await supabaseAdmin
         .from("subscriptions").select("current_period_end").eq("tenant_id", tenant.id).maybeSingle();
       const base = sub && new Date(sub.current_period_end) > new Date() ? new Date(sub.current_period_end) : new Date();
-      base.setDate(base.getDate() + 30);
+      base.setDate(base.getDate() + extendDays);
       await supabaseAdmin.from("subscriptions").update({
         status: "active", current_period_end: base.toISOString(),
+        plan: planId, price_idr: basePrice,
       }).eq("tenant_id", tenant.id);
       await supabaseAdmin.from("coupons").update({ used_count: coupon.used_count + 1 }).eq("id", coupon.id);
       return { free: true as const, order_id: orderId };
@@ -102,6 +113,7 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
       coupon_id: coupon?.id ?? null,
       coupon_code: coupon?.code ?? null,
       discount_percent: coupon?.discount_percent ?? null,
+      raw_response: { plan: planId, period, base_price: basePrice },
     });
 
     // Use sandbox by default; switch to https://app.midtrans.com if key is production
@@ -119,7 +131,7 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
       body: JSON.stringify({
         transaction_details: { order_id: orderId, gross_amount: amount },
         item_details: [
-          { id: "sub-basic", price: amount, quantity: 1, name: coupon ? `Langganan Bulanan (Kupon ${coupon.code} -${coupon.discount_percent}%)` : "Langganan Bulanan Dagang Pintar" },
+          { id: `sub-${planId}-${period}`, price: amount, quantity: 1, name: itemName },
         ],
         customer_details: { first_name: tenant.name },
       }),
@@ -132,7 +144,7 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
 
     await supabaseAdmin
       .from("payments")
-      .update({ snap_token: json.token, raw_response: json })
+      .update({ snap_token: json.token, raw_response: { plan: planId, period, base_price: basePrice, midtrans: json } })
       .eq("midtrans_order_id", orderId);
 
     return {
@@ -140,6 +152,8 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
       redirect_url: json.redirect_url as string,
       order_id: orderId,
       is_production: isProd,
+      plan: planId,
+      period,
     };
   });
 
