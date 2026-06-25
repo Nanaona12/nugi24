@@ -2,41 +2,120 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PLANS, priceFor, daysFor, type PlanId, type BillingPeriod } from "@/lib/plans";
 
+type BillingTenant = { id: string; name: string; phone: string | null; address: string | null };
+
+async function getUserRoles(ctx: { supabase: any; userId: string }) {
+  const { data } = await ctx.supabase.from("user_roles").select("role").eq("user_id", ctx.userId);
+  return data ?? [];
+}
+
+async function resolveBillingTenant(
+  ctx: { supabase: any; userId: string },
+  opts: { createIfMissing?: boolean } = {},
+): Promise<{ tenant: BillingTenant | null; isSuperAdmin: boolean }> {
+  const roles = await getUserRoles(ctx);
+  const isSuperAdmin = roles.some((r: any) => r.role === "super_admin");
+  if (isSuperAdmin) return { tenant: null, isSuperAdmin };
+
+  // 1) Normal owner lookup with user's own session (RLS-friendly path).
+  const { data: ownerTenant } = await ctx.supabase
+    .from("tenants")
+    .select("id, name, phone, address")
+    .eq("owner_user_id", ctx.userId)
+    .maybeSingle();
+  if (ownerTenant) return { tenant: ownerTenant as BillingTenant, isSuperAdmin };
+
+  // 2) Cashier/session fallback, used by the app layout and receipt logic too.
+  const { data: tenantId } = await ctx.supabase.rpc("current_tenant_id");
+  if (tenantId) {
+    const { data: tenantByRpc } = await ctx.supabase
+      .from("tenants")
+      .select("id, name, phone, address")
+      .eq("id", tenantId as string)
+      .maybeSingle();
+    if (tenantByRpc) return { tenant: tenantByRpc as BillingTenant, isSuperAdmin };
+  }
+
+  // 3) Robust fallback: this page is for the signed-in owner. If an older account
+  // exists without a tenant because the signup trigger failed, create it now.
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: adminTenant } = await supabaseAdmin
+    .from("tenants")
+    .select("id, name, phone, address")
+    .eq("owner_user_id", ctx.userId)
+    .maybeSingle();
+  if (adminTenant) return { tenant: adminTenant as BillingTenant, isSuperAdmin };
+
+  const { data: cashierMap } = await supabaseAdmin
+    .from("tenant_cashier_users")
+    .select("tenant_id")
+    .eq("user_id", ctx.userId)
+    .maybeSingle();
+  if (cashierMap) return { tenant: null, isSuperAdmin };
+
+  if (!opts.createIfMissing) return { tenant: null, isSuperAdmin };
+
+  const { data: authUser, error: userErr } = await supabaseAdmin.auth.admin.getUserById(ctx.userId);
+  if (userErr || !authUser?.user) return { tenant: null, isSuperAdmin };
+  if (authUser.user.user_metadata?.kind === "cashier_session") return { tenant: null, isSuperAdmin };
+
+  const meta = authUser.user.user_metadata ?? {};
+  const fallbackName = authUser.user.email?.split("@")[0] || "Toko Saya";
+  const shopName = String(meta.shop_name || meta.name || fallbackName).trim() || "Toko Saya";
+  const { data: createdTenant, error: createTenantErr } = await supabaseAdmin
+    .from("tenants")
+    .insert({ owner_user_id: ctx.userId, name: shopName })
+    .select("id, name, phone, address")
+    .single();
+  if (createTenantErr || !createdTenant) throw new Error(createTenantErr?.message ?? "Gagal membuat toko");
+
+  await supabaseAdmin.from("subscriptions").upsert({
+    tenant_id: createdTenant.id,
+    status: "past_due",
+    current_period_end: new Date().toISOString(),
+    plan: "warung",
+    period: "monthly",
+    price_idr: PLANS.warung.monthly,
+  }, { onConflict: "tenant_id" });
+
+  return { tenant: createdTenant as BillingTenant, isSuperAdmin };
+}
+
+async function ensureSubscription(tenantId: string) {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: existing } = await supabaseAdmin
+    .from("subscriptions")
+    .select("*")
+    .eq("tenant_id", tenantId)
+    .maybeSingle();
+  if (existing) return existing;
+  const { data: created, error } = await supabaseAdmin
+    .from("subscriptions")
+    .insert({
+      tenant_id: tenantId,
+      status: "past_due",
+      current_period_end: new Date().toISOString(),
+      plan: "warung",
+      period: "monthly",
+      price_idr: PLANS.warung.monthly,
+    })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return created;
+}
 
 
 export const getMyBilling = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { supabase, userId } = context;
-    // Resolve tenant: try owner lookup first (most reliable, no RPC needed),
-    // then fall back to RPC current_tenant_id() for cashier sessions.
-    let tenant: { id: string; name: string; phone: string | null; address: string | null } | null = null;
-    const { data: tOwner, error: tOwnerErr } = await supabase
-      .from("tenants")
-      .select("id, name, phone, address")
-      .eq("owner_user_id", userId)
-      .maybeSingle();
-    if (tOwnerErr) console.error("[getMyBilling] owner lookup error", tOwnerErr);
-    tenant = (tOwner as any) ?? null;
+    const { tenant, isSuperAdmin } = await resolveBillingTenant(context, { createIfMissing: true });
+    if (!tenant) return { tenant: null, subscription: null, payments: [], isSuperAdmin };
 
-    if (!tenant) {
-      const { data: tenantId, error: rpcErr } = await supabase.rpc("current_tenant_id");
-      if (rpcErr) console.error("[getMyBilling] current_tenant_id rpc error", rpcErr);
-      if (tenantId) {
-        const { data: t } = await supabase
-          .from("tenants")
-          .select("id, name, phone, address")
-          .eq("id", tenantId as string)
-          .maybeSingle();
-        tenant = (t as any) ?? null;
-      }
-    }
-    if (!tenant) return { tenant: null, subscription: null, payments: [], isSuperAdmin: false };
-
-    const [{ data: sub }, { data: pays }, { data: roles }] = await Promise.all([
-      supabase.from("subscriptions").select("*").eq("tenant_id", tenant.id).maybeSingle(),
-      supabase.from("payments").select("*").eq("tenant_id", tenant.id).order("created_at", { ascending: false }).limit(20),
-      supabase.from("user_roles").select("role").eq("user_id", userId),
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const [sub, { data: pays }] = await Promise.all([
+      ensureSubscription(tenant.id),
+      supabaseAdmin.from("payments").select("*").eq("tenant_id", tenant.id).order("created_at", { ascending: false }).limit(20),
     ]);
 
     const clientKey = process.env.MIDTRANS_CLIENT_KEY ?? "";
@@ -44,7 +123,7 @@ export const getMyBilling = createServerFn({ method: "GET" })
       tenant,
       subscription: sub,
       payments: pays ?? [],
-      isSuperAdmin: (roles ?? []).some((r) => r.role === "super_admin"),
+      isSuperAdmin,
       midtransClientKey: clientKey,
       midtransIsProduction: clientKey ? !clientKey.startsWith("SB-Mid-client-") : false,
     };
@@ -76,11 +155,7 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
     const basePrice = priceFor(planId, period);
     const extendDays = daysFor(period);
 
-    const { data: tenant } = await context.supabase
-      .from("tenants")
-      .select("id, name")
-      .eq("owner_user_id", context.userId)
-      .maybeSingle();
+    const { tenant } = await resolveBillingTenant(context, { createIfMissing: true });
     if (!tenant) throw new Error("Toko tidak ditemukan");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
