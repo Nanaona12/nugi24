@@ -74,18 +74,23 @@ function LanggananPage() {
     mutationFn: async (vars: { plan: PlanId }) =>
       createPay({ data: { coupon_code: couponCode.trim() || undefined, plan: vars.plan, period } }),
     onSuccess: (res: any) => {
+      const refresh = () => {
+        qc.invalidateQueries({ queryKey: ["billing"] });
+        qc.invalidateQueries({ queryKey: ["plan-audit"] });
+        if (typeof window !== "undefined") window.dispatchEvent(new Event("billing:refresh"));
+      };
       if (res.free) {
         toast.success("Aktivasi berhasil dengan kupon 100%!");
         setCouponCode("");
-        qc.invalidateQueries({ queryKey: ["billing"] });
+        refresh();
         return;
       }
       if (window.snap && snapReady && res.token) {
         window.snap.pay(res.token, {
-          onSuccess: () => { toast.success("Pembayaran sukses!"); qc.invalidateQueries({ queryKey: ["billing"] }); },
-          onPending: () => { toast.info("Menunggu pembayaran..."); qc.invalidateQueries({ queryKey: ["billing"] }); },
+          onSuccess: () => { toast.success("Pembayaran sukses!"); refresh(); },
+          onPending: () => { toast.info("Menunggu pembayaran..."); refresh(); },
           onError: () => toast.error("Pembayaran gagal"),
-          onClose: () => qc.invalidateQueries({ queryKey: ["billing"] }),
+          onClose: () => refresh(),
         });
       } else if (res.redirect_url) {
         window.open(res.redirect_url, "_blank");
