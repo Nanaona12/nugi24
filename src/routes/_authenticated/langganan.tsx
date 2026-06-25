@@ -228,7 +228,7 @@ function LanggananPage() {
                   {payMut.isPending && selectedPlan === p.id
                     ? "Memproses..."
                     : isCurrent && !expired
-                      ? `Perpanjang ${period === "yearly" ? "1 Tahun" : "30 Hari"}`
+                      ? `Perpanjang ${effectivePeriod === "yearly" ? "1 Tahun" : "30 Hari"}`
                       : `Pilih ${p.name}`}
                 </Button>
                 {!snapReady && (
