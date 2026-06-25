@@ -122,7 +122,7 @@ function LanggananPage() {
       </Card>
 
       {/* Plan selector */}
-      <div className="space-y-3">
+      <div id="pilih-paket" className="scroll-mt-20 space-y-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Pilih Paket</h2>
