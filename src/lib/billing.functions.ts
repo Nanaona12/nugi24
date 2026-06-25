@@ -316,6 +316,21 @@ export const adminSetSubscriptionStatus = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const adminSetPlan = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { tenant_id: string; plan: PlanId }) => d)
+  .handler(async ({ data, context }) => {
+    await assertSuperAdmin(context);
+    if (data.plan !== "warung" && data.plan !== "grosir") throw new Error("Paket tidak valid");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { error } = await supabaseAdmin
+      .from("subscriptions")
+      .update({ plan: data.plan })
+      .eq("tenant_id", data.tenant_id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const adminUpdateTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { tenant_id: string; name: string; phone?: string; address?: string }) => d)
