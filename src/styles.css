@@ -190,16 +190,27 @@
   border: 1px solid color-mix(in oklab, var(--color-foreground) 10%, transparent);
 }
 @utility nav-float {
+  color: oklch(1 0 0);
   background: color-mix(in oklab, oklch(0.2 0.03 250) 72%, transparent);
   backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid color-mix(in oklab, oklch(1 0 0) 10%, transparent);
   box-shadow: 0 20px 50px -12px color-mix(in oklab, oklch(0 0 0) 35%, transparent);
 }
 @utility nav-float-light {
+  color: oklch(0.22 0.04 250);
   background: color-mix(in oklab, oklch(1 0 0) 70%, transparent);
   backdrop-filter: blur(24px) saturate(160%);
   border: 1px solid color-mix(in oklab, oklch(0.2 0.03 250) 10%, transparent);
   box-shadow: 0 20px 50px -12px color-mix(in oklab, oklch(0.2 0.03 250) 15%, transparent);
+}
+@utility nav-float-cta {
+  background: oklch(1 0 0);
+  color: oklch(0.2 0.03 250);
+  &:hover { background: oklch(1 0 0 / 90%); }
+}
+@utility nav-float-ghost {
+  color: oklch(1 0 0 / 80%);
+  &:hover { background: oklch(1 0 0 / 10%); color: oklch(1 0 0); }
 }
 
 @keyframes fade-in {
@@ -213,5 +224,6 @@
   transition: transform 0.2s ease;
   &:hover { transform: scale(1.03); }
 }
+
 
 
