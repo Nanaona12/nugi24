@@ -36,24 +36,53 @@ function KaryawanPage() {
   useEffect(() => { localStorage.setItem("salary_profit_pct", String(profitPct)); }, [profitPct]);
   useEffect(() => { localStorage.setItem("salary_referral", String(referralBonus)); }, [referralBonus]);
 
+  // Cutoff & payday settings (persisted locally)
+  const [cutoffDay, setCutoffDay] = useState<number>(() => parseInt(localStorage.getItem("salary_cutoff_day") || "14", 10));
+  const [paydayDay, setPaydayDay] = useState<number>(() => parseInt(localStorage.getItem("salary_payday") || "25", 10));
+  useEffect(() => { localStorage.setItem("salary_cutoff_day", String(cutoffDay)); }, [cutoffDay]);
+  useEffect(() => { localStorage.setItem("salary_payday", String(paydayDay)); }, [paydayDay]);
+
   type Perf = { cashier_id: string; revenue: number; profit: number; shifts: number; tx_count: number };
   const [perf, setPerf] = useState<Record<string, Perf>>({});
   const [perfLoading, setPerfLoading] = useState(false);
+  // Period anchor = payday month (e.g. 2026-06 → period 15 May .. 14 Jun, paid 25 Jun)
   const [month, setMonth] = useState<string>(() => {
     const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   });
 
+  const periodRange = (() => {
+    const [y, m] = month.split("-").map((n) => parseInt(n, 10));
+    // end = cutoffDay of selected month (inclusive day → exclusive next day)
+    const end = new Date(y, m - 1, cutoffDay + 1);
+    const start = new Date(y, m - 2, cutoffDay + 1); // previous month cutoff+1
+    const payday = new Date(y, m - 1, paydayDay);
+    return { start, end, payday };
+  })();
+
+  const fmtDate = (d: Date) => d.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
+
   const loadPerformance = async () => {
     setPerfLoading(true);
     try {
-      const [y, m] = month.split("-").map((n) => parseInt(n, 10));
-      const start = new Date(y, m - 1, 1).toISOString();
-      const end = new Date(y, m, 1).toISOString();
-      const { data: txs } = await supabase
-        .from("transactions")
-        .select("id,cashier_id,shift_id,total,created_at")
-        .gte("created_at", start).lt("created_at", end);
-      const txList = (txs || []) as { id: string; cashier_id: string | null; shift_id: string | null; total: number }[];
+      const { start, end } = periodRange;
+      // Pull shifts in period → they hold the real cashier_id (cashiers.id)
+      const { data: shifts } = await supabase
+        .from("cashier_shifts")
+        .select("id,cashier_id,opened_at")
+        .gte("opened_at", start.toISOString())
+        .lt("opened_at", end.toISOString());
+      const shiftList = (shifts || []) as { id: string; cashier_id: string; opened_at: string }[];
+      const shiftMap = new Map(shiftList.map((s) => [s.id, s.cashier_id]));
+      const shiftIds = shiftList.map((s) => s.id);
+
+      let txList: { id: string; shift_id: string | null; total: number }[] = [];
+      if (shiftIds.length) {
+        const { data: txs } = await supabase
+          .from("transactions")
+          .select("id,shift_id,total")
+          .in("shift_id", shiftIds);
+        txList = (txs || []) as any;
+      }
       const txMap = new Map(txList.map((t) => [t.id, t]));
       const ids = txList.map((t) => t.id);
       let itemsRes: { transaction_id: string; qty: number; unit_price: number; unit_cost: number; unit_conversion?: number | null }[] = [];
@@ -66,25 +95,27 @@ function KaryawanPage() {
       }
       const map: Record<string, Perf> = {};
       const shiftSet: Record<string, Set<string>> = {};
+      const ensure = (cid: string) => (map[cid] = map[cid] || { cashier_id: cid, revenue: 0, profit: 0, shifts: 0, tx_count: 0 });
       for (const it of itemsRes) {
-        const t = txMap.get(it.transaction_id); if (!t || !t.cashier_id) continue;
+        const t = txMap.get(it.transaction_id); if (!t || !t.shift_id) continue;
+        const cid = shiftMap.get(t.shift_id); if (!cid) continue;
         const conv = Number(it.unit_conversion || 1);
         const rev = Number(it.unit_price) * Number(it.qty);
         const cost = Number(it.unit_cost || 0) * Number(it.qty) * conv;
-        const p = map[t.cashier_id] || { cashier_id: t.cashier_id, revenue: 0, profit: 0, shifts: 0, tx_count: 0 };
+        const p = ensure(cid);
         p.revenue += rev;
         p.profit += rev - cost;
-        map[t.cashier_id] = p;
       }
       for (const t of txList) {
-        if (!t.cashier_id) continue;
-        const p = map[t.cashier_id] || { cashier_id: t.cashier_id, revenue: 0, profit: 0, shifts: 0, tx_count: 0 };
+        if (!t.shift_id) continue;
+        const cid = shiftMap.get(t.shift_id); if (!cid) continue;
+        const p = ensure(cid);
         p.tx_count += 1;
-        if (t.shift_id) {
-          if (!shiftSet[t.cashier_id]) shiftSet[t.cashier_id] = new Set();
-          shiftSet[t.cashier_id].add(t.shift_id);
-        }
-        map[t.cashier_id] = p;
+      }
+      for (const s of shiftList) {
+        if (!shiftSet[s.cashier_id]) shiftSet[s.cashier_id] = new Set();
+        shiftSet[s.cashier_id].add(s.id);
+        ensure(s.cashier_id);
       }
       Object.keys(map).forEach((k) => { map[k].shifts = shiftSet[k]?.size || 0; });
       setPerf(map);
@@ -92,7 +123,8 @@ function KaryawanPage() {
     finally { setPerfLoading(false); }
   };
 
-  useEffect(() => { loadPerformance(); }, [month]);
+  useEffect(() => { loadPerformance(); }, [month, cutoffDay]);
+
 
   const listFn = useServerFn(listCashiers);
   const createFn = useServerFn(createCashier);
