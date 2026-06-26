@@ -800,8 +800,8 @@ function POPage() {
                   <Download className="mr-2 h-4 w-4" /> Cetak / PDF
                 </Button>
                 {detailOpen.status !== "received" && detailOpen.status !== "cancelled" && (
-                  <Button size="sm" onClick={() => updateStatus(detailOpen, "received")}>
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Tandai Diterima
+                  <Button size="sm" onClick={() => setReceiveFor(detailOpen)}>
+                    <PackageCheck className="mr-2 h-4 w-4" /> Terima Barang
                   </Button>
                 )}
                 {detailOpen.status !== "cancelled" && detailOpen.status !== "received" && (
