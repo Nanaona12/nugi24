@@ -75,14 +75,18 @@ export function ReceivingDialog({
           await supabase.from("products").update({ stock: (p?.stock || 0) + addQty }).eq("id", it.product_id);
           // Batch if exp date set
           if (r.exp) {
-            await supabase.from("product_batches").insert({
-              product_id: it.product_id,
-              qty: addQty,
-              expiry_date: r.exp,
-              source: "po",
-              po_id: poId,
-              note: `Penerimaan PO ${poSupplier || ""}`.trim(),
-            });
+            const { data: tid } = await (supabase as any).rpc("current_tenant_id");
+            if (tid) {
+              await (supabase as any).from("product_batches").insert({
+                product_id: it.product_id,
+                qty: addQty,
+                expiry_date: r.exp,
+                source: "po",
+                po_id: poId,
+                note: `Penerimaan PO ${poSupplier || ""}`.trim(),
+                tenant_id: tid,
+              });
+            }
           }
         }
         totalNew += addQty;
