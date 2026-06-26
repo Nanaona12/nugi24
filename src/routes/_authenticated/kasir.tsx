@@ -1089,7 +1089,13 @@ function KasirPage() {
                       }
                       lines.push(`--------------------------------`);
                       lines.push(`Total   : ${formatRupiah(r.total)}`);
-                      lines.push(`Bayar   : ${formatRupiah(r.paid)} (${r.paymentMethod.toUpperCase()})`);
+                      if (r.paymentMethod === "split") {
+                        lines.push(`Cash    : ${formatRupiah(r.cashPart || 0)}`);
+                        lines.push(`QRIS    : ${formatRupiah(r.qrisPart || 0)}`);
+                        lines.push(`Bayar   : ${formatRupiah(r.paid)} (SPLIT)`);
+                      } else {
+                        lines.push(`Bayar   : ${formatRupiah(r.paid)} (${r.paymentMethod.toUpperCase()})`);
+                      }
                       lines.push(`Kembali : ${formatRupiah(r.change)}`);
                       lines.push(``);
                       lines.push(`Terima kasih sudah berbelanja 🙏`);
