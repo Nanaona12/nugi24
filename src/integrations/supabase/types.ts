@@ -1103,6 +1103,7 @@ export type Database = {
           item_count: number
           paid: number
           payment_method: string
+          qris_amount: number
           shift_id: string | null
           tenant_id: string
           total: number
@@ -1116,6 +1117,7 @@ export type Database = {
           item_count?: number
           paid?: number
           payment_method?: string
+          qris_amount?: number
           shift_id?: string | null
           tenant_id?: string
           total?: number
@@ -1129,6 +1131,7 @@ export type Database = {
           item_count?: number
           paid?: number
           payment_method?: string
+          qris_amount?: number
           shift_id?: string | null
           tenant_id?: string
           total?: number
@@ -1203,6 +1206,7 @@ export type Database = {
       }
       is_cashier_session: { Args: never; Returns: boolean }
       next_product_code: { Args: never; Returns: string }
+      tenant_qris_month_usage: { Args: { _tenant: string }; Returns: number }
     }
     Enums: {
       app_role: "super_admin"
