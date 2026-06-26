@@ -104,7 +104,38 @@ export function AIPhotoCapture({ open, onClose, onResult, existingCategories = [
           </DialogDescription>
         </DialogHeader>
 
+        {mode === "full" && (
+          <div className="rounded-md border bg-muted/30 p-2.5 space-y-1.5">
+            <div className="text-xs font-medium">Strategi harga jual</div>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { v: "auto", l: "Auto-deteksi", d: "AI tebak dari foto" },
+                { v: "warung", l: "Warung (eceran)", d: "Margin 10-20%" },
+                { v: "grosiran", l: "Grosiran", d: "Untung Rp 500-1.000/pcs" },
+                { v: "both", l: "Warung + Grosir", d: "Eceran + harga box/dus" },
+              ] as { v: StoreType; l: string; d: string }[]).map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setStoreType(opt.v)}
+                  className={`text-xs rounded-full border px-2.5 py-1 transition ${storeType === opt.v ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
+                  title={opt.d}
+                >
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {storeType === "warung" && "AI akan kasih 1 satuan (pcs) dengan margin warung 10-20%."}
+              {storeType === "grosiran" && "AI akan kasih satuan pcs + box/dus dengan untung tipis Rp 500-1.000 per pcs."}
+              {storeType === "both" && "AI akan kasih harga eceran (margin warung) + harga grosir per box/dus."}
+              {storeType === "auto" && "AI memilih sendiri berdasarkan foto kemasan."}
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
+
           {slots.map((s) => {
             const img = images[s.key];
             return (
