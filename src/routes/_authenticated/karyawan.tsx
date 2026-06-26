@@ -214,6 +214,74 @@ function KaryawanPage() {
         </div>
       </Card>
 
+      {/* Rekomendasi Gaji */}
+      <Card className="p-4">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 className="flex items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 text-primary" /> Rekomendasi Gaji & Bonus Kinerja</h2>
+            <p className="text-xs text-muted-foreground">Hitung gaji bulanan otomatis: gaji pokok + bonus % dari keuntungan yang dihasilkan kasir di bulan terpilih. Tambah bonus referral bila kasir mengajak pelanggan/promosi toko.</p>
+          </div>
+          <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="h-9 w-44" />
+        </div>
+
+        <div className="mb-3 grid gap-3 sm:grid-cols-3">
+          <div>
+            <Label className="text-xs">Gaji Pokok / bulan</Label>
+            <Input inputMode="numeric" value={formatRupiah(baseSalary)} onChange={(e) => setBaseSalary(parseNumber(e.target.value))} />
+          </div>
+          <div>
+            <Label className="text-xs">Bonus dari Keuntungan (%)</Label>
+            <Input inputMode="decimal" value={String(profitPct)} onChange={(e) => setProfitPct(parseFloat(e.target.value.replace(",", ".")) || 0)} />
+          </div>
+          <div>
+            <Label className="text-xs flex items-center gap-1"><Megaphone className="h-3 w-3" /> Bonus Referral / pelanggan baru</Label>
+            <Input inputMode="numeric" value={formatRupiah(referralBonus)} onChange={(e) => setReferralBonus(parseNumber(e.target.value))} />
+          </div>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
+              <tr>
+                <th className="p-2">Kasir</th>
+                <th className="p-2 text-right">Shift</th>
+                <th className="p-2 text-right">Transaksi</th>
+                <th className="p-2 text-right">Omzet</th>
+                <th className="p-2 text-right">Keuntungan</th>
+                <th className="p-2 text-right">Bonus Kinerja</th>
+                <th className="p-2 text-right">Total Rekomendasi</th>
+              </tr>
+            </thead>
+            <tbody>
+              {perfLoading ? (
+                <tr><td colSpan={7} className="p-6 text-center text-muted-foreground"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>
+              ) : items.length === 0 ? (
+                <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Belum ada kasir.</td></tr>
+              ) : items.map((c) => {
+                const p = perf[c.id] || { revenue: 0, profit: 0, shifts: 0, tx_count: 0 };
+                const bonus = Math.max(0, Math.round((p.profit * profitPct) / 100));
+                const total = baseSalary + bonus;
+                return (
+                  <tr key={c.id} className="border-t">
+                    <td className="p-2 font-medium">{c.name}</td>
+                    <td className="p-2 text-right">{p.shifts}</td>
+                    <td className="p-2 text-right">{p.tx_count}</td>
+                    <td className="p-2 text-right">{formatRupiah(p.revenue)}</td>
+                    <td className="p-2 text-right text-emerald-600">{formatRupiah(p.profit)}</td>
+                    <td className="p-2 text-right"><span className="inline-flex items-center gap-1"><TrendingUp className="h-3 w-3 text-primary" />{formatRupiah(bonus)}</span></td>
+                    <td className="p-2 text-right font-semibold">{formatRupiah(total)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="mt-2 text-[11px] text-muted-foreground">
+          Tips: bagikan target keuntungan ke kasir agar termotivasi mengajak orang/promosi. Bonus referral bisa ditambahkan manual saat menggaji jika kasir berhasil membawa pelanggan baru.
+        </p>
+      </Card>
+
+
       {/* Edit / Tambah */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="max-w-sm">
