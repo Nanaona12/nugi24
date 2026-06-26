@@ -49,7 +49,13 @@ export const createCashierQris = createServerFn({ method: "POST" })
     });
     const json: any = await res.json();
     if (!res.ok || (json.status_code && json.status_code >= "400")) {
-      throw new Error(json.status_message || json.error_messages?.join(", ") || "Gagal membuat QRIS");
+      const raw = json.status_message || json.error_messages?.join(", ") || "Gagal membuat QRIS";
+      const isChannelOff = /payment channel is not activated/i.test(raw);
+      throw new Error(
+        isChannelOff
+          ? "QRIS belum aktif di akun Midtrans Anda. Buka dashboard Midtrans → Settings → Payment Methods → aktifkan QRIS. Jika server key masih sandbox (SB-Mid-server-…), QRIS sandbox hanya bisa diuji via Simulator Midtrans; untuk produksi gunakan server key Live dari akun yang sudah Go-Live."
+          : raw,
+      );
     }
     const qrUrl: string | null =
       (json.actions ?? []).find((a: any) => a.name === "generate-qr-code")?.url ?? null;
