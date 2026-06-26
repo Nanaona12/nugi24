@@ -31,6 +31,8 @@ type Props = {
   title?: string;
 };
 
+type StoreType = "auto" | "warung" | "grosiran" | "both";
+
 export function AIPhotoCapture({ open, onClose, onResult, existingCategories = [], mode = "full", title }: Props) {
   const slots = mode === "expiry_only"
     ? [{ key: "expiry" as Kind, label: "Foto Kadaluarsa", hint: "Boleh > 1 sekaligus" }]
@@ -38,8 +40,10 @@ export function AIPhotoCapture({ open, onClose, onResult, existingCategories = [
 
   const [images, setImages] = useState<Partial<Record<Kind, string>>>({});
   const [analyzing, setAnalyzing] = useState(false);
+  const [storeType, setStoreType] = useState<StoreType>("auto");
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const analyze = useServerFn(analyzeProductPhotos);
+
 
   const reset = () => {
     setImages({});
