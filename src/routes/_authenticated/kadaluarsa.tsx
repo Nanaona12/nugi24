@@ -23,7 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlarmClock, Plus, Pencil, Trash2, Search, CalendarDays, Download, Upload } from "lucide-react";
+import { AlarmClock, Plus, Pencil, Trash2, Search, CalendarDays, Download, Upload, Sparkles } from "lucide-react";
+import { AIPhotoCapture } from "@/components/AIPhotoCapture";
+import type { AiVisionResult } from "@/lib/ai-vision.functions";
 
 
 export const Route = createFileRoute("/_authenticated/kadaluarsa")({
