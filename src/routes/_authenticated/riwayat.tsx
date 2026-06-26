@@ -47,6 +47,11 @@ function RiwayatPage() {
   const [clearPassword, setClearPassword] = useState("");
   const [clearing, setClearing] = useState(false);
 
+  const [confirmDelOpen, setConfirmDelOpen] = useState(false);
+  const [delTarget, setDelTarget] = useState<Tx | null>(null);
+  const [delPassword, setDelPassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
   const load = async () => {
     const { data, error } = await supabase
       .from("transactions")
@@ -65,14 +70,32 @@ function RiwayatPage() {
     setItems((data || []) as TxItem[]);
   };
 
-  const removeTx = async (tx: Tx, e?: React.MouseEvent) => {
+  const askDelete = (tx: Tx, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (!confirm(`Hapus transaksi #${tx.id.slice(0, 8)}?`)) return;
+    setDelTarget(tx);
+    setDelPassword("");
+    setConfirmDelOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!delTarget) return;
+    if (!delPassword) { toast.error("Masukkan password admin/tenant"); return; }
+    setDeleting(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email;
+    if (!email) { setDeleting(false); toast.error("Sesi tidak ditemukan. Hanya admin/tenant yang boleh menghapus."); return; }
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: delPassword });
+    if (authErr) { setDeleting(false); toast.error("Password salah"); return; }
+    const tx = delTarget;
     const { error: e1 } = await supabase.from("transaction_items").delete().eq("transaction_id", tx.id);
-    if (e1) return toast.error(e1.message);
+    if (e1) { setDeleting(false); return toast.error(e1.message); }
     const { error: e2 } = await supabase.from("transactions").delete().eq("id", tx.id);
+    setDeleting(false);
     if (e2) return toast.error(e2.message);
     toast.success("Transaksi dihapus");
+    setConfirmDelOpen(false);
+    setDelTarget(null);
+    setDelPassword("");
     if (selected?.id === tx.id) setSelected(null);
     load();
   };
