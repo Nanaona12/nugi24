@@ -1,35 +1,30 @@
-Akan menambah 3 fitur:
+Update receipt (PNG image + WhatsApp text caption) untuk menampilkan rincian pembayaran split.
 
-## 1. Refund di Kasir (cari berdasarkan nomor struk)
-- Tabel baru `refunds` + `refund_items` dengan tenant_id, transaction_id, reason, total, created_by, created_at.
-- Trigger DB: saat refund_item dibuat → tambah stok produk kembali (qty × unit_conversion).
-- Tombol "Refund" di halaman Kasir → dialog: input nomor struk (8 digit pertama atau full) → load transaksi + item → pilih item & qty yang direfund → simpan.
-- Tampilkan riwayat refund di halaman Riwayat (badge).
+## Perubahan
 
-## 2. Receiving Barang (digabung di PO)
-- Tambah kolom di `purchase_order_items`: `qty_received` (int), dan di `purchase_orders`: `received_at`, `received_status` ('pending' | 'partial' | 'received').
-- Di halaman PO: tombol "Terima Barang" pada PO yang status-nya `ordered` → dialog list item PO, input qty diterima per baris (default = qty pesan), opsional expiry date per item.
-- Saat disimpan:
-  - Tambah stok produk sesuai qty_received × unit_conversion.
-  - Bila exp date diisi → buat row `product_batches`.
-  - Update status PO ke partial/received.
+### 1. `src/lib/receipt-image.ts`
+- Tambah field opsional pada `ReceiptInput`: `cashPart?: number`, `qrisPart?: number`.
+- Pada blok render pembayaran (sekitar baris 172–184):
+  - Jika `paymentMethod === "split"` DAN `cashPart`/`qrisPart` tersedia: render 3 baris berurutan:
+    - `Cash` → `formatRupiah(cashPart)`
+    - `QRIS` → `formatRupiah(qrisPart)`
+    - `Total Bayar` → `formatRupiah(paid)` (bold ringan)
+  - Selain itu (cash/qris murni): tetap render `Bayar (METHOD)` seperti sekarang.
+- Baris `Kembali` selalu ditampilkan jika `change > 0` (untuk split, kembalian diambil dari porsi cash sehingga tetap akurat).
 
-## 3. Rekomendasi Gaji Karyawan (per shift / per bulan)
-- Halaman Karyawan: card "Rekomendasi Gaji" per kasir.
-- Hitung dari `cashier_shifts` & `transactions` (filter by cashier_id, periode bulan ini):
-  - Total transaksi shift, total penjualan, estimasi laba (memakai cost_price seperti di halaman Keuntungan).
-  - Rekomendasi:
-    - **Gaji Pokok**: Rp 1.500.000 (UMR warung kecil, bisa diubah)
-    - **Bonus Performa**: 5% dari laba yang dihasilkan kasir bulan ini.
-    - **Bonus Referral / Promosi**: Rp 50.000 per pelanggan baru yang dibawa (placeholder field manual).
-  - Slider untuk owner mengatur % bonus & gaji pokok (disimpan ke localStorage per tenant).
-- Tujuan: motivasi kasir mempromosikan toko.
+### 2. `src/routes/_authenticated/kasir.tsx`
+- Saat memanggil `renderReceiptPng` (sekitar baris 493), teruskan `cashPart: receipt.cashPart` dan `qrisPart: receipt.qrisPart`.
+- Pada penyusunan teks WhatsApp (sekitar baris 1088–1091), jika `r.paymentMethod === "split"`, ganti baris `Bayar` tunggal menjadi:
+  ```
+  Cash    : Rp xxx
+  QRIS    : Rp xxx
+  Bayar   : Rp xxx (SPLIT)
+  ```
+  Selain itu, biarkan format lama.
+- Baris `Kembali` tetap ditampilkan apa adanya.
 
-## File yang akan diubah/dibuat
-- migration baru: tabel refunds/refund_items + kolom receiving + triggers
-- `src/routes/_authenticated/kasir.tsx` — dialog Refund
-- `src/routes/_authenticated/po.tsx` — dialog Terima Barang
-- `src/routes/_authenticated/karyawan.tsx` — section rekomendasi gaji
-- `src/routes/_authenticated/riwayat.tsx` — tampilkan refund badge
+## Catatan teknis
 
-Lanjut implementasi?
+- Tidak ada perubahan database / server function.
+- Tidak menyentuh logika checkout, validasi, atau QRIS.
+- Type `ReceiptInput.paymentMethod` diperluas komentarnya menjadi `cash | qris | split`.
