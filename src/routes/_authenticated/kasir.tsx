@@ -326,10 +326,18 @@ function KasirPage() {
     setSubmitting(true);
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user?.id) { toast.error("Sesi habis"); setSubmitting(false); return; }
+    const { data: tidData, error: tidErr } = await supabase.rpc("current_tenant_id");
+    const tenantId = tidData as string | null;
+    if (!tenantId) {
+      toast.error("Akun ini tidak terhubung ke toko" + (tidErr ? `: ${tidErr.message}` : ""));
+      setSubmitting(false);
+      return;
+    }
     const change = paidNum - totals.total;
     const { data: tx, error: txErr } = await supabase
       .from("transactions")
       .insert({
+        tenant_id: tenantId,
         cashier_id: activeShift.cashier_id,
         shift_id: activeShift.shift_id,
         total: totals.total,
