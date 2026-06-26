@@ -370,10 +370,24 @@ function KasirPage() {
 
   const checkout = async () => {
     if (!activeShift) { toast.error("Kasir belum login"); setLockOpen(true); return; }
-    const paidNum = paymentMethod === "qris" ? totals.total : Number(paid.replace(/[^\d]/g, ""));
-    if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
-    const phoneClean = customerPhone.replace(/[^\d]/g, "");
-    if (sendWa && phoneClean.length < 8) { toast.error("Nomor HP tidak valid"); return; }
+    let paidNum: number;
+    let cashPart = 0;
+    let qrisPart = 0;
+    if (paymentMethod === "qris") {
+      if (!qris || qris.status !== "paid") { toast.error("QRIS belum dibayar"); return; }
+      paidNum = totals.total;
+      qrisPart = totals.total;
+    } else if (paymentMethod === "split") {
+      cashPart = Number(splitCash.replace(/[^\d]/g, "")) || 0;
+      qrisPart = Number(splitQris.replace(/[^\d]/g, "")) || 0;
+      if (qrisPart > 0 && (!qris || qris.status !== "paid")) { toast.error("QRIS belum dibayar"); return; }
+      if (cashPart + qrisPart < totals.total) { toast.error("Total pembayaran kurang"); return; }
+      paidNum = cashPart + qrisPart;
+    } else {
+      paidNum = Number(paid.replace(/[^\d]/g, ""));
+      if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
+      cashPart = paidNum;
+    }
     setSubmitting(true);
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user?.id) { toast.error("Sesi habis"); setSubmitting(false); return; }
