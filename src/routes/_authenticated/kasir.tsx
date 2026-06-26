@@ -354,6 +354,7 @@ function KasirPage() {
       const c = computeLine(l, getUnits(l.product, unitsByProduct));
       const avgUnitPrice = l.qty > 0 ? c.total / l.qty : 0;
       return {
+        tenant_id: tenantId,
         transaction_id: tx.id,
         product_id: l.product.id,
         product_code: l.product.code,
