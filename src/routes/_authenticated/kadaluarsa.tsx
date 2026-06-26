@@ -117,6 +117,7 @@ function KadaluarsaPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<{ kode: string; nama: string; qty: number | null; expiry_date: string | null; note: string; product_id: string | null; error: string | null }[]>([]);
   const [importing, setImporting] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
 
