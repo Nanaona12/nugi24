@@ -62,11 +62,31 @@ export const createCashierQris = createServerFn({ method: "POST" })
       (json.actions ?? []).find((a: any) => a.name === "generate-qr-code")?.url ?? null;
     if (!qrUrl) throw new Error("QR code tidak diterima dari Midtrans");
 
+    // Hitung kuota QRIS bulan ini
+    let quota_info: { used: number; quota: number; projected: number; over_quota: boolean; over_amount: number } | null = null;
+    try {
+      const { data: sub } = await context.supabase
+        .from("subscriptions").select("plan").eq("tenant_id", tenantId).maybeSingle();
+      const { data: usedRaw } = await context.supabase
+        .rpc("tenant_qris_month_usage", { _tenant: tenantId });
+      const used = Number(usedRaw || 0);
+      const quota = qrisQuotaFor((sub as any)?.plan ?? null);
+      const projected = used + amount;
+      quota_info = {
+        used, quota, projected,
+        over_quota: projected > quota,
+        over_amount: Math.max(0, projected - quota),
+      };
+    } catch {
+      quota_info = null;
+    }
+
     return {
       order_id: orderId,
       qr_url: qrUrl,
       amount,
       expiry: json.expiry_time ?? null,
+      quota_info,
     };
   });
 
