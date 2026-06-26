@@ -306,7 +306,7 @@ function KaryawanPage() {
           </div>
           <div>
             <Label className="text-xs flex items-center gap-1"><Megaphone className="h-3 w-3" /> Bonus Referral</Label>
-            <Input inputMode="numeric" value={formatRupiah(referralBonus)} onChange={(e) => setReferralBonus(parseNumber(e.target.value))} />
+            <Input inputMode="numeric" value={formatRupiah(referralBonus)} onChange={(e) => setReferralBonus(parseInt(e.target.value.replace(/\D/g, "") || "0", 10))} />
           </div>
           <div>
             <Label className="text-xs">Cut-off (tanggal)</Label>
