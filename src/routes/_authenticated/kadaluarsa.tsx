@@ -458,6 +458,16 @@ function KadaluarsaPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {!form.id && form.product_id && (
+              <div className="flex items-center justify-between gap-2 rounded-md border bg-primary/5 p-2">
+                <div className="text-[11px] text-muted-foreground">
+                  Foto tanggal exp di kemasan → otomatis terbaca & qty terisi.
+                </div>
+                <Button type="button" size="sm" onClick={() => setAiOpen(true)}>
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Scan EXP
+                </Button>
+              </div>
+            )}
             {!form.id && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Cari Produk</Label>
