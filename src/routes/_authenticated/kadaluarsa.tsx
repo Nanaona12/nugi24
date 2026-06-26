@@ -23,7 +23,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { AlarmClock, Plus, Pencil, Trash2, Search, CalendarDays, Download, Upload } from "lucide-react";
+import { AlarmClock, Plus, Pencil, Trash2, Search, CalendarDays, Download, Upload, Sparkles } from "lucide-react";
+import { AIPhotoCapture } from "@/components/AIPhotoCapture";
+import type { AiVisionResult } from "@/lib/ai-vision.functions";
 
 
 export const Route = createFileRoute("/_authenticated/kadaluarsa")({
@@ -115,6 +117,7 @@ function KadaluarsaPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<{ kode: string; nama: string; qty: number | null; expiry_date: string | null; note: string; product_id: string | null; error: string | null }[]>([]);
   const [importing, setImporting] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
 
@@ -455,6 +458,16 @@ function KadaluarsaPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
+            {!form.id && form.product_id && (
+              <div className="flex items-center justify-between gap-2 rounded-md border bg-primary/5 p-2">
+                <div className="text-[11px] text-muted-foreground">
+                  Foto tanggal exp di kemasan → otomatis terbaca & qty terisi.
+                </div>
+                <Button type="button" size="sm" onClick={() => setAiOpen(true)}>
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Scan EXP
+                </Button>
+              </div>
+            )}
             {!form.id && (
               <div className="space-y-1.5">
                 <Label className="text-xs">Cari Produk</Label>
@@ -548,6 +561,31 @@ function KadaluarsaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AIPhotoCapture
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        mode="expiry_only"
+        title="Scan Tanggal Kadaluarsa"
+        onResult={(r: AiVisionResult) => {
+          if (!r.expiry_batches || r.expiry_batches.length === 0) {
+            toast.error("AI tidak menemukan tanggal kadaluarsa di foto");
+            return;
+          }
+          const first = r.expiry_batches[0];
+          setForm((prev) => ({
+            ...prev,
+            expiry_date: first.expiry_date,
+            qty: String(first.qty),
+            note: prev.note || (r.expiry_batches.length > 1 ? `AI: ${r.expiry_batches.length} tanggal terbaca, ditampilkan exp terdekat` : "AI"),
+          }));
+          if (r.expiry_batches.length > 1) {
+            toast.info(`Terbaca ${r.expiry_batches.length} exp date. Simpan satu per satu untuk yang lain.`);
+          } else {
+            toast.success("Tanggal kadaluarsa terisi");
+          }
+        }}
+      />
     </div>
 
   );

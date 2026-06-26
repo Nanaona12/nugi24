@@ -35,7 +35,10 @@ import {
   Download,
   AlertTriangle,
   PackageX,
+  Sparkles,
 } from "lucide-react";
+import { AIPhotoCapture } from "@/components/AIPhotoCapture";
+import type { AiVisionResult } from "@/lib/ai-vision.functions";
 
 
 export const Route = createFileRoute("/_authenticated/po")({
@@ -105,6 +108,7 @@ function POPage() {
   const [items, setItems] = useState<DraftItem[]>([]);
   const [pickQuery, setPickQuery] = useState("");
   const [saving, setSaving] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
 
 
   const load = async () => {
@@ -222,6 +226,34 @@ function POPage() {
       { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0" },
     ]);
   };
+
+  const applyAiResultToPO = (r: AiVisionResult) => {
+    // Try to match existing product by barcode or name
+    const matched = products.find((p) =>
+      (r.barcode && p.barcode && p.barcode === r.barcode) ||
+      (r.name && p.name.toLowerCase() === r.name.toLowerCase()),
+    );
+    const totalQty = r.expiry_batches.reduce((s, b) => s + b.qty, 0);
+    const qty = totalQty > 0 ? totalQty : 1;
+    const cost = r.cost_price ?? matched?.price ?? r.recommended_price?.price ?? 0;
+    setItems((prev) => [
+      ...prev,
+      {
+        product_id: matched?.id ?? null,
+        product_code: matched?.code ?? "",
+        product_name: matched?.name ?? r.name ?? "",
+        qty: String(qty),
+        unit_cost: String(Math.round(cost)),
+      },
+    ]);
+    if (r.recommended_price?.price) {
+      toast.success(`Rekomendasi harga jual: Rp ${Math.round(r.recommended_price.price).toLocaleString("id-ID")} (margin ~${Math.round(r.recommended_price.margin_pct ?? 0)}%)`);
+    } else {
+      toast.success("Item ditambahkan dari AI");
+    }
+  };
+
+
 
 
   const updateItem = (i: number, patch: Partial<DraftItem>) => {
@@ -599,9 +631,14 @@ function POPage() {
                   ))
                 )}
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={addManual} className="w-full">
-                <Plus className="mr-2 h-4 w-4" /> Item Manual
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button type="button" variant="outline" size="sm" onClick={addManual} className="flex-1">
+                  <Plus className="mr-2 h-4 w-4" /> Item Manual
+                </Button>
+                <Button type="button" size="sm" onClick={() => setAiOpen(true)} className="flex-1">
+                  <Sparkles className="mr-2 h-4 w-4" /> Scan dengan AI
+                </Button>
+              </div>
             </div>
 
             {/* Items table */}
@@ -782,6 +819,12 @@ function POPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AIPhotoCapture
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onResult={applyAiResultToPO}
+      />
     </div>
   );
 }

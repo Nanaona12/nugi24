@@ -10,8 +10,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah, parseNumber } from "@/lib/format";
-import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash, Package, X as XIcon, Copy } from "lucide-react";
+import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash, Package, X as XIcon, Copy, Sparkles } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
+import { AIPhotoCapture } from "@/components/AIPhotoCapture";
+import type { AiVisionResult } from "@/lib/ai-vision.functions";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ProductUnit, loadUnitsForProducts, replaceProductUnits, fallbackUnitFromProduct } from "@/lib/product-pricing";
 
@@ -75,6 +77,8 @@ function ProdukPage() {
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [deleteAllPassword, setDeleteAllPassword] = useState("");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiHint, setAiHint] = useState<{ price: number | null; margin: number | null; profit: number | null; reasoning: string | null } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
 
@@ -129,7 +133,44 @@ function ProdukPage() {
     return [{ name: "pcs", conversion: 1, sort_order: 0, is_base: true, tiers: [{ min_qty: 1, price: 0 }] }];
   };
 
-  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setEditOpen(true); };
+  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setAiHint(null); setEditOpen(true); };
+
+  const existingCategories = Array.from(new Set(products.map((p) => p.category).filter(Boolean) as string[]));
+
+  const applyAiResult = (r: AiVisionResult) => {
+    setForm((prev) => ({
+      ...prev,
+      name: r.name && (!prev.name || prev.name.length === 0) ? r.name : prev.name,
+      category: r.category && !prev.category ? r.category : prev.category,
+      barcode: r.barcode && !prev.barcode ? r.barcode : prev.barcode,
+      cost_price: r.cost_price != null && !prev.cost_price ? String(Math.round(r.cost_price)) : prev.cost_price,
+      price: r.recommended_price?.price != null && !prev.price ? String(Math.round(r.recommended_price.price)) : prev.price,
+    }));
+    // Update base-unit tier 1 price if AI has a recommended price
+    if (r.recommended_price?.price != null) {
+      setFormUnits((prev) => prev.map((u, i) => {
+        if (i !== 0) return u;
+        const tiers = u.tiers && u.tiers.length > 0 ? [...u.tiers] : [{ min_qty: 1, price: 0 }];
+        if (!tiers[0].price) tiers[0] = { ...tiers[0], price: Math.round(r.recommended_price!.price!) };
+        return { ...u, tiers };
+      }));
+    }
+    if (r.expiry_batches && r.expiry_batches.length > 0) {
+      setFormBatches((prev) => [
+        ...prev,
+        ...r.expiry_batches.map((b) => ({ qty: String(b.qty), expiry_date: b.expiry_date, note: b.note || "AI" })),
+      ]);
+    }
+    if (r.recommended_price) {
+      setAiHint({
+        price: r.recommended_price.price,
+        margin: r.recommended_price.margin_pct,
+        profit: r.recommended_price.est_profit_per_pcs,
+        reasoning: r.recommended_price.reasoning,
+      });
+    }
+  };
+
   const openEdit = (p: Product) => {
     setForm({
       id: p.id,
@@ -737,6 +778,17 @@ function ProdukPage() {
               Atur info dasar, satuan (pcs/slove/dus), dan tingkatan harga grosir.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-primary/5 p-2.5">
+            <div className="text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1 font-medium text-foreground"><Sparkles className="h-3.5 w-3.5 text-primary" /> Isi otomatis dengan AI</span>
+              <div>Foto kemasan, barcode, tanggal kadaluarsa, atau struk → AI isi form & rekomendasi harga jual.</div>
+            </div>
+            <Button type="button" size="sm" onClick={() => setAiOpen(true)}>
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Scan dengan AI
+            </Button>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Kode (otomatis jika kosong)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="Biarkan kosong → BRG0001" />
             <FormField label="Barcode (opsional)" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan / ketik barcode produk" />
@@ -745,6 +797,17 @@ function ProdukPage() {
             <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
             <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
           </div>
+
+          {aiHint && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-foreground"><Sparkles className="h-3.5 w-3.5 text-primary" /> Rekomendasi Harga AI</div>
+              {aiHint.price != null && <div>Harga jual: <b>Rp {aiHint.price.toLocaleString("id-ID")}</b></div>}
+              {aiHint.margin != null && <div>Margin: <b>{aiHint.margin.toFixed(0)}%</b>{aiHint.profit != null && <> · Untung ~ <b>Rp {Math.round(aiHint.profit).toLocaleString("id-ID")}</b>/pcs</>}</div>}
+              {aiHint.reasoning && <div className="text-muted-foreground italic">"{aiHint.reasoning}"</div>}
+              <div className="text-muted-foreground">Harga sudah diisi ke satuan dasar; bisa Anda ubah sebelum simpan.</div>
+            </div>
+          )}
+
 
           <UnitsEditor units={formUnits} onChange={setFormUnits} />
 
@@ -815,6 +878,13 @@ function ProdukPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AIPhotoCapture
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onResult={applyAiResult}
+        existingCategories={existingCategories}
+      />
 
       {/* Import preview */}
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
