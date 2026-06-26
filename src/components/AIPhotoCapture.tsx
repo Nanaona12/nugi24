@@ -80,7 +80,7 @@ export function AIPhotoCapture({ open, onClose, onResult, existingCategories = [
     }
     setAnalyzing(true);
     try {
-      const r = await analyze({ data: { images: payload, existing_categories: existingCategories, mode } });
+      const r = await analyze({ data: { images: payload, existing_categories: existingCategories, mode, store_type: storeType } });
       onResult(r);
       toast.success("Foto berhasil dianalisa");
       reset();
