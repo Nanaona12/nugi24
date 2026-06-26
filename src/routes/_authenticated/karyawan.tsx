@@ -188,6 +188,45 @@ function KaryawanPage() {
     } catch (e: any) { toast.error(e.message); }
   };
 
+  const printPayslip = (c: Cashier, p: { revenue: number; profit: number; shifts: number; tx_count: number }, bonus: number, total: number) => {
+    const { start, end, payday } = periodRange;
+    const periodLabel = `${fmtDate(start)} – ${fmtDate(new Date(end.getTime() - 86400000))}`;
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Struk Gaji ${c.name}</title>
+      <style>
+        body{font-family:ui-sans-serif,system-ui,sans-serif;max-width:520px;margin:24px auto;padding:0 16px;color:#0f172a}
+        h1{font-size:18px;margin:0 0 4px}.muted{color:#64748b;font-size:12px}
+        table{width:100%;border-collapse:collapse;margin-top:12px;font-size:13px}
+        td{padding:6px 0;border-bottom:1px dashed #e2e8f0}
+        td.r{text-align:right}.total{font-weight:700;font-size:15px;border-top:2px solid #0f172a;border-bottom:none;padding-top:10px}
+        .sign{margin-top:48px;display:flex;justify-content:space-between;gap:16px;font-size:12px;text-align:center}
+        .sign div{flex:1}.line{margin-top:48px;border-top:1px solid #0f172a}
+      </style></head><body>
+      <h1>Struk Tanda Terima Gaji</h1>
+      <div class="muted">Periode: ${periodLabel}</div>
+      <div class="muted">Tanggal bayar: ${fmtDate(payday)}</div>
+      <table>
+        <tr><td>Nama Kasir</td><td class="r">${c.name}</td></tr>
+        <tr><td>Jumlah Shift</td><td class="r">${p.shifts}</td></tr>
+        <tr><td>Transaksi</td><td class="r">${p.tx_count}</td></tr>
+        <tr><td>Omzet</td><td class="r">${formatRupiah(p.revenue)}</td></tr>
+        <tr><td>Keuntungan</td><td class="r">${formatRupiah(p.profit)}</td></tr>
+        <tr><td>Gaji Pokok</td><td class="r">${formatRupiah(baseSalary)}</td></tr>
+        <tr><td>Bonus Kinerja (${profitPct}%)</td><td class="r">${formatRupiah(bonus)}</td></tr>
+        <tr class="total"><td>TOTAL DIBAYAR</td><td class="r">${formatRupiah(total)}</td></tr>
+      </table>
+      <div class="sign">
+        <div><div class="line"></div>Pemberi (Pemilik)</div>
+        <div><div class="line"></div>Penerima (${c.name})</div>
+      </div>
+      <script>window.onload=()=>{window.print();}</script>
+      </body></html>`;
+    const w = window.open("", "_blank", "width=600,height=800");
+    if (!w) { toast.error("Popup diblokir browser"); return; }
+    w.document.write(html); w.document.close();
+  };
+
+
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
