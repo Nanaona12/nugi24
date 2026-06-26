@@ -653,6 +653,7 @@ export type Database = {
           product_id: string | null
           product_name: string
           qty: number
+          qty_received: number
           subtotal: number
           tenant_id: string
           unit_cost: number
@@ -665,6 +666,7 @@ export type Database = {
           product_id?: string | null
           product_name: string
           qty: number
+          qty_received?: number
           subtotal?: number
           tenant_id?: string
           unit_cost?: number
@@ -677,6 +679,7 @@ export type Database = {
           product_id?: string | null
           product_name?: string
           qty?: number
+          qty_received?: number
           subtotal?: number
           tenant_id?: string
           unit_cost?: number
@@ -704,6 +707,8 @@ export type Database = {
           id: string
           item_count: number
           notes: string | null
+          received_at: string | null
+          received_status: string
           status: string
           supplier: string
           tenant_id: string
@@ -716,6 +721,8 @@ export type Database = {
           id?: string
           item_count?: number
           notes?: string | null
+          received_at?: string | null
+          received_status?: string
           status?: string
           supplier: string
           tenant_id?: string
@@ -728,6 +735,8 @@ export type Database = {
           id?: string
           item_count?: number
           notes?: string | null
+          received_at?: string | null
+          received_status?: string
           status?: string
           supplier?: string
           tenant_id?: string
@@ -741,6 +750,118 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refund_items: {
+        Row: {
+          created_at: string
+          id: string
+          product_code: string
+          product_id: string | null
+          product_name: string
+          qty: number
+          refund_id: string
+          subtotal: number
+          tenant_id: string
+          unit_conversion: number
+          unit_price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          product_code: string
+          product_id?: string | null
+          product_name: string
+          qty: number
+          refund_id: string
+          subtotal?: number
+          tenant_id?: string
+          unit_conversion?: number
+          unit_price?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          product_code?: string
+          product_id?: string | null
+          product_name?: string
+          qty?: number
+          refund_id?: string
+          subtotal?: number
+          tenant_id?: string
+          unit_conversion?: number
+          unit_price?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refund_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_items_refund_id_fkey"
+            columns: ["refund_id"]
+            isOneToOne: false
+            referencedRelation: "refunds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refund_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      refunds: {
+        Row: {
+          cashier_id: string
+          created_at: string
+          id: string
+          item_count: number
+          reason: string | null
+          tenant_id: string
+          total: number
+          transaction_id: string | null
+        }
+        Insert: {
+          cashier_id: string
+          created_at?: string
+          id?: string
+          item_count?: number
+          reason?: string | null
+          tenant_id?: string
+          total?: number
+          transaction_id?: string | null
+        }
+        Update: {
+          cashier_id?: string
+          created_at?: string
+          id?: string
+          item_count?: number
+          reason?: string | null
+          tenant_id?: string
+          total?: number
+          transaction_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "refunds_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
             referencedColumns: ["id"]
           },
         ]

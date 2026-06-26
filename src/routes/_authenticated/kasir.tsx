@@ -19,6 +19,7 @@ import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
+import { RefundDialog } from "@/components/RefundDialog";
 import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
 import { parseNumber } from "@/lib/format";
 
@@ -147,6 +148,7 @@ function KasirPage() {
   const openShiftFnCb = useServerFn(openShiftFn);
   const deductStockFn = useServerFn(deductProductStockFn);
   const [closeOpen, setCloseOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
 
   const persistShift = (s: ActiveShift | null) => {
     setActiveShift(s);
@@ -450,6 +452,9 @@ function KasirPage() {
         <div className="flex gap-2">
           {activeShift && (
             <>
+              <Button size="sm" variant="outline" onClick={() => setRefundOpen(true)}>
+                <ReceiptIcon className="mr-1 h-4 w-4" /> Refund
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setCloseOpen(true)}>
                 <ReceiptIcon className="mr-1 h-4 w-4" /> Closing
               </Button>
@@ -528,6 +533,8 @@ function KasirPage() {
           onClosed={handleShiftClosed}
         />
       )}
+
+      <RefundDialog open={refundOpen} onOpenChange={setRefundOpen} onDone={loadProducts} />
 
 
       <div className={`grid gap-4 lg:grid-cols-[1fr_420px] ${!activeShift ? "pointer-events-none opacity-50" : ""}`}>

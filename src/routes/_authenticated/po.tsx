@@ -39,6 +39,8 @@ import {
 } from "lucide-react";
 import { AIPhotoCapture } from "@/components/AIPhotoCapture";
 import type { AiVisionResult } from "@/lib/ai-vision.functions";
+import { ReceivingDialog } from "@/components/ReceivingDialog";
+import { PackageCheck } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/po")({
@@ -109,6 +111,7 @@ function POPage() {
   const [pickQuery, setPickQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [receiveFor, setReceiveFor] = useState<PO | null>(null);
 
 
   const load = async () => {
@@ -797,8 +800,8 @@ function POPage() {
                   <Download className="mr-2 h-4 w-4" /> Cetak / PDF
                 </Button>
                 {detailOpen.status !== "received" && detailOpen.status !== "cancelled" && (
-                  <Button size="sm" onClick={() => updateStatus(detailOpen, "received")}>
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Tandai Diterima
+                  <Button size="sm" onClick={() => setReceiveFor(detailOpen)}>
+                    <PackageCheck className="mr-2 h-4 w-4" /> Terima Barang
                   </Button>
                 )}
                 {detailOpen.status !== "cancelled" && detailOpen.status !== "received" && (
@@ -824,6 +827,14 @@ function POPage() {
         open={aiOpen}
         onClose={() => setAiOpen(false)}
         onResult={applyAiResultToPO}
+      />
+
+      <ReceivingDialog
+        open={!!receiveFor}
+        poId={receiveFor?.id ?? null}
+        poSupplier={receiveFor?.supplier}
+        onOpenChange={(o) => { if (!o) setReceiveFor(null); }}
+        onDone={() => { setReceiveFor(null); setDetailOpen(null); load(); }}
       />
     </div>
   );
