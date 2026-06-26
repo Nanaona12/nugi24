@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMyBilling, createMidtransPayment, updateMyTenant, listPlanAudit } from "@/lib/billing.functions";
-import { PLANS, priceFor, yearlySavingPct, type PlanId, type BillingPeriod } from "@/lib/plans";
+import { PLANS, priceFor, yearlySavingPct, qrisQuotaFor, type PlanId, type BillingPeriod } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
