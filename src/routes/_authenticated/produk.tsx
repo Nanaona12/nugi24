@@ -785,6 +785,18 @@ function ProdukPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <span>{p.name}</span>
                         {(() => {
+                          const iss = pricingIssueFor(p);
+                          if (!iss) return null;
+                          return (
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${issueTone(iss.kind)}`}
+                              title={`${issueLabel(iss.kind)} • Modal ${formatRupiah(p.cost_price || 0)} • Jual ${formatRupiah(p.price || 0)}`}
+                            >
+                              ⚠ {issueLabel(iss.kind)}
+                            </span>
+                          );
+                        })()}
+                        {(() => {
                           const ex = expiryByProduct[p.id];
                           if (!ex) return null;
                           const tone = ex.minDays < 0
