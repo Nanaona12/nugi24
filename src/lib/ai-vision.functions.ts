@@ -137,7 +137,7 @@ export const analyzeProductPhotos = createServerFn({ method: "POST" })
     const gateway = createLovableAiGatewayProvider(key);
     const model = gateway("google/gemini-3-flash-preview");
 
-    const systemPrompt = buildPrompt(data.existing_categories, data.mode);
+    const systemPrompt = buildPrompt(data.existing_categories, data.mode, data.store_type);
 
     // Build OpenAI-compatible multimodal content
     const userContent: any[] = [
