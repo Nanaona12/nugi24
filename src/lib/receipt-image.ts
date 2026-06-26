@@ -18,7 +18,9 @@ export type ReceiptData = {
   total: number;
   paid: number;
   change: number;
-  paymentMethod: string; // cash | qris
+  paymentMethod: string; // cash | qris | split
+  cashPart?: number;
+  qrisPart?: number;
 };
 
 /** Render struk ke PNG (data URL). Width fixed 600px, height auto. */
@@ -172,10 +174,27 @@ export function renderReceiptPng(r: ReceiptData): { dataUrl: string; base64: str
   ctx.font = `${itemFs}px ui-sans-serif, system-ui, sans-serif`;
   ctx.fillStyle = "#334155";
   ctx.textAlign = "left";
-  ctx.fillText(`Bayar (${r.paymentMethod.toUpperCase()})`, PAD, yy + itemFs);
-  ctx.textAlign = "right";
-  ctx.fillText(formatRupiah(r.paid), W - PAD, yy + itemFs);
-  yy += itemFs + 4;
+  if (r.paymentMethod === "split") {
+    ctx.fillText("Cash", PAD, yy + itemFs);
+    ctx.textAlign = "right";
+    ctx.fillText(formatRupiah(r.cashPart || 0), W - PAD, yy + itemFs);
+    yy += itemFs + 4;
+    ctx.textAlign = "left";
+    ctx.fillText("QRIS", PAD, yy + itemFs);
+    ctx.textAlign = "right";
+    ctx.fillText(formatRupiah(r.qrisPart || 0), W - PAD, yy + itemFs);
+    yy += itemFs + 4;
+    ctx.textAlign = "left";
+    ctx.fillText("Total Bayar (SPLIT)", PAD, yy + itemFs);
+    ctx.textAlign = "right";
+    ctx.fillText(formatRupiah(r.paid), W - PAD, yy + itemFs);
+    yy += itemFs + 4;
+  } else {
+    ctx.fillText(`Bayar (${r.paymentMethod.toUpperCase()})`, PAD, yy + itemFs);
+    ctx.textAlign = "right";
+    ctx.fillText(formatRupiah(r.paid), W - PAD, yy + itemFs);
+    yy += itemFs + 4;
+  }
 
   ctx.textAlign = "left";
   ctx.fillText("Kembali", PAD, yy + itemFs);
