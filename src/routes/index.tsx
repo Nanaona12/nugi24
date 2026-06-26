@@ -78,33 +78,51 @@ function BrandMark({ size = "md" }: { size?: "sm" | "md" }) {
 
 function Header({ signedIn }: { signedIn: boolean }) {
   return (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/70 backdrop-blur-xl supports-[backdrop-filter]:bg-background/50">
-      <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
-        <Link to="/" className="flex items-center gap-2.5 animate-fade-in">
+    <div className="sticky top-0 z-50 px-4 pt-3">
+      <header className="nav-float mx-auto flex max-w-5xl items-center justify-between rounded-2xl px-3 py-2.5 animate-fade-in">
+        <Link to="/" className="flex items-center gap-2.5">
           <BrandMark size="sm" />
-          <span className="text-lg font-bold tracking-tight">Dagang Pintar</span>
+          <span className="text-base font-semibold tracking-tight">Dagang Pintar</span>
         </Link>
-        <nav className="hidden gap-6 text-sm md:flex">
-          <a href="#fitur" className="story-link text-muted-foreground hover:text-foreground">Fitur</a>
-          <a href="#keamanan" className="story-link text-muted-foreground hover:text-foreground">Keamanan</a>
-          <a href="#harga" className="story-link text-muted-foreground hover:text-foreground">Harga</a>
-          <a href="#faq" className="story-link text-muted-foreground hover:text-foreground">FAQ</a>
+
+        <nav className="hidden items-center gap-1 text-sm font-medium md:flex">
+          <a href="#fitur" className="nav-float-link rounded-lg px-3 py-1.5 transition-colors">Fitur</a>
+          <a href="#keamanan" className="nav-float-link rounded-lg px-3 py-1.5 transition-colors">Keamanan</a>
+          <a href="#harga" className="nav-float-link rounded-lg px-3 py-1.5 transition-colors">Harga</a>
+          <a href="#faq" className="nav-float-link rounded-lg px-3 py-1.5 transition-colors">FAQ</a>
         </nav>
+
         <div className="flex items-center gap-2">
-          <ThemeToggle />
+          <div className="hidden sm:block">
+            <ThemeToggle />
+          </div>
           {signedIn ? (
-            <Link to="/kasir"><Button size="sm" className="hover-scale">Buka Aplikasi</Button></Link>
+            <Link to="/kasir">
+              <Button size="sm" className="nav-float-cta hover-scale shadow-soft">
+                Buka Aplikasi
+              </Button>
+            </Link>
           ) : (
             <>
-              <Link to="/auth"><Button size="sm" variant="ghost">Masuk</Button></Link>
-              <Link to="/auth"><Button size="sm" className="hover-scale shadow-elegant">Daftar</Button></Link>
+              <Link to="/auth" className="hidden sm:block">
+                <Button size="sm" variant="ghost" className="nav-float-ghost">
+                  Masuk
+                </Button>
+              </Link>
+              <Link to="/auth">
+                <Button size="sm" className="nav-float-cta hover-scale shadow-soft">
+                  Daftar
+                </Button>
+              </Link>
             </>
           )}
         </div>
-      </div>
-    </header>
+      </header>
+    </div>
   );
 }
+
+
 
 function Hero({ signedIn }: { signedIn: boolean }) {
   return (
