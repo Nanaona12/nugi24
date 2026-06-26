@@ -79,7 +79,7 @@ function BrandMark({ size = "md" }: { size?: "sm" | "md" }) {
 function Header({ signedIn }: { signedIn: boolean }) {
   return (
     <div className="sticky top-0 z-50 px-4 pt-3">
-      <header className="nav-float mx-auto flex max-w-5xl items-center justify-between rounded-2xl px-3 py-2.5 animate-fade-in">
+      <header className="nav-float mx-auto flex max-w-5xl items-center justify-between rounded-2xl px-3 py-2.5 text-white animate-fade-in">
         <Link to="/" className="flex items-center gap-2.5">
           <BrandMark size="sm" />
           <span className="text-base font-semibold tracking-tight text-white">Dagang Pintar</span>
