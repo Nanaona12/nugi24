@@ -631,9 +631,14 @@ function POPage() {
                   ))
                 )}
               </div>
-              <Button type="button" variant="outline" size="sm" onClick={addManual} className="w-full">
-                <Plus className="mr-2 h-4 w-4" /> Item Manual
-              </Button>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button type="button" variant="outline" size="sm" onClick={addManual} className="flex-1">
+                  <Plus className="mr-2 h-4 w-4" /> Item Manual
+                </Button>
+                <Button type="button" size="sm" onClick={() => setAiOpen(true)} className="flex-1">
+                  <Sparkles className="mr-2 h-4 w-4" /> Scan dengan AI
+                </Button>
+              </div>
             </div>
 
             {/* Items table */}
