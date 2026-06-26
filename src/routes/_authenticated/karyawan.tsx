@@ -298,7 +298,7 @@ function KaryawanPage() {
         <div className="mb-3 grid gap-3 sm:grid-cols-5">
           <div>
             <Label className="text-xs">Gaji Pokok / bulan</Label>
-            <Input inputMode="numeric" value={formatRupiah(baseSalary)} onChange={(e) => setBaseSalary(parseNumber(e.target.value))} />
+            <Input inputMode="numeric" value={formatRupiah(baseSalary)} onChange={(e) => setBaseSalary(parseInt(e.target.value.replace(/\D/g, "") || "0", 10))} />
           </div>
           <div>
             <Label className="text-xs">Bonus Keuntungan (%)</Label>
