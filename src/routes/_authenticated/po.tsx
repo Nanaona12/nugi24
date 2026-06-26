@@ -819,6 +819,12 @@ function POPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AIPhotoCapture
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onResult={applyAiResultToPO}
+      />
     </div>
   );
 }
