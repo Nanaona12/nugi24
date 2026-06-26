@@ -148,6 +148,7 @@ function KasirPage() {
   const openShiftFnCb = useServerFn(openShiftFn);
   const deductStockFn = useServerFn(deductProductStockFn);
   const [closeOpen, setCloseOpen] = useState(false);
+  const [refundOpen, setRefundOpen] = useState(false);
 
   const persistShift = (s: ActiveShift | null) => {
     setActiveShift(s);
