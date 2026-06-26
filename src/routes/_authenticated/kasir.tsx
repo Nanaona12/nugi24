@@ -500,6 +500,8 @@ function KasirPage() {
         paid: receipt.paid,
         change: receipt.change,
         paymentMethod: receipt.paymentMethod,
+        cashPart: receipt.cashPart,
+        qrisPart: receipt.qrisPart,
       });
       setReceiptImg(dataUrl);
     } catch (e) {
