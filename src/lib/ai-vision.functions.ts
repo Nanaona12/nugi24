@@ -13,7 +13,9 @@ const Input = z.object({
   images: z.array(ImageInput).min(1).max(6),
   existing_categories: z.array(z.string()).default([]),
   mode: z.enum(["full", "expiry_only"]).default("full"),
+  store_type: z.enum(["auto", "warung", "grosiran", "both"]).default("auto"),
 });
+
 
 const KIND_LABEL: Record<string, string> = {
   package: "Foto kemasan/depan produk",
