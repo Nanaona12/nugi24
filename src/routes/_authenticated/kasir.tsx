@@ -452,6 +452,9 @@ function KasirPage() {
         <div className="flex gap-2">
           {activeShift && (
             <>
+              <Button size="sm" variant="outline" onClick={() => setRefundOpen(true)}>
+                <ReceiptIcon className="mr-1 h-4 w-4" /> Refund
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setCloseOpen(true)}>
                 <ReceiptIcon className="mr-1 h-4 w-4" /> Closing
               </Button>
