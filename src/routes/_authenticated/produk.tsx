@@ -124,6 +124,22 @@ function ProdukPage() {
       || (p.category || "").toLowerCase().includes(q);
   });
 
+  // Notif harga modal vs harga jual
+  const pricingIssueFor = (p: Product): { kind: "no_cost" | "cost_gt_price" | "low_margin" | "high_margin"; margin: number } | null => {
+    const cost = Number(p.cost_price || 0);
+    const price = Number(p.price || 0);
+    if (!cost || cost <= 0) return { kind: "no_cost", margin: 0 };
+    if (cost > price && price > 0) return { kind: "cost_gt_price", margin: (price - cost) / cost };
+    if (price <= 0) return { kind: "no_cost", margin: 0 };
+    const margin = (price - cost) / cost;
+    if (margin < 0.03) return { kind: "low_margin", margin };
+    if (margin > 2) return { kind: "high_margin", margin };
+    return null;
+  };
+  const issueLabel = (k: string) => k === "no_cost" ? "Modal 0/kosong" : k === "cost_gt_price" ? "Modal > Harga" : k === "low_margin" ? "Margin terlalu kecil" : "Margin terlalu besar";
+  const issueTone = (k: string) => k === "no_cost" || k === "cost_gt_price" ? "bg-destructive text-destructive-foreground" : k === "low_margin" ? "bg-orange-500 text-white" : "bg-amber-500 text-white";
+  const pricingIssues = products.map((p) => ({ p, issue: pricingIssueFor(p) })).filter((x) => x.issue) as { p: Product; issue: NonNullable<ReturnType<typeof pricingIssueFor>> }[];
+
   const defaultUnitsFor = (p?: Product): ProductUnit[] => {
     if (p) {
       const existing = unitsByProduct[p.id];
