@@ -534,6 +534,8 @@ function KasirPage() {
         />
       )}
 
+      <RefundDialog open={refundOpen} onOpenChange={setRefundOpen} onDone={loadProducts} />
+
 
       <div className={`grid gap-4 lg:grid-cols-[1fr_420px] ${!activeShift ? "pointer-events-none opacity-50" : ""}`}>
         {/* Product picker */}
