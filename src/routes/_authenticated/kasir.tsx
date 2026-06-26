@@ -932,7 +932,7 @@ function KasirPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayOpen(false)}>Batal</Button>
-            <Button onClick={checkout} disabled={submitting}>
+            <Button onClick={checkout} disabled={submitting || (paymentMethod === "qris" && (!qris || qris.status !== "paid"))}>
               {submitting ? "Memproses..." : "Selesaikan"}
             </Button>
           </DialogFooter>
