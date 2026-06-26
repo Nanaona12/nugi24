@@ -111,6 +111,7 @@ function POPage() {
   const [pickQuery, setPickQuery] = useState("");
   const [saving, setSaving] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
+  const [receiveFor, setReceiveFor] = useState<PO | null>(null);
 
 
   const load = async () => {
