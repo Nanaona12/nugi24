@@ -108,6 +108,7 @@ function POPage() {
   const [items, setItems] = useState<DraftItem[]>([]);
   const [pickQuery, setPickQuery] = useState("");
   const [saving, setSaving] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
 
 
   const load = async () => {
