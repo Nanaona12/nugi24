@@ -186,7 +186,10 @@ function KasirPage() {
     setQrisLoading(true);
     try {
       const r = (await createQrisFn({ data: { amount: amt, shift_id: activeShift?.shift_id ?? null } })) as any;
-      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending" });
+      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending", quota_info: r.quota_info ?? null });
+      if (r.quota_info?.over_quota) {
+        toast.warning(`Kuota QRIS gratis bulan ini terlampaui Rp ${(r.quota_info.over_amount).toLocaleString("id-ID")}. Kelebihan akan dikenakan MDR ±0,7%.`);
+      }
     } catch (e: any) {
       toast.error(e?.message || "Gagal membuat QRIS");
     } finally {
