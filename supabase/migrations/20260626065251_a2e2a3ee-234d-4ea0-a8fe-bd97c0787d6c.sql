@@ -1,0 +1,1 @@
+REVOKE EXECUTE ON FUNCTION public.refund_restore_stock() FROM authenticated;
