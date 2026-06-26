@@ -133,7 +133,44 @@ function ProdukPage() {
     return [{ name: "pcs", conversion: 1, sort_order: 0, is_base: true, tiers: [{ min_qty: 1, price: 0 }] }];
   };
 
-  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setEditOpen(true); };
+  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setAiHint(null); setEditOpen(true); };
+
+  const existingCategories = Array.from(new Set(products.map((p) => p.category).filter(Boolean) as string[]));
+
+  const applyAiResult = (r: AiVisionResult) => {
+    setForm((prev) => ({
+      ...prev,
+      name: r.name && (!prev.name || prev.name.length === 0) ? r.name : prev.name,
+      category: r.category && !prev.category ? r.category : prev.category,
+      barcode: r.barcode && !prev.barcode ? r.barcode : prev.barcode,
+      cost_price: r.cost_price != null && !prev.cost_price ? String(Math.round(r.cost_price)) : prev.cost_price,
+      price: r.recommended_price?.price != null && !prev.price ? String(Math.round(r.recommended_price.price)) : prev.price,
+    }));
+    // Update base-unit tier 1 price if AI has a recommended price
+    if (r.recommended_price?.price != null) {
+      setFormUnits((prev) => prev.map((u, i) => {
+        if (i !== 0) return u;
+        const tiers = u.tiers && u.tiers.length > 0 ? [...u.tiers] : [{ min_qty: 1, price: 0 }];
+        if (!tiers[0].price) tiers[0] = { ...tiers[0], price: Math.round(r.recommended_price!.price!) };
+        return { ...u, tiers };
+      }));
+    }
+    if (r.expiry_batches && r.expiry_batches.length > 0) {
+      setFormBatches((prev) => [
+        ...prev,
+        ...r.expiry_batches.map((b) => ({ qty: String(b.qty), expiry_date: b.expiry_date, note: b.note || "AI" })),
+      ]);
+    }
+    if (r.recommended_price) {
+      setAiHint({
+        price: r.recommended_price.price,
+        margin: r.recommended_price.margin_pct,
+        profit: r.recommended_price.est_profit_per_pcs,
+        reasoning: r.recommended_price.reasoning,
+      });
+    }
+  };
+
   const openEdit = (p: Product) => {
     setForm({
       id: p.id,
