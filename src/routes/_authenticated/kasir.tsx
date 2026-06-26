@@ -130,6 +130,13 @@ function KasirPage() {
   const [storeName, setStoreName] = useState<string>("Toko");
   const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null }[]>([]);
 
+  // QRIS dynamic state
+  const createQrisFn = useServerFn(createCashierQris);
+  const checkQrisFn = useServerFn(checkCashierQrisStatus);
+  const cancelQrisFn = useServerFn(cancelCashierQris);
+  const [qris, setQris] = useState<null | { order_id: string; qr_url: string; amount: number; status: "pending" | "paid" | "expired" | "failed" }>(null);
+  const [qrisLoading, setQrisLoading] = useState(false);
+
   // --- Shift / Cashier lock ---
   const SHIFT_KEY = "dp.active_shift";
   const CASHIER_KEY = "dp.active_cashier";
