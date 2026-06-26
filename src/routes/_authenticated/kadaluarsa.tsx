@@ -561,6 +561,31 @@ function KadaluarsaPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AIPhotoCapture
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        mode="expiry_only"
+        title="Scan Tanggal Kadaluarsa"
+        onResult={(r: AiVisionResult) => {
+          if (!r.expiry_batches || r.expiry_batches.length === 0) {
+            toast.error("AI tidak menemukan tanggal kadaluarsa di foto");
+            return;
+          }
+          const first = r.expiry_batches[0];
+          setForm((prev) => ({
+            ...prev,
+            expiry_date: first.expiry_date,
+            qty: String(first.qty),
+            note: prev.note || (r.expiry_batches.length > 1 ? `AI: ${r.expiry_batches.length} tanggal terbaca, ditampilkan exp terdekat` : "AI"),
+          }));
+          if (r.expiry_batches.length > 1) {
+            toast.info(`Terbaca ${r.expiry_batches.length} exp date. Simpan satu per satu untuk yang lain.`);
+          } else {
+            toast.success("Tanggal kadaluarsa terisi");
+          }
+        }}
+      />
     </div>
 
   );
