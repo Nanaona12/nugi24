@@ -181,12 +181,15 @@ function schemaHint(): string {
   "name": string | null,
   "category": string | null,
   "barcode": string | null,
-  "cost_price": number | null,
+  "cost_price": number | null,  // PER SATUAN DASAR (per pcs)
+  "detected_store_type": "warung" | "grosiran" | "both" | null,
   "recommended_price": { "price": number|null, "margin_pct": number|null, "est_profit_per_pcs": number|null, "reasoning": string|null } | null,
+  "suggested_units": [ { "name": string, "conversion": number, "is_base": boolean, "price": number, "min_qty": number, "reasoning"?: string } ],
   "expiry_batches": [ { "expiry_date": "YYYY-MM-DD", "qty": number, "note"?: string } ],
   "confidence": { "name": 0-1, "category": 0-1, "barcode": 0-1, "cost_price": 0-1, "recommended_price": 0-1, "expiry": 0-1 }
 }`;
 }
+
 
 function extractJson(text: string): any {
   const s = text.trim();
