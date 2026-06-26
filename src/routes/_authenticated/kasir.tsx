@@ -21,6 +21,7 @@ import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
 import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
+import { createCashierQris, checkCashierQrisStatus, cancelCashierQris } from "@/lib/qris.functions";
 import { parseNumber } from "@/lib/format";
 
 
@@ -129,6 +130,13 @@ function KasirPage() {
   const [storeName, setStoreName] = useState<string>("Toko");
   const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null }[]>([]);
 
+  // QRIS dynamic state
+  const createQrisFn = useServerFn(createCashierQris);
+  const checkQrisFn = useServerFn(checkCashierQrisStatus);
+  const cancelQrisFn = useServerFn(cancelCashierQris);
+  const [qris, setQris] = useState<null | { order_id: string; qr_url: string; amount: number; status: "pending" | "paid" | "expired" | "failed" }>(null);
+  const [qrisLoading, setQrisLoading] = useState(false);
+
   // --- Shift / Cashier lock ---
   const SHIFT_KEY = "dp.active_shift";
   const CASHIER_KEY = "dp.active_cashier";
@@ -149,6 +157,46 @@ function KasirPage() {
   const deductStockFn = useServerFn(deductProductStockFn);
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+
+  // Poll QRIS status while pending
+  useEffect(() => {
+    if (!qris || qris.status !== "pending") return;
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const r = (await checkQrisFn({ data: { order_id: qris.order_id } })) as any;
+        if (stopped) return;
+        if (r.status !== "pending") {
+          setQris((q) => (q ? { ...q, status: r.status } : q));
+          if (r.status === "paid") toast.success("Pembayaran QRIS diterima");
+          else if (r.status === "expired") toast.error("QRIS kedaluwarsa");
+          else if (r.status === "failed") toast.error("Pembayaran QRIS gagal");
+        }
+      } catch {}
+    };
+    const id = setInterval(tick, 4000);
+    return () => { stopped = true; clearInterval(id); };
+  }, [qris?.order_id, qris?.status]);
+
+  const handleCreateQris = async () => {
+    if (totals.total <= 0) { toast.error("Keranjang kosong"); return; }
+    setQrisLoading(true);
+    try {
+      const r = (await createQrisFn({ data: { amount: totals.total, shift_id: activeShift?.shift_id ?? null } })) as any;
+      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending" });
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal membuat QRIS");
+    } finally {
+      setQrisLoading(false);
+    }
+  };
+
+  const handleCancelQris = async () => {
+    if (!qris) return;
+    try { await cancelQrisFn({ data: { order_id: qris.order_id } }); } catch {}
+    setQris(null);
+  };
+
 
   const persistShift = (s: ActiveShift | null) => {
     setActiveShift(s);
@@ -742,7 +790,7 @@ function KasirPage() {
 
 
       {/* Payment dialog */}
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+      <Dialog open={payOpen} onOpenChange={(o) => { setPayOpen(o); if (!o) { if (qris && qris.status === "pending") { handleCancelQris(); } else { setQris(null); } } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Pembayaran</DialogTitle>
@@ -803,6 +851,55 @@ function KasirPage() {
               </div>
             )}
 
+            {paymentMethod === "qris" && (
+              <div className="space-y-2 rounded-lg border p-3">
+                {!qris && (
+                  <Button type="button" className="w-full" disabled={qrisLoading || totals.total <= 0} onClick={handleCreateQris}>
+                    {qrisLoading ? "Membuat QR…" : "Buat QRIS Dinamis"}
+                  </Button>
+                )}
+                {qris && (
+                  <div className="space-y-2 text-center">
+                    <div className="text-xs text-muted-foreground">Order: {qris.order_id}</div>
+                    <div className="mx-auto inline-block rounded-md border bg-white p-2">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={qris.qr_url} alt="QRIS" className="h-56 w-56 object-contain" />
+                    </div>
+                    <div className="text-sm">
+                      Nominal: <span className="font-semibold">{formatRupiah(qris.amount)}</span>
+                    </div>
+                    {qris.status === "pending" && (
+                      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Menunggu pembayaran… (auto refresh)
+                      </div>
+                    )}
+                    {qris.status === "paid" && (
+                      <div className="text-sm font-semibold text-success">✓ Pembayaran diterima</div>
+                    )}
+                    {qris.status === "expired" && (
+                      <div className="text-sm font-semibold text-destructive">QR kedaluwarsa</div>
+                    )}
+                    {qris.status === "failed" && (
+                      <div className="text-sm font-semibold text-destructive">Pembayaran gagal</div>
+                    )}
+                    <div className="flex flex-wrap justify-center gap-2 pt-1">
+                      <Button type="button" size="sm" variant="outline" onClick={async () => {
+                        try {
+                          const r = (await checkQrisFn({ data: { order_id: qris.order_id } })) as any;
+                          setQris({ ...qris, status: r.status });
+                        } catch (e: any) { toast.error(e?.message || "Gagal cek status"); }
+                      }}>Cek Status</Button>
+                      <Button type="button" size="sm" variant="ghost" onClick={handleCancelQris}>Batalkan QR</Button>
+                    </div>
+                  </div>
+                )}
+                <div className="text-[11px] text-muted-foreground">
+                  QR dibuat via Midtrans dengan nominal terkunci. Status pembayaran terdeteksi otomatis.
+                </div>
+              </div>
+            )}
+
+
             <div className="space-y-2 rounded-lg border p-3">
               <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                 <input
@@ -835,7 +932,7 @@ function KasirPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayOpen(false)}>Batal</Button>
-            <Button onClick={checkout} disabled={submitting}>
+            <Button onClick={checkout} disabled={submitting || (paymentMethod === "qris" && (!qris || qris.status !== "paid"))}>
               {submitting ? "Memproses..." : "Selesaikan"}
             </Button>
           </DialogFooter>
