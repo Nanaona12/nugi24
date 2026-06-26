@@ -53,6 +53,7 @@ type Product = {
   barcode: string | null;
   name: string;
   price: number;
+  cost_price: number;
   stock: number;
 };
 
