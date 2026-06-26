@@ -227,6 +227,34 @@ function POPage() {
     ]);
   };
 
+  const applyAiResultToPO = (r: AiVisionResult) => {
+    // Try to match existing product by barcode or name
+    const matched = products.find((p) =>
+      (r.barcode && p.barcode && p.barcode === r.barcode) ||
+      (r.name && p.name.toLowerCase() === r.name.toLowerCase()),
+    );
+    const totalQty = r.expiry_batches.reduce((s, b) => s + b.qty, 0);
+    const qty = totalQty > 0 ? totalQty : 1;
+    const cost = r.cost_price ?? matched?.price ?? r.recommended_price?.price ?? 0;
+    setItems((prev) => [
+      ...prev,
+      {
+        product_id: matched?.id ?? null,
+        product_code: matched?.code ?? "",
+        product_name: matched?.name ?? r.name ?? "",
+        qty: String(qty),
+        unit_cost: String(Math.round(cost)),
+      },
+    ]);
+    if (r.recommended_price?.price) {
+      toast.success(`Rekomendasi harga jual: Rp ${Math.round(r.recommended_price.price).toLocaleString("id-ID")} (margin ~${Math.round(r.recommended_price.margin_pct ?? 0)}%)`);
+    } else {
+      toast.success("Item ditambahkan dari AI");
+    }
+  };
+
+
+
 
   const updateItem = (i: number, patch: Partial<DraftItem>) => {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
