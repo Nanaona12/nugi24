@@ -136,7 +136,7 @@ function KasirPage() {
   const createQrisFn = useServerFn(createCashierQris);
   const checkQrisFn = useServerFn(checkCashierQrisStatus);
   const cancelQrisFn = useServerFn(cancelCashierQris);
-  const [qris, setQris] = useState<null | { order_id: string; qr_url: string; amount: number; status: "pending" | "paid" | "expired" | "failed" }>(null);
+  const [qris, setQris] = useState<null | { order_id: string; qr_url: string; amount: number; status: "pending" | "paid" | "expired" | "failed"; quota_info?: { used: number; quota: number; projected: number; over_quota: boolean; over_amount: number } | null }>(null);
   const [qrisLoading, setQrisLoading] = useState(false);
 
   // --- Shift / Cashier lock ---
