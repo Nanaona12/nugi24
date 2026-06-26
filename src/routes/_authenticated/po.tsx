@@ -167,6 +167,18 @@ function POPage() {
 
   const outOfStockCount = lowStockProducts.filter((p) => (p.stock ?? 0) <= 0).length;
 
+  const pricingIssueProducts = useMemo(() => {
+    return products.filter((p) => {
+      const cost = Number(p.cost_price || 0);
+      const price = Number(p.price || 0);
+      if (!cost || cost <= 0) return true;
+      if (cost > price && price > 0) return true;
+      if (price <= 0) return true;
+      const m = (price - cost) / cost;
+      return m < 0.03 || m > 2;
+    });
+  }, [products]);
+
   const addProduct = (p: Product) => {
     if (items.some((it) => it.product_id === p.id)) {
       toast.info("Sudah ada di daftar");
