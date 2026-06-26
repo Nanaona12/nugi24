@@ -460,6 +460,8 @@ function KasirPage() {
       items: cart,
       at: new Date(),
       paymentMethod,
+      cashPart,
+      qrisPart,
       customerPhone: sendWa && phoneClean ? phoneClean : null,
       customerName: sendWa && customerName.trim() ? customerName.trim() : null,
     };
