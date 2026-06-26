@@ -28,6 +28,72 @@ function KaryawanPage() {
   const [newPin, setNewPin] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Salary recommendation settings (persisted locally)
+  const [baseSalary, setBaseSalary] = useState<number>(() => parseInt(localStorage.getItem("salary_base") || "1500000", 10));
+  const [profitPct, setProfitPct] = useState<number>(() => parseFloat(localStorage.getItem("salary_profit_pct") || "5"));
+  const [referralBonus, setReferralBonus] = useState<number>(() => parseInt(localStorage.getItem("salary_referral") || "50000", 10));
+  useEffect(() => { localStorage.setItem("salary_base", String(baseSalary)); }, [baseSalary]);
+  useEffect(() => { localStorage.setItem("salary_profit_pct", String(profitPct)); }, [profitPct]);
+  useEffect(() => { localStorage.setItem("salary_referral", String(referralBonus)); }, [referralBonus]);
+
+  type Perf = { cashier_id: string; revenue: number; profit: number; shifts: number; tx_count: number };
+  const [perf, setPerf] = useState<Record<string, Perf>>({});
+  const [perfLoading, setPerfLoading] = useState(false);
+  const [month, setMonth] = useState<string>(() => {
+    const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  });
+
+  const loadPerformance = async () => {
+    setPerfLoading(true);
+    try {
+      const [y, m] = month.split("-").map((n) => parseInt(n, 10));
+      const start = new Date(y, m - 1, 1).toISOString();
+      const end = new Date(y, m, 1).toISOString();
+      const { data: txs } = await supabase
+        .from("transactions")
+        .select("id,cashier_id,shift_id,total,created_at")
+        .gte("created_at", start).lt("created_at", end);
+      const txList = (txs || []) as { id: string; cashier_id: string | null; shift_id: string | null; total: number }[];
+      const txMap = new Map(txList.map((t) => [t.id, t]));
+      const ids = txList.map((t) => t.id);
+      let itemsRes: { transaction_id: string; qty: number; unit_price: number; unit_cost: number; unit_conversion?: number | null }[] = [];
+      if (ids.length) {
+        const { data: its } = await supabase
+          .from("transaction_items")
+          .select("transaction_id,qty,unit_price,unit_cost,unit_conversion")
+          .in("transaction_id", ids);
+        itemsRes = (its || []) as any;
+      }
+      const map: Record<string, Perf> = {};
+      const shiftSet: Record<string, Set<string>> = {};
+      for (const it of itemsRes) {
+        const t = txMap.get(it.transaction_id); if (!t || !t.cashier_id) continue;
+        const conv = Number(it.unit_conversion || 1);
+        const rev = Number(it.unit_price) * Number(it.qty);
+        const cost = Number(it.unit_cost || 0) * Number(it.qty) * conv;
+        const p = map[t.cashier_id] || { cashier_id: t.cashier_id, revenue: 0, profit: 0, shifts: 0, tx_count: 0 };
+        p.revenue += rev;
+        p.profit += rev - cost;
+        map[t.cashier_id] = p;
+      }
+      for (const t of txList) {
+        if (!t.cashier_id) continue;
+        const p = map[t.cashier_id] || { cashier_id: t.cashier_id, revenue: 0, profit: 0, shifts: 0, tx_count: 0 };
+        p.tx_count += 1;
+        if (t.shift_id) {
+          if (!shiftSet[t.cashier_id]) shiftSet[t.cashier_id] = new Set();
+          shiftSet[t.cashier_id].add(t.shift_id);
+        }
+        map[t.cashier_id] = p;
+      }
+      Object.keys(map).forEach((k) => { map[k].shifts = shiftSet[k]?.size || 0; });
+      setPerf(map);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setPerfLoading(false); }
+  };
+
+  useEffect(() => { loadPerformance(); }, [month]);
+
   const listFn = useServerFn(listCashiers);
   const createFn = useServerFn(createCashier);
   const updateFn = useServerFn(updateCashier);
