@@ -158,6 +158,46 @@ function KasirPage() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
 
+  // Poll QRIS status while pending
+  useEffect(() => {
+    if (!qris || qris.status !== "pending") return;
+    let stopped = false;
+    const tick = async () => {
+      try {
+        const r = (await checkQrisFn({ data: { order_id: qris.order_id } })) as any;
+        if (stopped) return;
+        if (r.status !== "pending") {
+          setQris((q) => (q ? { ...q, status: r.status } : q));
+          if (r.status === "paid") toast.success("Pembayaran QRIS diterima");
+          else if (r.status === "expired") toast.error("QRIS kedaluwarsa");
+          else if (r.status === "failed") toast.error("Pembayaran QRIS gagal");
+        }
+      } catch {}
+    };
+    const id = setInterval(tick, 4000);
+    return () => { stopped = true; clearInterval(id); };
+  }, [qris?.order_id, qris?.status]);
+
+  const handleCreateQris = async () => {
+    if (totals.total <= 0) { toast.error("Keranjang kosong"); return; }
+    setQrisLoading(true);
+    try {
+      const r = (await createQrisFn({ data: { amount: totals.total, shift_id: activeShift?.shift_id ?? null } })) as any;
+      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending" });
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal membuat QRIS");
+    } finally {
+      setQrisLoading(false);
+    }
+  };
+
+  const handleCancelQris = async () => {
+    if (!qris) return;
+    try { await cancelQrisFn({ data: { order_id: qris.order_id } }); } catch {}
+    setQris(null);
+  };
+
+
   const persistShift = (s: ActiveShift | null) => {
     setActiveShift(s);
     try {
