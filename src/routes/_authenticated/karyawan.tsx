@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Pencil, KeyRound, Trash2, UserCircle2, Loader2, Power, Wallet, TrendingUp, Megaphone } from "lucide-react";
+import { Plus, Pencil, KeyRound, Trash2, UserCircle2, Loader2, Power, Wallet, TrendingUp, Megaphone, Printer, CalendarRange } from "lucide-react";
 import { createCashier, deleteCashier, listCashiers, updateCashier } from "@/lib/cashier.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { formatRupiah, parseNumber } from "@/lib/format";
