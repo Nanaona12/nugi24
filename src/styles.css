@@ -152,6 +152,16 @@
   66% { transform: translate(-20px, 30px) scale(0.95); }
 }
 
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-12px); }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
 @utility animate-blob {
   animation: blob 14s ease-in-out infinite;
 }
@@ -160,5 +170,23 @@
 }
 @utility animation-delay-4000 {
   animation-delay: 4s;
+}
+@utility animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+@utility animate-shimmer-bar {
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, var(--color-primary) 25%, transparent), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2.6s linear infinite;
+}
+@utility glass {
+  background: color-mix(in oklab, var(--color-card) 60%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  border: 1px solid color-mix(in oklab, var(--color-foreground) 8%, transparent);
+}
+@utility glass-strong {
+  background: color-mix(in oklab, var(--color-card) 80%, transparent);
+  backdrop-filter: blur(22px) saturate(160%);
+  border: 1px solid color-mix(in oklab, var(--color-foreground) 10%, transparent);
 }
 
