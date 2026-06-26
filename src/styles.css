@@ -212,6 +212,11 @@
   color: oklch(1 0 0 / 80%);
   &:hover { background: oklch(1 0 0 / 10%); color: oklch(1 0 0); }
 }
+@utility nav-float-link {
+  color: oklch(1 0 0 / 70%);
+  &:hover { background: oklch(1 0 0 / 10%); color: oklch(1 0 0); }
+}
+
 
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(10px); }
