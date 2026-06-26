@@ -18,7 +18,9 @@ export type ReceiptData = {
   total: number;
   paid: number;
   change: number;
-  paymentMethod: string; // cash | qris
+  paymentMethod: string; // cash | qris | split
+  cashPart?: number;
+  qrisPart?: number;
 };
 
 /** Render struk ke PNG (data URL). Width fixed 600px, height auto. */
