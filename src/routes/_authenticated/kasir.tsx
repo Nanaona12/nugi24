@@ -824,11 +824,11 @@ function KasirPage() {
 
             <div>
               <Label className="mb-1.5 block">Metode Pembayaran</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   type="button"
                   variant={paymentMethod === "cash" ? "default" : "outline"}
-                  onClick={() => setPaymentMethod("cash")}
+                  onClick={() => { setPaymentMethod("cash"); if (qris) handleCancelQris(); }}
                 >
                   💵 Cash
                 </Button>
@@ -838,6 +838,13 @@ function KasirPage() {
                   onClick={() => { setPaymentMethod("qris"); setPaid(String(totals.total)); }}
                 >
                   📱 QRIS
+                </Button>
+                <Button
+                  type="button"
+                  variant={paymentMethod === "split" ? "default" : "outline"}
+                  onClick={() => { setPaymentMethod("split"); if (qris) handleCancelQris(); }}
+                >
+                  🔀 Split
                 </Button>
               </div>
             </div>
@@ -872,18 +879,77 @@ function KasirPage() {
               </div>
             )}
 
-            {paymentMethod === "qris" && (
+            {paymentMethod === "split" && (() => {
+              const cashN = Number(splitCash.replace(/[^\d]/g, "")) || 0;
+              const qrisN = Number(splitQris.replace(/[^\d]/g, "")) || 0;
+              const sumPaid = cashN + qrisN;
+              const remaining = Math.max(0, totals.total - sumPaid);
+              const change = Math.max(0, sumPaid - totals.total);
+              return (
+                <div className="space-y-2 rounded-lg border p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">💵 Cash</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={splitCash}
+                        onChange={(e) => setSplitCash(e.target.value.replace(/[^\d]/g, ""))}
+                        placeholder="0"
+                        className="mt-1 h-11"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">📱 QRIS</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={splitQris}
+                        onChange={(e) => setSplitQris(e.target.value.replace(/[^\d]/g, ""))}
+                        placeholder="0"
+                        className="mt-1 h-11"
+                        disabled={!!qris}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 text-xs">
+                    <Button variant="ghost" size="sm" onClick={() => { setSplitCash(String(totals.total)); setSplitQris("0"); }}>Semua Cash</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setSplitQris(String(totals.total)); setSplitCash("0"); }}>Semua QRIS</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { const half = Math.round(totals.total / 2); setSplitCash(String(half)); setSplitQris(String(totals.total - half)); }}>Bagi 2</Button>
+                    {remaining > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setSplitCash(String(cashN + remaining))}>Sisa ke Cash</Button>
+                    )}
+                  </div>
+                  <div className="flex justify-between border-t pt-2 text-sm">
+                    <span>Total Dibayar</span><span className="font-semibold">{formatRupiah(sumPaid)}</span>
+                  </div>
+                  {remaining > 0 ? (
+                    <div className="flex justify-between text-sm text-destructive">
+                      <span>Kurang</span><span className="font-semibold">{formatRupiah(remaining)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-sm">
+                      <span>Kembalian</span><span className="font-semibold">{formatRupiah(change)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {(paymentMethod === "qris" || (paymentMethod === "split" && (Number(splitQris.replace(/[^\d]/g, "")) || 0) > 0)) && (
               <div className="space-y-2 rounded-lg border p-3">
                 {!qris && (
-                  <Button type="button" className="w-full" disabled={qrisLoading || totals.total <= 0} onClick={handleCreateQris}>
-                    {qrisLoading ? "Membuat QR…" : "Buat QRIS Dinamis"}
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={qrisLoading || (paymentMethod === "qris" ? totals.total <= 0 : (Number(splitQris.replace(/[^\d]/g, "")) || 0) <= 0)}
+                    onClick={() => handleCreateQris(paymentMethod === "split" ? (Number(splitQris.replace(/[^\d]/g, "")) || 0) : totals.total)}
+                  >
+                    {qrisLoading ? "Membuat QR…" : `Buat QRIS Dinamis ${paymentMethod === "split" ? formatRupiah(Number(splitQris.replace(/[^\d]/g, "")) || 0) : ""}`}
                   </Button>
                 )}
                 {qris && (
                   <div className="space-y-2 text-center">
                     <div className="text-xs text-muted-foreground">Order: {qris.order_id}</div>
                     <div className="mx-auto inline-block rounded-md border bg-white p-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={qris.qr_url} alt="QRIS" className="h-56 w-56 object-contain" />
                     </div>
                     <div className="text-sm">
