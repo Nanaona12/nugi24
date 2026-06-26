@@ -251,24 +251,38 @@ function KaryawanPage() {
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>
             <h2 className="flex items-center gap-2 text-base font-semibold"><Wallet className="h-4 w-4 text-primary" /> Rekomendasi Gaji & Bonus Kinerja</h2>
-            <p className="text-xs text-muted-foreground">Hitung gaji bulanan otomatis: gaji pokok + bonus % dari keuntungan yang dihasilkan kasir di bulan terpilih. Tambah bonus referral bila kasir mengajak pelanggan/promosi toko.</p>
+            <p className="text-xs text-muted-foreground">Periode gaji mengikuti tanggal cut-off. Bonus = % keuntungan yang dihasilkan tiap kasir selama periode. Cetak struk tanda terima saat membayar.</p>
           </div>
           <Input type="month" value={month} onChange={(e) => setMonth(e.target.value)} className="h-9 w-44" />
         </div>
 
-        <div className="mb-3 grid gap-3 sm:grid-cols-3">
+        <div className="mb-3 grid gap-3 sm:grid-cols-5">
           <div>
             <Label className="text-xs">Gaji Pokok / bulan</Label>
             <Input inputMode="numeric" value={formatRupiah(baseSalary)} onChange={(e) => setBaseSalary(parseNumber(e.target.value))} />
           </div>
           <div>
-            <Label className="text-xs">Bonus dari Keuntungan (%)</Label>
+            <Label className="text-xs">Bonus Keuntungan (%)</Label>
             <Input inputMode="decimal" value={String(profitPct)} onChange={(e) => setProfitPct(parseFloat(e.target.value.replace(",", ".")) || 0)} />
           </div>
           <div>
-            <Label className="text-xs flex items-center gap-1"><Megaphone className="h-3 w-3" /> Bonus Referral / pelanggan baru</Label>
+            <Label className="text-xs flex items-center gap-1"><Megaphone className="h-3 w-3" /> Bonus Referral</Label>
             <Input inputMode="numeric" value={formatRupiah(referralBonus)} onChange={(e) => setReferralBonus(parseNumber(e.target.value))} />
           </div>
+          <div>
+            <Label className="text-xs">Cut-off (tanggal)</Label>
+            <Input type="number" min={1} max={28} value={cutoffDay} onChange={(e) => setCutoffDay(Math.min(28, Math.max(1, parseInt(e.target.value) || 14)))} />
+          </div>
+          <div>
+            <Label className="text-xs">Tanggal Gajian</Label>
+            <Input type="number" min={1} max={31} value={paydayDay} onChange={(e) => setPaydayDay(Math.min(31, Math.max(1, parseInt(e.target.value) || 25)))} />
+          </div>
+        </div>
+
+        <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border bg-muted/40 px-3 py-2 text-xs">
+          <CalendarRange className="h-4 w-4 text-primary" />
+          <span>Periode kerja: <b>{fmtDate(periodRange.start)}</b> s/d <b>{fmtDate(new Date(periodRange.end.getTime() - 86400000))}</b></span>
+          <span className="ml-auto">Tanggal bayar: <b>{fmtDate(periodRange.payday)}</b></span>
         </div>
 
         <div className="overflow-x-auto">
@@ -282,13 +296,14 @@ function KaryawanPage() {
                 <th className="p-2 text-right">Keuntungan</th>
                 <th className="p-2 text-right">Bonus Kinerja</th>
                 <th className="p-2 text-right">Total Rekomendasi</th>
+                <th className="p-2 text-right"></th>
               </tr>
             </thead>
             <tbody>
               {perfLoading ? (
-                <tr><td colSpan={7} className="p-6 text-center text-muted-foreground"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-muted-foreground"><Loader2 className="mx-auto h-5 w-5 animate-spin" /></td></tr>
               ) : items.length === 0 ? (
-                <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Belum ada kasir.</td></tr>
+                <tr><td colSpan={8} className="p-6 text-center text-muted-foreground">Belum ada kasir.</td></tr>
               ) : items.map((c) => {
                 const p = perf[c.id] || { revenue: 0, profit: 0, shifts: 0, tx_count: 0 };
                 const bonus = Math.max(0, Math.round((p.profit * profitPct) / 100));
@@ -302,6 +317,11 @@ function KaryawanPage() {
                     <td className="p-2 text-right text-emerald-600">{formatRupiah(p.profit)}</td>
                     <td className="p-2 text-right"><span className="inline-flex items-center gap-1"><TrendingUp className="h-3 w-3 text-primary" />{formatRupiah(bonus)}</span></td>
                     <td className="p-2 text-right font-semibold">{formatRupiah(total)}</td>
+                    <td className="p-2 text-right">
+                      <Button size="sm" variant="ghost" onClick={() => printPayslip(c, p, bonus, total)} title="Cetak struk gaji">
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    </td>
                   </tr>
                 );
               })}
@@ -309,9 +329,10 @@ function KaryawanPage() {
           </table>
         </div>
         <p className="mt-2 text-[11px] text-muted-foreground">
-          Tips: bagikan target keuntungan ke kasir agar termotivasi mengajak orang/promosi. Bonus referral bisa ditambahkan manual saat menggaji jika kasir berhasil membawa pelanggan baru.
+          Data diambil dari shift kasir yang dibuka pada periode di atas. Jika kosong, pastikan kasir login & buka shift di halaman Kasir.
         </p>
       </Card>
+
 
 
       {/* Edit / Tambah */}
