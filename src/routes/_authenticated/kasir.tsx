@@ -136,7 +136,7 @@ function KasirPage() {
   const createQrisFn = useServerFn(createCashierQris);
   const checkQrisFn = useServerFn(checkCashierQrisStatus);
   const cancelQrisFn = useServerFn(cancelCashierQris);
-  const [qris, setQris] = useState<null | { order_id: string; qr_url: string; amount: number; status: "pending" | "paid" | "expired" | "failed" }>(null);
+  const [qris, setQris] = useState<null | { order_id: string; qr_url: string; amount: number; status: "pending" | "paid" | "expired" | "failed"; quota_info?: { used: number; quota: number; projected: number; over_quota: boolean; over_amount: number } | null }>(null);
   const [qrisLoading, setQrisLoading] = useState(false);
 
   // --- Shift / Cashier lock ---
@@ -186,7 +186,10 @@ function KasirPage() {
     setQrisLoading(true);
     try {
       const r = (await createQrisFn({ data: { amount: amt, shift_id: activeShift?.shift_id ?? null } })) as any;
-      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending" });
+      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending", quota_info: r.quota_info ?? null });
+      if (r.quota_info?.over_quota) {
+        toast.warning(`Kuota QRIS gratis bulan ini terlampaui Rp ${(r.quota_info.over_amount).toLocaleString("id-ID")}. Kelebihan akan dikenakan MDR ±0,7%.`);
+      }
     } catch (e: any) {
       toast.error(e?.message || "Gagal membuat QRIS");
     } finally {
@@ -412,6 +415,7 @@ function KasirPage() {
         change_amount: change,
         item_count: totals.items,
         payment_method: paymentMethod,
+        qris_amount: qrisPart,
         customer_phone: sendWa && phoneClean ? phoneClean : null,
       } as any)
       .select()
@@ -957,6 +961,14 @@ function KasirPage() {
                     <div className="text-sm">
                       Nominal: <span className="font-semibold">{formatRupiah(qris.amount)}</span>
                     </div>
+                    {qris.quota_info && (
+                      <div className={`rounded-md border p-2 text-left text-[11px] ${qris.quota_info.over_quota ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200" : "border-muted bg-muted/40 text-muted-foreground"}`}>
+                        Kuota QRIS bulan ini: <b>{formatRupiah(qris.quota_info.used)}</b> / {formatRupiah(qris.quota_info.quota)}
+                        {qris.quota_info.over_quota && (
+                          <div>Kelebihan <b>{formatRupiah(qris.quota_info.over_amount)}</b> akan dikenakan MDR ±0,7% pada tagihan berikutnya.</div>
+                        )}
+                      </div>
+                    )}
                     {qris.status === "pending" && (
                       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" /> Menunggu pembayaran… (auto refresh)

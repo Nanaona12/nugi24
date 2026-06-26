@@ -113,9 +113,10 @@ export const getMyBilling = createServerFn({ method: "GET" })
     if (!tenant) return { tenant: null, subscription: null, payments: [], isSuperAdmin };
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [sub, { data: pays }] = await Promise.all([
+    const [sub, { data: pays }, qrisUsageRes] = await Promise.all([
       ensureSubscription(tenant.id),
       supabaseAdmin.from("payments").select("*").eq("tenant_id", tenant.id).order("created_at", { ascending: false }).limit(20),
+      supabaseAdmin.rpc("tenant_qris_month_usage", { _tenant: tenant.id }),
     ]);
 
     const clientKey = process.env.MIDTRANS_CLIENT_KEY ?? "";
@@ -123,6 +124,7 @@ export const getMyBilling = createServerFn({ method: "GET" })
       tenant,
       subscription: sub,
       payments: pays ?? [],
+      qris_month_usage: Number(qrisUsageRes.data ?? 0),
       isSuperAdmin,
       midtransClientKey: clientKey,
       midtransIsProduction: clientKey ? !clientKey.startsWith("SB-Mid-client-") : false,

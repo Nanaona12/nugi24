@@ -13,6 +13,8 @@ export type PlanDef = {
   /** If true, plan can only be billed monthly (no yearly option). */
   monthlyOnly?: boolean;
   highlight?: boolean;
+  /** Subsidi MDR QRIS per bulan (Rupiah omzet QRIS gratis admin). */
+  qrisMonthlyQuota: number;
   features: string[];
   /** Features unique to this tier vs the lower one. */
   unlocks?: string[];
@@ -23,8 +25,9 @@ export const PLANS: Record<PlanId, PlanDef> = {
     id: "warung",
     name: "Paket Warung",
     tagline: "Cocok untuk warung kecil & UMKM eceran",
-    monthly: 14_900,
-    yearly: 149_000, // hemat 2 bulan (≈Rp 29.800)
+    monthly: 25_000,
+    yearly: 250_000, // hemat 2 bulan
+    qrisMonthlyQuota: 5_000_000,
     features: [
       "Kasir + cetak struk thermal",
       "Manajemen produk & stok",
@@ -33,14 +36,16 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "1 akun kasir aktif",
       "Scan barcode (kamera & USB)",
       "Pelanggan dasar (kontak & catatan)",
+      "Admin QRIS ditanggung s/d Rp 5 juta/bulan",
     ],
   },
   grosir: {
     id: "grosir",
     name: "Paket Grosiran",
     tagline: "Untuk grosir, distributor & toko skala menengah",
-    monthly: 29_900,
-    yearly: 299_000, // hemat 2 bulan (≈Rp 59.800)
+    monthly: 50_000,
+    yearly: 500_000, // hemat 2 bulan
+    qrisMonthlyQuota: 50_000_000,
     highlight: true,
     features: [
       "Semua fitur Paket Warung",
@@ -54,6 +59,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "Import / export Excel lengkap (produk + batch)",
       "Laporan PDF profesional & total aset inventori",
       "Prioritas dukungan WhatsApp",
+      "Admin QRIS ditanggung s/d Rp 50 juta/bulan",
     ],
     unlocks: [
       "Multi-satuan harga (slove / dus)",
@@ -64,9 +70,14 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "Closing shift & rekonsiliasi kas",
       "Total aset inventori",
       "Laporan PDF lengkap",
+      "Kuota QRIS gratis 10x lebih besar",
     ],
   },
 };
+
+export function qrisQuotaFor(plan?: string | null): number {
+  return PLANS[plan === "grosir" ? "grosir" : "warung"].qrisMonthlyQuota;
+}
 
 export function priceFor(plan: PlanId, period: BillingPeriod): number {
   const p = PLANS[plan];
