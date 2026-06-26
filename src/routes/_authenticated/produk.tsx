@@ -879,6 +879,13 @@ function ProdukPage() {
         </DialogContent>
       </Dialog>
 
+      <AIPhotoCapture
+        open={aiOpen}
+        onClose={() => setAiOpen(false)}
+        onResult={applyAiResult}
+        existingCategories={existingCategories}
+      />
+
       {/* Import preview */}
       <Dialog open={importOpen} onOpenChange={setImportOpen}>
         <DialogContent className="max-w-3xl">
