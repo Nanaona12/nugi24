@@ -53,6 +53,7 @@ type Product = {
   barcode: string | null;
   name: string;
   price: number;
+  cost_price: number;
   stock: number;
 };
 
@@ -117,7 +118,7 @@ function POPage() {
   const load = async () => {
     const [{ data: poData, error: e1 }, { data: pData, error: e2 }] = await Promise.all([
       supabase.from("purchase_orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("products").select("id,code,barcode,name,price,stock").order("name"),
+      supabase.from("products").select("id,code,barcode,name,price,cost_price,stock").order("name"),
     ]);
     if (e1) toast.error(e1.message);
     else setPos((poData || []) as PO[]);
@@ -165,6 +166,18 @@ function POPage() {
   }, [products, lowThreshold]);
 
   const outOfStockCount = lowStockProducts.filter((p) => (p.stock ?? 0) <= 0).length;
+
+  const pricingIssueProducts = useMemo(() => {
+    return products.filter((p) => {
+      const cost = Number(p.cost_price || 0);
+      const price = Number(p.price || 0);
+      if (!cost || cost <= 0) return true;
+      if (cost > price && price > 0) return true;
+      if (price <= 0) return true;
+      const m = (price - cost) / cost;
+      return m < 0.03 || m > 2;
+    });
+  }, [products]);
 
   const addProduct = (p: Product) => {
     if (items.some((it) => it.product_id === p.id)) {
@@ -439,6 +452,38 @@ function POPage() {
           <Plus className="mr-2 h-4 w-4" /> Buat PO
         </Button>
       </div>
+
+      {pricingIssueProducts.length > 0 && (
+        <Card className="border-orange-400/50 bg-orange-50/60 dark:bg-orange-950/20 p-3">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="h-5 w-5 text-orange-600 dark:text-orange-400 mt-0.5" />
+            <div className="flex-1">
+              <div className="text-sm font-semibold">
+                {pricingIssueProducts.length} produk perlu cek modal vs harga jual
+              </div>
+              <div className="text-xs text-muted-foreground mb-2">
+                Modal kosong/0, lebih besar dari harga jual, atau margin tidak wajar (&lt; 3% atau &gt; 200%). Perbaiki di halaman Produk sebelum membuat PO agar perhitungan untung akurat.
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {pricingIssueProducts.slice(0, 10).map((p) => {
+                  const cost = Number(p.cost_price || 0);
+                  const price = Number(p.price || 0);
+                  const tag = !cost ? "Modal 0" : cost > price ? "Modal>Jual" : (price - cost) / cost < 0.03 ? "Margin kecil" : "Margin besar";
+                  return (
+                    <span key={p.id} className="rounded bg-orange-500/15 text-orange-700 dark:text-orange-300 px-2 py-0.5 text-[11px]" title={`Modal Rp${cost.toLocaleString("id-ID")} • Jual Rp${price.toLocaleString("id-ID")}`}>
+                      {p.name} <span className="opacity-70">• {tag}</span>
+                    </span>
+                  );
+                })}
+                {pricingIssueProducts.length > 10 && (
+                  <span className="text-[11px] text-muted-foreground self-center">+{pricingIssueProducts.length - 10} lainnya</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
 
       {/* Produk Habis / Stok Menipis */}
       {lowStockProducts.length > 0 && (

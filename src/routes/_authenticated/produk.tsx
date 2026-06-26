@@ -124,6 +124,22 @@ function ProdukPage() {
       || (p.category || "").toLowerCase().includes(q);
   });
 
+  // Notif harga modal vs harga jual
+  const pricingIssueFor = (p: Product): { kind: "no_cost" | "cost_gt_price" | "low_margin" | "high_margin"; margin: number } | null => {
+    const cost = Number(p.cost_price || 0);
+    const price = Number(p.price || 0);
+    if (!cost || cost <= 0) return { kind: "no_cost", margin: 0 };
+    if (cost > price && price > 0) return { kind: "cost_gt_price", margin: (price - cost) / cost };
+    if (price <= 0) return { kind: "no_cost", margin: 0 };
+    const margin = (price - cost) / cost;
+    if (margin < 0.03) return { kind: "low_margin", margin };
+    if (margin > 2) return { kind: "high_margin", margin };
+    return null;
+  };
+  const issueLabel = (k: string) => k === "no_cost" ? "Modal 0/kosong" : k === "cost_gt_price" ? "Modal > Harga" : k === "low_margin" ? "Margin terlalu kecil" : "Margin terlalu besar";
+  const issueTone = (k: string) => k === "no_cost" || k === "cost_gt_price" ? "bg-destructive text-destructive-foreground" : k === "low_margin" ? "bg-orange-500 text-white" : "bg-amber-500 text-white";
+  const pricingIssues = products.map((p) => ({ p, issue: pricingIssueFor(p) })).filter((x) => x.issue) as { p: Product; issue: NonNullable<ReturnType<typeof pricingIssueFor>> }[];
+
   const defaultUnitsFor = (p?: Product): ProductUnit[] => {
     if (p) {
       const existing = unitsByProduct[p.id];
@@ -660,6 +676,39 @@ function ProdukPage() {
         </Button>
       </div>
 
+      {pricingIssues.length > 0 && (
+        <Card className="border-orange-400/50 bg-orange-50/60 dark:bg-orange-950/20 p-4">
+          <div className="flex items-start gap-3">
+            <div className="rounded-full bg-orange-500/15 p-2 text-orange-600 dark:text-orange-400">
+              <Package className="h-4 w-4" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="font-semibold text-sm">
+                {pricingIssues.length} produk perlu dicek harga modal & harga jualnya
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Modal kosong/0, lebih besar dari harga jual, atau selisihnya terlalu jauh dari wajar (margin &lt; 3% atau &gt; 200%).
+              </p>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {pricingIssues.slice(0, 12).map(({ p, issue }) => (
+                  <button
+                    key={p.id}
+                    onClick={() => openEdit(p)}
+                    className={`rounded px-2 py-0.5 text-[11px] font-medium hover:opacity-90 ${issueTone(issue.kind)}`}
+                    title={`${issueLabel(issue.kind)} • Modal ${formatRupiah(p.cost_price || 0)} • Jual ${formatRupiah(p.price || 0)}`}
+                  >
+                    {p.name}
+                  </button>
+                ))}
+                {pricingIssues.length > 12 && (
+                  <span className="text-[11px] text-muted-foreground self-center">+{pricingIssues.length - 12} lainnya</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
+
       <AlertDialog open={confirmDeleteAll} onOpenChange={(o) => { setConfirmDeleteAll(o); if (!o) setDeleteAllPassword(""); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -735,6 +784,18 @@ function ProdukPage() {
                     <td className="p-3 font-medium">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span>{p.name}</span>
+                        {(() => {
+                          const iss = pricingIssueFor(p);
+                          if (!iss) return null;
+                          return (
+                            <span
+                              className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${issueTone(iss.kind)}`}
+                              title={`${issueLabel(iss.kind)} • Modal ${formatRupiah(p.cost_price || 0)} • Jual ${formatRupiah(p.price || 0)}`}
+                            >
+                              ⚠ {issueLabel(iss.kind)}
+                            </span>
+                          );
+                        })()}
                         {(() => {
                           const ex = expiryByProduct[p.id];
                           if (!ex) return null;

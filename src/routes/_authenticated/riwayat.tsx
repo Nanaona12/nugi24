@@ -47,6 +47,11 @@ function RiwayatPage() {
   const [clearPassword, setClearPassword] = useState("");
   const [clearing, setClearing] = useState(false);
 
+  const [confirmDelOpen, setConfirmDelOpen] = useState(false);
+  const [delTarget, setDelTarget] = useState<Tx | null>(null);
+  const [delPassword, setDelPassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
   const load = async () => {
     const { data, error } = await supabase
       .from("transactions")
@@ -65,14 +70,32 @@ function RiwayatPage() {
     setItems((data || []) as TxItem[]);
   };
 
-  const removeTx = async (tx: Tx, e?: React.MouseEvent) => {
+  const askDelete = (tx: Tx, e?: React.MouseEvent) => {
     e?.stopPropagation();
-    if (!confirm(`Hapus transaksi #${tx.id.slice(0, 8)}?`)) return;
+    setDelTarget(tx);
+    setDelPassword("");
+    setConfirmDelOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!delTarget) return;
+    if (!delPassword) { toast.error("Masukkan password admin/tenant"); return; }
+    setDeleting(true);
+    const { data: userData } = await supabase.auth.getUser();
+    const email = userData.user?.email;
+    if (!email) { setDeleting(false); toast.error("Sesi tidak ditemukan. Hanya admin/tenant yang boleh menghapus."); return; }
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: delPassword });
+    if (authErr) { setDeleting(false); toast.error("Password salah"); return; }
+    const tx = delTarget;
     const { error: e1 } = await supabase.from("transaction_items").delete().eq("transaction_id", tx.id);
-    if (e1) return toast.error(e1.message);
+    if (e1) { setDeleting(false); return toast.error(e1.message); }
     const { error: e2 } = await supabase.from("transactions").delete().eq("id", tx.id);
+    setDeleting(false);
     if (e2) return toast.error(e2.message);
     toast.success("Transaksi dihapus");
+    setConfirmDelOpen(false);
+    setDelTarget(null);
+    setDelPassword("");
     if (selected?.id === tx.id) setSelected(null);
     load();
   };
@@ -153,7 +176,7 @@ function RiwayatPage() {
                         <Button size="icon" variant="ghost" onClick={() => openDetail(t)}>
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={(e) => removeTx(t, e)} className="text-destructive hover:text-destructive">
+                        <Button size="icon" variant="ghost" onClick={(e) => askDelete(t, e)} className="text-destructive hover:text-destructive">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
@@ -228,6 +251,39 @@ function RiwayatPage() {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {clearing ? "Menghapus..." : "Ya, Hapus Semua"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={confirmDelOpen} onOpenChange={(o) => { setConfirmDelOpen(o); if (!o) { setDelPassword(""); setDelTarget(null); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus transaksi #{delTarget?.id.slice(0, 8)}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Penghapusan riwayat transaksi wajib sepengetahuan admin/tenant.
+              Masukkan password akun admin/tenant untuk konfirmasi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Password admin/tenant</label>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              value={delPassword}
+              onChange={(e) => setDelPassword(e.target.value)}
+              placeholder="Password akun admin/tenant"
+              disabled={deleting}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+              disabled={deleting || !delPassword}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Menghapus..." : "Ya, Hapus"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
