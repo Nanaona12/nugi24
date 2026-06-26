@@ -790,7 +790,7 @@ function KasirPage() {
 
 
       {/* Payment dialog */}
-      <Dialog open={payOpen} onOpenChange={setPayOpen}>
+      <Dialog open={payOpen} onOpenChange={(o) => { setPayOpen(o); if (!o) { if (qris && qris.status === "pending") { handleCancelQris(); } else { setQris(null); } } }}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Pembayaran</DialogTitle>
