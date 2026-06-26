@@ -20,6 +20,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -314,10 +315,11 @@ function AuthedLayout() {
           </SidebarFooter>
         </Sidebar>
         <SidebarInset>
-          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background px-4">
+          <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
             <SidebarTrigger />
             <div className="flex-1 truncate text-sm font-medium">{title}</div>
             <div className="hidden text-xs text-muted-foreground sm:block">{isCashierSession ? (cashierName || "Kasir") : user.email}</div>
+            <ThemeToggle />
           </header>
 
           {!sub?.isSuperAdmin && (showTrialBanner || expired) && (
