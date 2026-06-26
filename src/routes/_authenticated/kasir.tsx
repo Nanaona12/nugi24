@@ -961,6 +961,14 @@ function KasirPage() {
                     <div className="text-sm">
                       Nominal: <span className="font-semibold">{formatRupiah(qris.amount)}</span>
                     </div>
+                    {qris.quota_info && (
+                      <div className={`rounded-md border p-2 text-left text-[11px] ${qris.quota_info.over_quota ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200" : "border-muted bg-muted/40 text-muted-foreground"}`}>
+                        Kuota QRIS bulan ini: <b>{formatRupiah(qris.quota_info.used)}</b> / {formatRupiah(qris.quota_info.quota)}
+                        {qris.quota_info.over_quota && (
+                          <div>Kelebihan <b>{formatRupiah(qris.quota_info.over_amount)}</b> akan dikenakan MDR ±0,7% pada tagihan berikutnya.</div>
+                        )}
+                      </div>
+                    )}
                     {qris.status === "pending" && (
                       <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
                         <Loader2 className="h-3 w-3 animate-spin" /> Menunggu pembayaran… (auto refresh)
