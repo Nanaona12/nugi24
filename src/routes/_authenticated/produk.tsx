@@ -138,38 +138,69 @@ function ProdukPage() {
   const existingCategories = Array.from(new Set(products.map((p) => p.category).filter(Boolean) as string[]));
 
   const applyAiResult = (r: AiVisionResult) => {
+    const hasSuggested = Array.isArray(r.suggested_units) && r.suggested_units.length > 0;
+    // Pick base unit price for the legacy `price` field (per pcs).
+    const baseUnit = hasSuggested ? (r.suggested_units.find((u) => u.is_base) ?? r.suggested_units[0]) : null;
+    const basePrice = baseUnit ? Math.round(baseUnit.price) : (r.recommended_price?.price != null ? Math.round(r.recommended_price.price) : null);
+
     setForm((prev) => ({
       ...prev,
       name: r.name && (!prev.name || prev.name.length === 0) ? r.name : prev.name,
       category: r.category && !prev.category ? r.category : prev.category,
       barcode: r.barcode && !prev.barcode ? r.barcode : prev.barcode,
       cost_price: r.cost_price != null && !prev.cost_price ? String(Math.round(r.cost_price)) : prev.cost_price,
-      price: r.recommended_price?.price != null && !prev.price ? String(Math.round(r.recommended_price.price)) : prev.price,
+      price: basePrice != null && !prev.price ? String(basePrice) : prev.price,
     }));
-    // Update base-unit tier 1 price if AI has a recommended price
-    if (r.recommended_price?.price != null) {
+
+    if (hasSuggested) {
+      // Replace formUnits entirely with AI-suggested multi-unit setup.
+      const units = r.suggested_units
+        .slice()
+        .sort((a, b) => (a.is_base ? -1 : b.is_base ? 1 : a.conversion - b.conversion))
+        .map((u, idx) => ({
+          name: u.name || (idx === 0 ? "pcs" : `unit${idx + 1}`),
+          conversion: Math.max(1, Math.round(u.conversion || 1)),
+          sort_order: idx,
+          is_base: idx === 0 ? true : !!u.is_base && idx === 0,
+          tiers: [{ min_qty: Math.max(1, u.min_qty || 1), price: Math.round(u.price || 0) }],
+        }));
+      // Force exactly one base = first item
+      units.forEach((u, i) => { u.is_base = i === 0; });
+      setFormUnits(units);
+    } else if (basePrice != null) {
       setFormUnits((prev) => prev.map((u, i) => {
         if (i !== 0) return u;
         const tiers = u.tiers && u.tiers.length > 0 ? [...u.tiers] : [{ min_qty: 1, price: 0 }];
-        if (!tiers[0].price) tiers[0] = { ...tiers[0], price: Math.round(r.recommended_price!.price!) };
+        if (!tiers[0].price) tiers[0] = { ...tiers[0], price: basePrice };
         return { ...u, tiers };
       }));
     }
+
     if (r.expiry_batches && r.expiry_batches.length > 0) {
       setFormBatches((prev) => [
         ...prev,
         ...r.expiry_batches.map((b) => ({ qty: String(b.qty), expiry_date: b.expiry_date, note: b.note || "AI" })),
       ]);
     }
-    if (r.recommended_price) {
+    if (r.recommended_price || hasSuggested) {
+      const storeLabel = r.detected_store_type === "both" ? "Warung + Grosir"
+        : r.detected_store_type === "grosiran" ? "Grosiran"
+        : r.detected_store_type === "warung" ? "Warung" : null;
       setAiHint({
-        price: r.recommended_price.price,
-        margin: r.recommended_price.margin_pct,
-        profit: r.recommended_price.est_profit_per_pcs,
-        reasoning: r.recommended_price.reasoning,
+        price: basePrice ?? r.recommended_price?.price ?? null,
+        margin: r.recommended_price?.margin_pct ?? null,
+        profit: r.recommended_price?.est_profit_per_pcs ?? null,
+        reasoning: [
+          storeLabel ? `Mode: ${storeLabel}.` : null,
+          r.recommended_price?.reasoning ?? null,
+          hasSuggested && r.suggested_units.length > 1
+            ? `Satuan: ${r.suggested_units.map((u) => `${u.name}${u.conversion > 1 ? `=${u.conversion}pcs` : ""} @Rp${Math.round(u.price).toLocaleString("id-ID")}`).join(" · ")}.`
+            : null,
+        ].filter(Boolean).join(" "),
       });
     }
   };
+
 
   const openEdit = (p: Product) => {
     setForm({
