@@ -255,6 +255,39 @@ function RiwayatPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <AlertDialog open={confirmDelOpen} onOpenChange={(o) => { setConfirmDelOpen(o); if (!o) { setDelPassword(""); setDelTarget(null); } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus transaksi #{delTarget?.id.slice(0, 8)}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Penghapusan riwayat transaksi wajib sepengetahuan admin/tenant.
+              Masukkan password akun admin/tenant untuk konfirmasi.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <label className="text-sm font-medium">Password admin/tenant</label>
+            <Input
+              type="password"
+              autoComplete="current-password"
+              value={delPassword}
+              onChange={(e) => setDelPassword(e.target.value)}
+              placeholder="Password akun admin/tenant"
+              disabled={deleting}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmDelete(); }}
+              disabled={deleting || !delPassword}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? "Menghapus..." : "Ya, Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
