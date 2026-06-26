@@ -115,11 +115,13 @@ function KasirPage() {
   const [paid, setPaid] = useState("");
   const [payOpen, setPayOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris" | "split">("cash");
+  const [splitCash, setSplitCash] = useState("");
+  const [splitQris, setSplitQris] = useState("");
   const [sendWa, setSendWa] = useState(false);
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
-  const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date; paymentMethod: "cash" | "qris"; customerPhone: string | null; customerName: string | null }>(null);
+  const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date; paymentMethod: "cash" | "qris" | "split"; cashPart?: number; qrisPart?: number; customerPhone: string | null; customerName: string | null }>(null);
   const [copied, setCopied] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
   const [modePicker, setModePicker] = useState<Product | null>(null);
@@ -178,11 +180,12 @@ function KasirPage() {
     return () => { stopped = true; clearInterval(id); };
   }, [qris?.order_id, qris?.status]);
 
-  const handleCreateQris = async () => {
-    if (totals.total <= 0) { toast.error("Keranjang kosong"); return; }
+  const handleCreateQris = async (amountOverride?: number) => {
+    const amt = amountOverride ?? totals.total;
+    if (amt <= 0) { toast.error("Nominal QRIS tidak valid"); return; }
     setQrisLoading(true);
     try {
-      const r = (await createQrisFn({ data: { amount: totals.total, shift_id: activeShift?.shift_id ?? null } })) as any;
+      const r = (await createQrisFn({ data: { amount: amt, shift_id: activeShift?.shift_id ?? null } })) as any;
       setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending" });
     } catch (e: any) {
       toast.error(e?.message || "Gagal membuat QRIS");
@@ -367,8 +370,24 @@ function KasirPage() {
 
   const checkout = async () => {
     if (!activeShift) { toast.error("Kasir belum login"); setLockOpen(true); return; }
-    const paidNum = paymentMethod === "qris" ? totals.total : Number(paid.replace(/[^\d]/g, ""));
-    if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
+    let paidNum: number;
+    let cashPart = 0;
+    let qrisPart = 0;
+    if (paymentMethod === "qris") {
+      if (!qris || qris.status !== "paid") { toast.error("QRIS belum dibayar"); return; }
+      paidNum = totals.total;
+      qrisPart = totals.total;
+    } else if (paymentMethod === "split") {
+      cashPart = Number(splitCash.replace(/[^\d]/g, "")) || 0;
+      qrisPart = Number(splitQris.replace(/[^\d]/g, "")) || 0;
+      if (qrisPart > 0 && (!qris || qris.status !== "paid")) { toast.error("QRIS belum dibayar"); return; }
+      if (cashPart + qrisPart < totals.total) { toast.error("Total pembayaran kurang"); return; }
+      paidNum = cashPart + qrisPart;
+    } else {
+      paidNum = Number(paid.replace(/[^\d]/g, ""));
+      if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
+      cashPart = paidNum;
+    }
     const phoneClean = customerPhone.replace(/[^\d]/g, "");
     if (sendWa && phoneClean.length < 8) { toast.error("Nomor HP tidak valid"); return; }
     setSubmitting(true);
@@ -441,6 +460,8 @@ function KasirPage() {
       items: cart,
       at: new Date(),
       paymentMethod,
+      cashPart,
+      qrisPart,
       customerPhone: sendWa && phoneClean ? phoneClean : null,
       customerName: sendWa && customerName.trim() ? customerName.trim() : null,
     };
@@ -484,7 +505,7 @@ function KasirPage() {
     } catch (e) {
       setReceiptImg(null);
     }
-    setCart([]); setPaid(""); setPayOpen(false); setSubmitting(false);
+    setCart([]); setPaid(""); setSplitCash(""); setSplitQris(""); setQris(null); setPayOpen(false); setSubmitting(false);
     setSendWa(false); setCustomerPhone(""); setCustomerName(""); setPaymentMethod("cash");
     loadProducts();
   };
@@ -803,11 +824,11 @@ function KasirPage() {
 
             <div>
               <Label className="mb-1.5 block">Metode Pembayaran</Label>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   type="button"
                   variant={paymentMethod === "cash" ? "default" : "outline"}
-                  onClick={() => setPaymentMethod("cash")}
+                  onClick={() => { setPaymentMethod("cash"); if (qris) handleCancelQris(); }}
                 >
                   💵 Cash
                 </Button>
@@ -817,6 +838,13 @@ function KasirPage() {
                   onClick={() => { setPaymentMethod("qris"); setPaid(String(totals.total)); }}
                 >
                   📱 QRIS
+                </Button>
+                <Button
+                  type="button"
+                  variant={paymentMethod === "split" ? "default" : "outline"}
+                  onClick={() => { setPaymentMethod("split"); if (qris) handleCancelQris(); }}
+                >
+                  🔀 Split
                 </Button>
               </div>
             </div>
@@ -851,18 +879,77 @@ function KasirPage() {
               </div>
             )}
 
-            {paymentMethod === "qris" && (
+            {paymentMethod === "split" && (() => {
+              const cashN = Number(splitCash.replace(/[^\d]/g, "")) || 0;
+              const qrisN = Number(splitQris.replace(/[^\d]/g, "")) || 0;
+              const sumPaid = cashN + qrisN;
+              const remaining = Math.max(0, totals.total - sumPaid);
+              const change = Math.max(0, sumPaid - totals.total);
+              return (
+                <div className="space-y-2 rounded-lg border p-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <Label className="text-xs">💵 Cash</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={splitCash}
+                        onChange={(e) => setSplitCash(e.target.value.replace(/[^\d]/g, ""))}
+                        placeholder="0"
+                        className="mt-1 h-11"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">📱 QRIS</Label>
+                      <Input
+                        inputMode="numeric"
+                        value={splitQris}
+                        onChange={(e) => setSplitQris(e.target.value.replace(/[^\d]/g, ""))}
+                        placeholder="0"
+                        className="mt-1 h-11"
+                        disabled={!!qris}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-1 text-xs">
+                    <Button variant="ghost" size="sm" onClick={() => { setSplitCash(String(totals.total)); setSplitQris("0"); }}>Semua Cash</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { setSplitQris(String(totals.total)); setSplitCash("0"); }}>Semua QRIS</Button>
+                    <Button variant="ghost" size="sm" onClick={() => { const half = Math.round(totals.total / 2); setSplitCash(String(half)); setSplitQris(String(totals.total - half)); }}>Bagi 2</Button>
+                    {remaining > 0 && (
+                      <Button variant="ghost" size="sm" onClick={() => setSplitCash(String(cashN + remaining))}>Sisa ke Cash</Button>
+                    )}
+                  </div>
+                  <div className="flex justify-between border-t pt-2 text-sm">
+                    <span>Total Dibayar</span><span className="font-semibold">{formatRupiah(sumPaid)}</span>
+                  </div>
+                  {remaining > 0 ? (
+                    <div className="flex justify-between text-sm text-destructive">
+                      <span>Kurang</span><span className="font-semibold">{formatRupiah(remaining)}</span>
+                    </div>
+                  ) : (
+                    <div className="flex justify-between text-sm">
+                      <span>Kembalian</span><span className="font-semibold">{formatRupiah(change)}</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
+            {(paymentMethod === "qris" || (paymentMethod === "split" && (Number(splitQris.replace(/[^\d]/g, "")) || 0) > 0)) && (
               <div className="space-y-2 rounded-lg border p-3">
                 {!qris && (
-                  <Button type="button" className="w-full" disabled={qrisLoading || totals.total <= 0} onClick={handleCreateQris}>
-                    {qrisLoading ? "Membuat QR…" : "Buat QRIS Dinamis"}
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={qrisLoading || (paymentMethod === "qris" ? totals.total <= 0 : (Number(splitQris.replace(/[^\d]/g, "")) || 0) <= 0)}
+                    onClick={() => handleCreateQris(paymentMethod === "split" ? (Number(splitQris.replace(/[^\d]/g, "")) || 0) : totals.total)}
+                  >
+                    {qrisLoading ? "Membuat QR…" : `Buat QRIS Dinamis ${paymentMethod === "split" ? formatRupiah(Number(splitQris.replace(/[^\d]/g, "")) || 0) : ""}`}
                   </Button>
                 )}
                 {qris && (
                   <div className="space-y-2 text-center">
                     <div className="text-xs text-muted-foreground">Order: {qris.order_id}</div>
                     <div className="mx-auto inline-block rounded-md border bg-white p-2">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={qris.qr_url} alt="QRIS" className="h-56 w-56 object-contain" />
                     </div>
                     <div className="text-sm">
