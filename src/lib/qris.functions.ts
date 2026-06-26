@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { qrisQuotaFor } from "@/lib/plans";
 
 async function getTenantId(ctx: any): Promise<string> {
   const { data: t } = await ctx.supabase
