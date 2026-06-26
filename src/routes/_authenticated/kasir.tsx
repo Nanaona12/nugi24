@@ -325,13 +325,12 @@ function KasirPage() {
     if (sendWa && phoneClean.length < 8) { toast.error("Nomor HP tidak valid"); return; }
     setSubmitting(true);
     const { data: userData } = await supabase.auth.getUser();
-    const cashierId = userData.user?.id;
-    if (!cashierId) { toast.error("Sesi habis"); setSubmitting(false); return; }
+    if (!userData.user?.id) { toast.error("Sesi habis"); setSubmitting(false); return; }
     const change = paidNum - totals.total;
     const { data: tx, error: txErr } = await supabase
       .from("transactions")
       .insert({
-        cashier_id: cashierId,
+        cashier_id: activeShift.cashier_id,
         shift_id: activeShift.shift_id,
         total: totals.total,
         paid: paidNum,

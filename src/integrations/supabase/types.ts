@@ -1135,6 +1135,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "transactions_cashier_id_fkey"
+            columns: ["cashier_id"]
+            isOneToOne: false
+            referencedRelation: "cashiers"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transactions_shift_id_fkey"
             columns: ["shift_id"]
             isOneToOne: false

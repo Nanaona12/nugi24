@@ -1,0 +1,2 @@
+ALTER TABLE public.transactions DROP CONSTRAINT IF EXISTS transactions_cashier_id_fkey;
+ALTER TABLE public.transactions ADD CONSTRAINT transactions_cashier_id_fkey FOREIGN KEY (cashier_id) REFERENCES public.cashiers(id) ON DELETE SET NULL NOT VALID;
