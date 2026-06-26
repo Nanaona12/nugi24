@@ -180,11 +180,12 @@ function KasirPage() {
     return () => { stopped = true; clearInterval(id); };
   }, [qris?.order_id, qris?.status]);
 
-  const handleCreateQris = async () => {
-    if (totals.total <= 0) { toast.error("Keranjang kosong"); return; }
+  const handleCreateQris = async (amountOverride?: number) => {
+    const amt = amountOverride ?? totals.total;
+    if (amt <= 0) { toast.error("Nominal QRIS tidak valid"); return; }
     setQrisLoading(true);
     try {
-      const r = (await createQrisFn({ data: { amount: totals.total, shift_id: activeShift?.shift_id ?? null } })) as any;
+      const r = (await createQrisFn({ data: { amount: amt, shift_id: activeShift?.shift_id ?? null } })) as any;
       setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending" });
     } catch (e: any) {
       toast.error(e?.message || "Gagal membuat QRIS");
