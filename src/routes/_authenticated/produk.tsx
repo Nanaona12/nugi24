@@ -77,6 +77,8 @@ function ProdukPage() {
   const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
   const [deletingAll, setDeletingAll] = useState(false);
   const [deleteAllPassword, setDeleteAllPassword] = useState("");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiHint, setAiHint] = useState<{ price: number | null; margin: number | null; profit: number | null; reasoning: string | null } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
 
