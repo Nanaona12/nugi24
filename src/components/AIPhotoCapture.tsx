@@ -31,6 +31,8 @@ type Props = {
   title?: string;
 };
 
+type StoreType = "auto" | "warung" | "grosiran" | "both";
+
 export function AIPhotoCapture({ open, onClose, onResult, existingCategories = [], mode = "full", title }: Props) {
   const slots = mode === "expiry_only"
     ? [{ key: "expiry" as Kind, label: "Foto Kadaluarsa", hint: "Boleh > 1 sekaligus" }]
@@ -38,8 +40,10 @@ export function AIPhotoCapture({ open, onClose, onResult, existingCategories = [
 
   const [images, setImages] = useState<Partial<Record<Kind, string>>>({});
   const [analyzing, setAnalyzing] = useState(false);
+  const [storeType, setStoreType] = useState<StoreType>("auto");
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const analyze = useServerFn(analyzeProductPhotos);
+
 
   const reset = () => {
     setImages({});
@@ -76,7 +80,7 @@ export function AIPhotoCapture({ open, onClose, onResult, existingCategories = [
     }
     setAnalyzing(true);
     try {
-      const r = await analyze({ data: { images: payload, existing_categories: existingCategories, mode } });
+      const r = await analyze({ data: { images: payload, existing_categories: existingCategories, mode, store_type: storeType } });
       onResult(r);
       toast.success("Foto berhasil dianalisa");
       reset();
@@ -100,7 +104,38 @@ export function AIPhotoCapture({ open, onClose, onResult, existingCategories = [
           </DialogDescription>
         </DialogHeader>
 
+        {mode === "full" && (
+          <div className="rounded-md border bg-muted/30 p-2.5 space-y-1.5">
+            <div className="text-xs font-medium">Strategi harga jual</div>
+            <div className="flex flex-wrap gap-1.5">
+              {([
+                { v: "auto", l: "Auto-deteksi", d: "AI tebak dari foto" },
+                { v: "warung", l: "Warung (eceran)", d: "Margin 10-20%" },
+                { v: "grosiran", l: "Grosiran", d: "Untung Rp 500-1.000/pcs" },
+                { v: "both", l: "Warung + Grosir", d: "Eceran + harga box/dus" },
+              ] as { v: StoreType; l: string; d: string }[]).map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setStoreType(opt.v)}
+                  className={`text-xs rounded-full border px-2.5 py-1 transition ${storeType === opt.v ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"}`}
+                  title={opt.d}
+                >
+                  {opt.l}
+                </button>
+              ))}
+            </div>
+            <div className="text-[11px] text-muted-foreground">
+              {storeType === "warung" && "AI akan kasih 1 satuan (pcs) dengan margin warung 10-20%."}
+              {storeType === "grosiran" && "AI akan kasih satuan pcs + box/dus dengan untung tipis Rp 500-1.000 per pcs."}
+              {storeType === "both" && "AI akan kasih harga eceran (margin warung) + harga grosir per box/dus."}
+              {storeType === "auto" && "AI memilih sendiri berdasarkan foto kemasan."}
+            </div>
+          </div>
+        )}
+
         <div className="grid gap-3 sm:grid-cols-2">
+
           {slots.map((s) => {
             const img = images[s.key];
             return (
