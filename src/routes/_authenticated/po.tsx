@@ -828,6 +828,14 @@ function POPage() {
         onClose={() => setAiOpen(false)}
         onResult={applyAiResultToPO}
       />
+
+      <ReceivingDialog
+        open={!!receiveFor}
+        poId={receiveFor?.id ?? null}
+        poSupplier={receiveFor?.supplier}
+        onOpenChange={(o) => { if (!o) setReceiveFor(null); }}
+        onDone={() => { setReceiveFor(null); setDetailOpen(null); load(); }}
+      />
     </div>
   );
 }
