@@ -387,6 +387,7 @@ function KasirPage() {
       paidNum = Number(paid.replace(/[^\d]/g, ""));
       if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
       cashPart = paidNum;
+    }
     const phoneClean = customerPhone.replace(/[^\d]/g, "");
     if (sendWa && phoneClean.length < 8) { toast.error("Nomor HP tidak valid"); return; }
     setSubmitting(true);
