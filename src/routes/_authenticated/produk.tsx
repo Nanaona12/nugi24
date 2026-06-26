@@ -778,6 +778,17 @@ function ProdukPage() {
               Atur info dasar, satuan (pcs/slove/dus), dan tingkatan harga grosir.
             </DialogDescription>
           </DialogHeader>
+
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-primary/5 p-2.5">
+            <div className="text-xs text-muted-foreground">
+              <span className="inline-flex items-center gap-1 font-medium text-foreground"><Sparkles className="h-3.5 w-3.5 text-primary" /> Isi otomatis dengan AI</span>
+              <div>Foto kemasan, barcode, tanggal kadaluarsa, atau struk → AI isi form & rekomendasi harga jual.</div>
+            </div>
+            <Button type="button" size="sm" onClick={() => setAiOpen(true)}>
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Scan dengan AI
+            </Button>
+          </div>
+
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Kode (otomatis jika kosong)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="Biarkan kosong → BRG0001" />
             <FormField label="Barcode (opsional)" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan / ketik barcode produk" />
@@ -786,6 +797,17 @@ function ProdukPage() {
             <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
             <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
           </div>
+
+          {aiHint && (
+            <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
+              <div className="flex items-center gap-1.5 font-semibold text-foreground"><Sparkles className="h-3.5 w-3.5 text-primary" /> Rekomendasi Harga AI</div>
+              {aiHint.price != null && <div>Harga jual: <b>Rp {aiHint.price.toLocaleString("id-ID")}</b></div>}
+              {aiHint.margin != null && <div>Margin: <b>{aiHint.margin.toFixed(0)}%</b>{aiHint.profit != null && <> · Untung ~ <b>Rp {Math.round(aiHint.profit).toLocaleString("id-ID")}</b>/pcs</>}</div>}
+              {aiHint.reasoning && <div className="text-muted-foreground italic">"{aiHint.reasoning}"</div>}
+              <div className="text-muted-foreground">Harga sudah diisi ke satuan dasar; bisa Anda ubah sebelum simpan.</div>
+            </div>
+          )}
+
 
           <UnitsEditor units={formUnits} onChange={setFormUnits} />
 
