@@ -505,7 +505,7 @@ function KasirPage() {
     } catch (e) {
       setReceiptImg(null);
     }
-    setCart([]); setPaid(""); setPayOpen(false); setSubmitting(false);
+    setCart([]); setPaid(""); setSplitCash(""); setSplitQris(""); setQris(null); setPayOpen(false); setSubmitting(false);
     setSendWa(false); setCustomerPhone(""); setCustomerName(""); setPaymentMethod("cash");
     loadProducts();
   };
