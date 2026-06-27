@@ -989,6 +989,7 @@ export type Database = {
           name: string
           owner_user_id: string
           phone: string | null
+          static_qris_payload: string | null
           updated_at: string
         }
         Insert: {
@@ -1001,6 +1002,7 @@ export type Database = {
           name: string
           owner_user_id: string
           phone?: string | null
+          static_qris_payload?: string | null
           updated_at?: string
         }
         Update: {
@@ -1013,6 +1015,7 @@ export type Database = {
           name?: string
           owner_user_id?: string
           phone?: string | null
+          static_qris_payload?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -1194,6 +1197,7 @@ export type Database = {
           id: string
           name: string
           phone: string
+          static_qris_payload: string
         }[]
       }
       generate_cashier_code: { Args: never; Returns: string }
