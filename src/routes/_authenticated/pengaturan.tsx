@@ -3,14 +3,18 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getMyBilling, updateMyTenant, changeMyPassword } from "@/lib/billing.functions";
+import { getMyBilling, updateMyTenant, changeMyPassword, getMyStaticQris, setMyStaticQris } from "@/lib/billing.functions";
 import { getMyCashierCode, regenerateMyCashierCode } from "@/lib/cashier-auth.functions";
+import { convertStaticToDynamicQris } from "@/lib/qris-static";
+import jsQR from "jsqr";
+import QRCode from "qrcode";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { User, KeyRound, Store, ArrowLeft, Mail, ShieldQuestion, RefreshCcw, Copy, Check } from "lucide-react";
+import { User, KeyRound, Store, ArrowLeft, Mail, ShieldQuestion, RefreshCcw, Copy, Check, QrCode, Upload, Trash2 } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/pengaturan")({
@@ -103,6 +107,8 @@ function PengaturanPage() {
 
       <CashierCodeCard />
 
+      <StaticQrisCard />
+
 
 
       <Card>
@@ -181,4 +187,108 @@ function CashierCodeCard() {
     </Card>
   );
 }
+
+function StaticQrisCard() {
+  const getFn = useServerFn(getMyStaticQris);
+  const setFn = useServerFn(setMyStaticQris);
+  const [payload, setPayload] = useState<string>("");
+  const [preview, setPreview] = useState<string | null>(null);
+  const [decoding, setDecoding] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const r = (await getFn()) as { payload: string | null };
+        setPayload(r.payload ?? "");
+        if (r.payload) {
+          const url = await QRCode.toDataURL(r.payload, { width: 220, margin: 1 });
+          setPreview(url);
+        }
+      } catch {}
+    })();
+  }, []);
+
+  const decodeFromFile = async (file: File) => {
+    setDecoding(true);
+    try {
+      const bmp = await createImageBitmap(file);
+      const canvas = document.createElement("canvas");
+      canvas.width = bmp.width; canvas.height = bmp.height;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(bmp, 0, 0);
+      const img = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(img.data, img.width, img.height);
+      if (!code?.data) throw new Error("QR tidak terbaca. Coba gambar yang lebih jelas / cropped.");
+      const data = code.data.trim();
+      if (!/^00\d{2}01/.test(data)) throw new Error("Bukan format QRIS yang dikenali.");
+      setPayload(data);
+      const url = await QRCode.toDataURL(data, { width: 220, margin: 1 });
+      setPreview(url);
+      toast.success("QRIS berhasil dibaca dari gambar");
+    } catch (e: any) {
+      toast.error(e.message || "Gagal membaca QR");
+    } finally { setDecoding(false); }
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await setFn({ data: { payload: payload || null } });
+      toast.success("QRIS statis tersimpan");
+      if (payload) {
+        const url = await QRCode.toDataURL(payload, { width: 220, margin: 1 });
+        setPreview(url);
+      }
+    } catch (e: any) { toast.error(e.message); }
+    finally { setSaving(false); }
+  };
+
+  const clear = async () => {
+    if (!confirm("Hapus QRIS statis tersimpan?")) return;
+    setPayload(""); setPreview(null);
+    try { await setFn({ data: { payload: null } }); toast.success("QRIS statis dihapus"); }
+    catch (e: any) { toast.error(e.message); }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><QrCode className="h-5 w-5" />QRIS Statis Toko</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Upload QRIS statis milik toko (GoPay Merchant, OVO Merchant, BCA, Mandiri, dll). Saat kasir menerima pembayaran QRIS, sistem otomatis mengubahnya menjadi QRIS Dinamis dengan nominal sesuai transaksi — pelanggan tinggal scan & bayar persis. Konfirmasi pembayaran tetap manual (tidak ada notifikasi otomatis seperti Midtrans).
+        </p>
+        <div className="flex flex-wrap items-start gap-4">
+          <div className="flex-1 min-w-[260px] space-y-2">
+            <Label className="flex items-center gap-1 text-xs"><Upload className="h-3 w-3" />Upload gambar QRIS</Label>
+            <Input type="file" accept="image/*" disabled={decoding} onChange={(e) => {
+              const f = e.target.files?.[0]; if (f) decodeFromFile(f); e.target.value = "";
+            }} />
+            <Label className="text-xs">Atau tempel kode QRIS (dimulai 0002…)</Label>
+            <Textarea rows={3} value={payload} onChange={(e) => setPayload(e.target.value)} placeholder="00020101021126..." className="font-mono text-xs" />
+          </div>
+          {preview && (
+            <div className="rounded-md border bg-white p-2">
+              <img src={preview} alt="QRIS Tersimpan" className="h-40 w-40 object-contain" />
+            </div>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={save} disabled={saving || !payload}>Simpan QRIS</Button>
+          {payload && <Button variant="outline" onClick={clear}><Trash2 className="mr-1 h-4 w-4" />Hapus</Button>}
+          {payload && <Button variant="ghost" onClick={() => {
+            try {
+              const test = convertStaticToDynamicQris(payload, 1000);
+              if (test.length < 30) throw new Error("Hasil terlalu pendek");
+              toast.success("QRIS valid — bisa diubah ke dinamis");
+            } catch (e: any) { toast.error("Validasi gagal: " + e.message); }
+          }}>Tes Validasi</Button>}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 
