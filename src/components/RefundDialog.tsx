@@ -35,7 +35,10 @@ export function RefundDialog({ open, onOpenChange, onDone }: { open: boolean; on
     if (!q) { toast.error("Masukkan nomor struk"); return; }
     setLoading(true);
     try {
-      let { data, error } = await supabase.from("transactions").select("*").ilike("id", `${q}%`).order("created_at", { ascending: false }).limit(1);
+      const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
+      let query = supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(1);
+      query = isFullUuid ? query.eq("id", q) : query.filter("id::text", "ilike", `${q}%`);
+      const { data, error } = await query;
       if (error) throw error;
       if (!data || data.length === 0) { toast.error("Struk tidak ditemukan"); return; }
       const t = data[0] as Tx;
