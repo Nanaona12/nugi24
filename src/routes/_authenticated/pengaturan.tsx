@@ -3,14 +3,18 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getMyBilling, updateMyTenant, changeMyPassword } from "@/lib/billing.functions";
+import { getMyBilling, updateMyTenant, changeMyPassword, getMyStaticQris, setMyStaticQris } from "@/lib/billing.functions";
 import { getMyCashierCode, regenerateMyCashierCode } from "@/lib/cashier-auth.functions";
+import { convertStaticToDynamicQris } from "@/lib/qris-static";
+import jsQR from "jsqr";
+import QRCode from "qrcode";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { User, KeyRound, Store, ArrowLeft, Mail, ShieldQuestion, RefreshCcw, Copy, Check } from "lucide-react";
+import { User, KeyRound, Store, ArrowLeft, Mail, ShieldQuestion, RefreshCcw, Copy, Check, QrCode, Upload, Trash2 } from "lucide-react";
 
 
 export const Route = createFileRoute("/_authenticated/pengaturan")({
