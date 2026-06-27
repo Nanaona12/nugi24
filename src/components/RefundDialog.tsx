@@ -36,11 +36,18 @@ export function RefundDialog({ open, onOpenChange, onDone }: { open: boolean; on
     setLoading(true);
     try {
       const isFullUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(q);
-      let query = supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(1);
-      query = isFullUuid ? query.eq("id", q) : query.filter("id::text", "ilike", `${q}%`);
-      const { data, error } = await query;
-      if (error) throw error;
-      if (!data || data.length === 0) { toast.error("Struk tidak ditemukan"); return; }
+      let row: any = null;
+      if (isFullUuid) {
+        const { data, error } = await supabase.from("transactions").select("*").eq("id", q).limit(1);
+        if (error) throw error;
+        row = data?.[0];
+      } else {
+        const { data, error } = await supabase.from("transactions").select("*").order("created_at", { ascending: false }).limit(500);
+        if (error) throw error;
+        row = (data || []).find((t: any) => String(t.id).toLowerCase().startsWith(q.toLowerCase()));
+      }
+      if (!row) { toast.error("Struk tidak ditemukan"); return; }
+      const data = [row];
       const t = data[0] as Tx;
       setTx(t);
       const { data: its, error: e2 } = await supabase.from("transaction_items").select("*").eq("transaction_id", t.id);
