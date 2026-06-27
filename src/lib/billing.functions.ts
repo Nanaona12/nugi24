@@ -135,7 +135,7 @@ export const updateMyTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { name: string; phone?: string; address?: string; static_qris_payload?: string | null }) => d)
   .handler(async ({ data, context }) => {
-    const patch: Record<string, any> = {
+    const patch: any = {
       name: data.name,
       phone: data.phone ?? null,
       address: data.address ?? null,
