@@ -313,6 +313,7 @@ function KasirPage() {
       const { data: ti } = await supabase.rpc("current_tenant_info");
       const row = Array.isArray(ti) ? ti[0] : ti;
       if (row?.name) setStoreName(row.name as string);
+      if ((row as any)?.static_qris_payload) setStaticQrisPayload((row as any).static_qris_payload as string);
       const { data: cs } = await supabase
         .from("customers")
         .select("id, name, phone")
