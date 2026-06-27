@@ -133,11 +133,39 @@ export const getMyBilling = createServerFn({ method: "GET" })
 
 export const updateMyTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { name: string; phone?: string; address?: string }) => d)
+  .inputValidator((d: { name: string; phone?: string; address?: string; static_qris_payload?: string | null }) => d)
+  .handler(async ({ data, context }) => {
+    const patch: Record<string, any> = {
+      name: data.name,
+      phone: data.phone ?? null,
+      address: data.address ?? null,
+    };
+    if (data.static_qris_payload !== undefined) {
+      patch.static_qris_payload = data.static_qris_payload || null;
+    }
+    const { error } = await context.supabase
+      .from("tenants")
+      .update(patch)
+      .eq("owner_user_id", context.userId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const getMyStaticQris = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: t } = await context.supabase
+      .from("tenants").select("static_qris_payload").eq("owner_user_id", context.userId).maybeSingle();
+    return { payload: (t as any)?.static_qris_payload ?? null };
+  });
+
+export const setMyStaticQris = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { payload: string | null }) => d)
   .handler(async ({ data, context }) => {
     const { error } = await context.supabase
       .from("tenants")
-      .update({ name: data.name, phone: data.phone ?? null, address: data.address ?? null })
+      .update({ static_qris_payload: data.payload || null })
       .eq("owner_user_id", context.userId);
     if (error) throw new Error(error.message);
     return { ok: true };
