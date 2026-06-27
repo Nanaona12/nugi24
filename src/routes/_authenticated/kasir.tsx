@@ -161,9 +161,9 @@ function KasirPage() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
 
-  // Poll QRIS status while pending
+  // Poll QRIS status while pending (Midtrans only)
   useEffect(() => {
-    if (!qris || qris.status !== "pending") return;
+    if (!qris || qris.status !== "pending" || qris.source !== "midtrans") return;
     let stopped = false;
     const tick = async () => {
       try {
@@ -179,7 +179,7 @@ function KasirPage() {
     };
     const id = setInterval(tick, 4000);
     return () => { stopped = true; clearInterval(id); };
-  }, [qris?.order_id, qris?.status]);
+  }, [qris?.order_id, qris?.status, qris?.source]);
 
   const handleCreateQris = async (amountOverride?: number) => {
     const amt = amountOverride ?? totals.total;
@@ -187,7 +187,7 @@ function KasirPage() {
     setQrisLoading(true);
     try {
       const r = (await createQrisFn({ data: { amount: amt, shift_id: activeShift?.shift_id ?? null } })) as any;
-      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending", quota_info: r.quota_info ?? null });
+      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending", source: "midtrans", quota_info: r.quota_info ?? null });
       if (r.quota_info?.over_quota) {
         toast.warning(`Kuota QRIS gratis bulan ini terlampaui Rp ${(r.quota_info.over_amount).toLocaleString("id-ID")}. Kelebihan akan dikenakan MDR ±0,7%.`);
       }
@@ -198,9 +198,30 @@ function KasirPage() {
     }
   };
 
+  const handleCreateStaticQris = async (amountOverride?: number) => {
+    const amt = amountOverride ?? totals.total;
+    if (amt <= 0) { toast.error("Nominal QRIS tidak valid"); return; }
+    if (!staticQrisPayload) { toast.error("QRIS statis belum diatur. Set di Pengaturan → QRIS Statis Toko."); return; }
+    setQrisLoading(true);
+    try {
+      const { convertStaticToDynamicQris } = await import("@/lib/qris-static");
+      const QRCode = (await import("qrcode")).default;
+      const payload = convertStaticToDynamicQris(staticQrisPayload, amt);
+      const url = await QRCode.toDataURL(payload, { width: 320, margin: 1 });
+      const orderId = `STAT-${Date.now()}`;
+      setQris({ order_id: orderId, qr_url: url, amount: amt, status: "pending", source: "static", quota_info: null });
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal membuat QRIS statis");
+    } finally {
+      setQrisLoading(false);
+    }
+  };
+
   const handleCancelQris = async () => {
     if (!qris) return;
-    try { await cancelQrisFn({ data: { order_id: qris.order_id } }); } catch {}
+    if (qris.source === "midtrans") {
+      try { await cancelQrisFn({ data: { order_id: qris.order_id } }); } catch {}
+    }
     setQris(null);
   };
 
