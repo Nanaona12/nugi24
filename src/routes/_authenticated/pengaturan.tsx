@@ -107,6 +107,8 @@ function PengaturanPage() {
 
       <CashierCodeCard />
 
+      <StaticQrisCard />
+
 
 
       <Card>
