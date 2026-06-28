@@ -182,7 +182,27 @@ function Hero({ signedIn }: { signedIn: boolean }) {
 
 function HeroDashboardPreview() {
   const getSummary = useServerFn(getTodayRevenueAndCategories);
-  const summary = getSummary.data ?? { todayTotal: 0, totalAllTime: 0, byCategory: [] };
+  const [summary, setSummary] = useState<{ todayTotal: number; totalAllTime: number; byCategory: Array<{ category: string | null; revenue: number }> }>({ todayTotal: 0, totalAllTime: 0, byCategory: [] });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    getSummary()
+      .then((data) => {
+        if (mounted && data) setSummary(data);
+      })
+      .catch(() => {
+        if (mounted) setSummary({ todayTotal: 0, totalAllTime: 0, byCategory: [] });
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, [getSummary]);
+
+  const resolved = summary;
 
   return (
     <div className="relative mx-auto w-full max-w-md lg:max-w-none">

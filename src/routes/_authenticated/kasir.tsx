@@ -189,13 +189,7 @@ function KasirPage() {
       const packName = it.mode === "grosiran" ? it.unit.name : c.autoUnit?.name || "";
       lines.push(`${it.product.name}`);
       if (showPack) {
-<<<<<<< HEAD
         lines.push(`  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
-=======
-        lines.push(
-          `  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`,
-        );
->>>>>>> bfccd5d (tes)
         if (c.remainder > 0) {
           lines.push(
             `  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(
@@ -750,16 +744,12 @@ function KasirPage() {
       setReceiptImg(dataUrl);
       if (sendWa && phoneClean) {
         const caption = buildReceiptCaption(receipt);
-<<<<<<< HEAD
-        await sendReceiptImageWa(phoneClean, caption, dataUrl, `struk-${tx.id.slice(0, 8)}.png`);
-=======
         await sendReceiptImageWa(
           phoneClean,
           caption,
           dataUrl,
           `struk-${tx.id.slice(0, 8)}.png`,
         );
->>>>>>> bfccd5d (tes)
       }
     } catch (e) {
       setReceiptImg(null);
@@ -1173,44 +1163,6 @@ function KasirPage() {
                 <div className="rounded-lg bg-muted p-4 text-center">
                   <div className="text-sm text-muted-foreground">Total Belanja</div>
                   <div className="text-3xl font-bold text-primary">{formatRupiah(totals.total)}</div>
-<<<<<<< HEAD
-=======
-                </div>
-
-                <div>
-                <Label className="mb-1.5 block">Metode Pembayaran</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  <Button
-                    type="button"
-                    variant={paymentMethod === "cash" ? "default" : "outline"}
-                    onClick={() => {
-                      setPaymentMethod("cash");
-                      if (qris) handleCancelQris();
-                    }}
-                  >
-                    💵 Cash
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={paymentMethod === "qris" ? "default" : "outline"}
-                    onClick={() => {
-                      setPaymentMethod("qris");
-                      setPaid(String(totals.total));
-                    }}
-                  >
-                    📱 QRIS
-                  </Button>
-                  <Button
-                    type="button"
-                    variant={paymentMethod === "split" ? "default" : "outline"}
-                    onClick={() => {
-                      setPaymentMethod("split");
-                      if (qris) handleCancelQris();
-                    }}
-                  >
-                    🔀 Split
-                  </Button>
->>>>>>> bfccd5d (tes)
                 </div>
 
                 <div>
@@ -1459,49 +1411,6 @@ function KasirPage() {
                     </div>
                   )}
                 </div>
-<<<<<<< HEAD
-=======
-              )}
-
-                <div className="space-y-2 rounded-lg border p-3">
-                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                    <input
-                      type="checkbox"
-                      className="h-4 w-4"
-                      checked={sendWa}
-                      onChange={(e) => setSendWa(e.target.checked)}
-                    />
-                    Kirim e-struk via WhatsApp
-                  </label>
-                  {sendWa && (
-                    <div className="space-y-2">
-                      <CustomerPicker
-                        customers={customers}
-                        name={customerName}
-                        phone={customerPhone}
-                        onPick={(c) => {
-                          setCustomerName(c.name);
-                          if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
-                        }}
-                        onChangeName={setCustomerName}
-                        onChangePhone={(v) => setCustomerPhone(v.replace(/[^\d+]/g, ""))}
-                      />
-                      {selectedCustomer ? (
-                        <div className="text-xs text-muted-foreground">
-                          Poin pelanggan: <span className="font-semibold">{selectedCustomer.points}</span>
-                        </div>
-                      ) : customerPhone ? (
-                        <div className="text-xs text-muted-foreground">
-                          Pelanggan baru akan disimpan dengan poin 0.
-                        </div>
-                      ) : null}
-                      <div className="text-xs text-muted-foreground">
-                        Cari pelanggan tersimpan via nama atau no. HP. Data akan dicantumkan pada caption WhatsApp.
-                      </div>
-                    </div>
-                  )}
-                </div>
->>>>>>> bfccd5d (tes)
               </div>
             </div>
             <DialogFooter className="mt-4 shrink-0 border-t pt-4">

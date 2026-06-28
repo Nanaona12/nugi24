@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getMyBilling, createMidtransPayment, updateMyTenant, listPlanAudit } from "@/lib/billing.functions";
-import { PLANS, priceFor, yearlySavingPct, qrisQuotaFor, type PlanId, type BillingPeriod } from "@/lib/plans";
+import { PLANS, priceFor, yearlySavingPct, type PlanId, type BillingPeriod } from "@/lib/plans";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -153,10 +153,7 @@ function LanggananPage() {
             <CardContent className="space-y-2">
               <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
                 <span>
-                  Terpakai <b>{formatRupiah(used)}</b> dari kuota <b>{formatRupiah(quota)}</b>
-                </span>
-                <span className={over ? "text-destructive font-semibold" : "text-muted-foreground"}>
-                  {pct}%{over && ` • lewat ${formatRupiah(used - quota)}`}
+                  Terpakai <b>{formatRupiah(used)}</b>
                 </span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
