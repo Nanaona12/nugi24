@@ -21,7 +21,7 @@ import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
 import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
-import { createCashierQris, checkCashierQrisStatus, cancelCashierQris } from "@/lib/qris.functions";
+
 import { parseNumber } from "@/lib/format";
 
 
@@ -133,11 +133,8 @@ function KasirPage() {
   const [staticQrisPayload, setStaticQrisPayload] = useState<string | null>(null);
   const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null }[]>([]);
 
-  // QRIS dynamic state
-  const createQrisFn = useServerFn(createCashierQris);
-  const checkQrisFn = useServerFn(checkCashierQrisStatus);
-  const cancelQrisFn = useServerFn(cancelCashierQris);
-  const [qris, setQris] = useState<null | { order_id: string; qr_url: string; amount: number; status: "pending" | "paid" | "expired" | "failed"; source: "midtrans" | "static"; quota_info?: { used: number; quota: number; projected: number; over_quota: boolean; over_amount: number } | null }>(null);
+  // QRIS state (static-only)
+  const [qris, setQris] = useState<null | { order_id: string; qr_url: string; amount: number; status: "pending" | "paid" | "expired" | "failed"; source: "static" }>(null);
   const [qrisLoading, setQrisLoading] = useState(false);
 
   // --- Shift / Cashier lock ---
@@ -161,43 +158,6 @@ function KasirPage() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
 
-  // Poll QRIS status while pending (Midtrans only)
-  useEffect(() => {
-    if (!qris || qris.status !== "pending" || qris.source !== "midtrans") return;
-    let stopped = false;
-    const tick = async () => {
-      try {
-        const r = (await checkQrisFn({ data: { order_id: qris.order_id } })) as any;
-        if (stopped) return;
-        if (r.status !== "pending") {
-          setQris((q) => (q ? { ...q, status: r.status } : q));
-          if (r.status === "paid") toast.success("Pembayaran QRIS diterima");
-          else if (r.status === "expired") toast.error("QRIS kedaluwarsa");
-          else if (r.status === "failed") toast.error("Pembayaran QRIS gagal");
-        }
-      } catch {}
-    };
-    const id = setInterval(tick, 4000);
-    return () => { stopped = true; clearInterval(id); };
-  }, [qris?.order_id, qris?.status, qris?.source]);
-
-  const handleCreateQris = async (amountOverride?: number) => {
-    const amt = amountOverride ?? totals.total;
-    if (amt <= 0) { toast.error("Nominal QRIS tidak valid"); return; }
-    setQrisLoading(true);
-    try {
-      const r = (await createQrisFn({ data: { amount: amt, shift_id: activeShift?.shift_id ?? null } })) as any;
-      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending", source: "midtrans", quota_info: r.quota_info ?? null });
-      if (r.quota_info?.over_quota) {
-        toast.warning(`Kuota QRIS gratis bulan ini terlampaui Rp ${(r.quota_info.over_amount).toLocaleString("id-ID")}. Kelebihan akan dikenakan MDR ±0,7%.`);
-      }
-    } catch (e: any) {
-      toast.error(e?.message || "Gagal membuat QRIS");
-    } finally {
-      setQrisLoading(false);
-    }
-  };
-
   const handleCreateStaticQris = async (amountOverride?: number) => {
     const amt = amountOverride ?? totals.total;
     if (amt <= 0) { toast.error("Nominal QRIS tidak valid"); return; }
@@ -209,7 +169,7 @@ function KasirPage() {
       const payload = convertStaticToDynamicQris(staticQrisPayload, amt);
       const url = await QRCode.toDataURL(payload, { width: 320, margin: 1 });
       const orderId = `STAT-${Date.now()}`;
-      setQris({ order_id: orderId, qr_url: url, amount: amt, status: "pending", source: "static", quota_info: null });
+      setQris({ order_id: orderId, qr_url: url, amount: amt, status: "pending", source: "static" });
     } catch (e: any) {
       toast.error(e?.message || "Gagal membuat QRIS statis");
     } finally {
@@ -218,10 +178,6 @@ function KasirPage() {
   };
 
   const handleCancelQris = async () => {
-    if (!qris) return;
-    if (qris.source === "midtrans") {
-      try { await cancelQrisFn({ data: { order_id: qris.order_id } }); } catch {}
-    }
     setQris(null);
   };
 
@@ -969,28 +925,18 @@ function KasirPage() {
                   const amt = paymentMethod === "split" ? (Number(splitQris.replace(/[^\d]/g, "")) || 0) : totals.total;
                   return (
                     <div className="space-y-2">
-                      <Button
-                        type="button"
-                        className="w-full"
-                        disabled={qrisLoading || amt <= 0}
-                        onClick={() => handleCreateQris(amt)}
-                      >
-                        {qrisLoading ? "Membuat QR…" : `Buat QRIS Dinamis (Midtrans) ${paymentMethod === "split" ? formatRupiah(amt) : ""}`}
-                      </Button>
-                      {staticQrisPayload && (
+                      {staticQrisPayload ? (
                         <Button
                           type="button"
-                          variant="outline"
                           className="w-full"
                           disabled={qrisLoading || amt <= 0}
                           onClick={() => handleCreateStaticQris(amt)}
                         >
-                          Pakai QRIS Statis Toko {paymentMethod === "split" ? formatRupiah(amt) : ""}
+                          {qrisLoading ? "Membuat QR…" : `Buat QRIS ${paymentMethod === "split" ? formatRupiah(amt) : ""}`}
                         </Button>
-                      )}
-                      {!staticQrisPayload && (
+                      ) : (
                         <div className="text-[11px] text-muted-foreground">
-                          Punya QRIS sendiri (GoPay/OVO/BCA dll)? Upload di Pengaturan → QRIS Statis Toko untuk dipakai tanpa biaya Midtrans.
+                          QRIS statis toko belum diatur. Upload di <b>Pengaturan → QRIS Statis Toko</b> agar bisa menerima pembayaran QRIS.
                         </div>
                       )}
                     </div>
@@ -998,63 +944,31 @@ function KasirPage() {
                 })()}
                 {qris && (
                   <div className="space-y-2 text-center">
-                    <div className="text-xs text-muted-foreground">
-                      {qris.source === "static" ? "QRIS Statis Toko (Dinamis)" : `Order: ${qris.order_id}`}
-                    </div>
+                    <div className="text-xs text-muted-foreground">QRIS Toko</div>
                     <div className="mx-auto inline-block rounded-md border bg-white p-2">
                       <img src={qris.qr_url} alt="QRIS" className="h-56 w-56 object-contain" />
                     </div>
                     <div className="text-sm">
                       Nominal: <span className="font-semibold">{formatRupiah(qris.amount)}</span>
                     </div>
-                    {qris.quota_info && (
-                      <div className={`rounded-md border p-2 text-left text-[11px] ${qris.quota_info.over_quota ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200" : "border-muted bg-muted/40 text-muted-foreground"}`}>
-                        Kuota QRIS bulan ini: <b>{formatRupiah(qris.quota_info.used)}</b> / {formatRupiah(qris.quota_info.quota)}
-                        {qris.quota_info.over_quota && (
-                          <div>Kelebihan <b>{formatRupiah(qris.quota_info.over_amount)}</b> akan dikenakan MDR ±0,7% pada tagihan berikutnya.</div>
-                        )}
-                      </div>
-                    )}
-                    {qris.source === "static" && qris.status === "pending" && (
+                    {qris.status === "pending" && (
                       <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-left text-[11px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
-                        ⚠️ QRIS statis tidak otomatis — konfirmasi pembayaran masuk lewat aplikasi merchant Anda (GoPay/OVO/BCA), lalu klik <b>Tandai Sudah Dibayar</b>.
-                      </div>
-                    )}
-                    {qris.status === "pending" && qris.source === "midtrans" && (
-                      <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
-                        <Loader2 className="h-3 w-3 animate-spin" /> Menunggu pembayaran… (auto refresh)
+                        ⚠️ Konfirmasi pembayaran masuk lewat aplikasi merchant Anda (GoPay/OVO/BCA), lalu klik <b>Tandai Sudah Dibayar</b>.
                       </div>
                     )}
                     {qris.status === "paid" && (
                       <div className="text-sm font-semibold text-success">✓ Pembayaran diterima</div>
                     )}
-                    {qris.status === "expired" && (
-                      <div className="text-sm font-semibold text-destructive">QR kedaluwarsa</div>
-                    )}
-                    {qris.status === "failed" && (
-                      <div className="text-sm font-semibold text-destructive">Pembayaran gagal</div>
-                    )}
                     <div className="flex flex-wrap justify-center gap-2 pt-1">
-                      {qris.source === "static" && qris.status === "pending" && (
+                      {qris.status === "pending" && (
                         <Button type="button" size="sm" onClick={() => setQris({ ...qris, status: "paid" })}>
                           Tandai Sudah Dibayar
                         </Button>
-                      )}
-                      {qris.source === "midtrans" && (
-                        <Button type="button" size="sm" variant="outline" onClick={async () => {
-                          try {
-                            const r = (await checkQrisFn({ data: { order_id: qris.order_id } })) as any;
-                            setQris({ ...qris, status: r.status });
-                          } catch (e: any) { toast.error(e?.message || "Gagal cek status"); }
-                        }}>Cek Status</Button>
                       )}
                       <Button type="button" size="sm" variant="ghost" onClick={handleCancelQris}>Batalkan QR</Button>
                     </div>
                   </div>
                 )}
-                <div className="text-[11px] text-muted-foreground">
-                  QR dibuat via Midtrans dengan nominal terkunci. Status pembayaran terdeteksi otomatis.
-                </div>
               </div>
             )}
 
