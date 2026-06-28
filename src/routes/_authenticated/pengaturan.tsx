@@ -291,7 +291,7 @@ function StaticQrisCard() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={save} disabled={saving || !payload}>Simpan QRIS</Button>
-          {payload && <Button variant="outline" onClick={clear}><Trash2 className="mr-1 h-4 w-4" />Hapus</Button>}
+          {payload && <Button variant="outline" onClick={() => setShowDelete(true)}><Trash2 className="mr-1 h-4 w-4" />Hapus</Button>}
           {payload && <Button variant="ghost" onClick={() => {
             try {
               const test = convertStaticToDynamicQris(payload, 1000);
