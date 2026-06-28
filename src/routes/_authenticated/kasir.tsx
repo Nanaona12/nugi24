@@ -997,7 +997,7 @@ function KasirPage() {
             <DialogHeader>
               <DialogTitle>Pembayaran</DialogTitle>
             </DialogHeader>
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto space-y-4 pr-2">
               <div className="rounded-lg bg-muted p-4 text-center">
                 <div className="text-sm text-muted-foreground">Total Belanja</div>
                 <div className="text-3xl font-bold text-primary">{formatRupiah(totals.total)}</div>
