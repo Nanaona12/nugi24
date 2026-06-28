@@ -162,6 +162,114 @@ function KasirPage() {
   }>(null);
   const [copied, setCopied] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
+
+  const buildReceiptCaption = (r: {
+    id: string;
+    total: number;
+    paid: number;
+    change: number;
+    items: CartLine[];
+    at: Date;
+    paymentMethod: "cash" | "qris" | "split";
+    cashPart?: number;
+    qrisPart?: number;
+    customerPhone: string | null;
+    customerName: string | null;
+  }) => {
+    const lines: string[] = [];
+    lines.push(`*${storeName || "Toko"}*`);
+    lines.push(`Struk #${r.id.slice(0, 8)}`);
+    lines.push(new Date(r.at).toLocaleString("id-ID"));
+    if (r.customerName) lines.push(`Pelanggan: ${r.customerName}`);
+    lines.push(`--------------------------------`);
+    for (const it of r.items) {
+      const c = computeLine(it, getUnits(it.product, unitsByProduct));
+      const showPack = c.packs > 0 && (it.mode === "grosiran" || c.autoUnit);
+      const packName = it.mode === "grosiran" ? it.unit.name : c.autoUnit?.name || "";
+      lines.push(`${it.product.name}`);
+      if (showPack) {
+        lines.push(`  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
+        if (c.remainder > 0) {
+          lines.push(
+            `  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(
+              c.remainder * c.ecerPrice,
+            )}`,
+          );
+        }
+      } else {
+        lines.push(`  ${it.qty} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.total)}`);
+      }
+    }
+    lines.push(`--------------------------------`);
+    lines.push(`Total   : ${formatRupiah(r.total)}`);
+    if (r.paymentMethod === "split") {
+      lines.push(`Cash    : ${formatRupiah(r.cashPart || 0)}`);
+      lines.push(`QRIS    : ${formatRupiah(r.qrisPart || 0)}`);
+      lines.push(`Bayar   : ${formatRupiah(r.paid)} (SPLIT)`);
+    } else {
+      lines.push(`Bayar   : ${formatRupiah(r.paid)} (${r.paymentMethod.toUpperCase()})`);
+    }
+    lines.push(`Kembali : ${formatRupiah(r.change)}`);
+    lines.push(``);
+    lines.push(`Terima kasih sudah berbelanja 🙏`);
+    return lines.join("\n");
+  };
+
+  const sendReceiptImageWa = async (
+    target: string,
+    caption: string,
+    imageDataUrl: string,
+    filename: string,
+  ): Promise<boolean> => {
+    const base64 = imageDataUrl.split(",")[1] || "";
+    const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    const blob = new Blob([bin], { type: "image/png" });
+    try {
+      const { data: tid, error: tidErr } = await supabase.rpc("current_tenant_id");
+      const tenantId = tid as string | null;
+      if (!tenantId) {
+        throw new Error("Akun ini tidak terhubung ke toko" + (tidErr ? `: ${tidErr.message}` : ""));
+      }
+      const objectPath = `${tenantId}/${filename}`;
+      const upload = await supabase.storage.from("receipts").upload(objectPath, blob, {
+        upsert: true,
+        contentType: "image/png",
+      });
+      let publicUrl: string | null = null;
+      if (!upload.error) {
+        const signed = await supabase.storage.from("receipts").createSignedUrl(objectPath, 60 * 60 * 24 * 7);
+        publicUrl = signed.data?.signedUrl ?? null;
+      }
+
+      const res = publicUrl
+        ? await sendWaUrlFn({
+            data: {
+              target,
+              message: caption,
+              url: publicUrl,
+              filename,
+            },
+          })
+        : await sendWaImgFn({
+            data: {
+              target,
+              caption,
+              filename,
+              imageBase64: base64,
+            },
+          });
+
+      if (!res.ok) {
+        throw new Error(res.error || "Gagal kirim WhatsApp");
+      }
+      toast.success("E-struk (gambar) terkirim via WhatsApp");
+      return true;
+    } catch (e: any) {
+      toast.error("Gagal kirim WhatsApp: " + (e?.message || "unknown"));
+      return false;
+    }
+  };
+
   const [modePicker, setModePicker] = useState<Product | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const sendWaImgFn = useServerFn(sendFonnteWaImage);
@@ -590,6 +698,10 @@ function KasirPage() {
         qrisPart: receipt.qrisPart,
       });
       setReceiptImg(dataUrl);
+      if (sendWa && phoneClean) {
+        const caption = buildReceiptCaption(receipt);
+        await sendReceiptImageWa(phoneClean, caption, dataUrl, `struk-${tx.id.slice(0, 8)}.png`);
+      }
     } catch (e) {
       setReceiptImg(null);
     }
