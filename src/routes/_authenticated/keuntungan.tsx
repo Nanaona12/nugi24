@@ -13,13 +13,32 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import {
-  TrendingUp, DollarSign, ShoppingBag, Calendar,
-  Download, AlertTriangle, FileSpreadsheet, FileText, AlarmClock, Boxes,
+  TrendingUp,
+  DollarSign,
+  ShoppingBag,
+  Calendar,
+  Download,
+  AlertTriangle,
+  FileSpreadsheet,
+  FileText,
+  AlarmClock,
+  Boxes,
   BarChart3,
 } from "lucide-react";
 import {
-  ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  Tooltip, CartesianGrid, Legend, PieChart, Pie, Cell,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+  Legend,
+  PieChart,
+  Pie,
+  Cell,
 } from "recharts";
 import * as XLSX from "xlsx";
 
@@ -45,7 +64,16 @@ type Bucket = {
   count: number;
 };
 
-const CHART_COLORS = ["hsl(var(--primary))", "hsl(var(--destructive))", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#14b8a6", "#f97316"];
+const CHART_COLORS = [
+  "hsl(var(--primary))",
+  "hsl(var(--destructive))",
+  "#10b981",
+  "#f59e0b",
+  "#6366f1",
+  "#ec4899",
+  "#14b8a6",
+  "#f97316",
+];
 
 function KeuntunganPage() {
   const [items, setItems] = useState<Item[]>([]);
@@ -57,8 +85,18 @@ function KeuntunganPage() {
   const [exportingPdf, setExportingPdf] = useState(false);
   const [actualCash, setActualCash] = useState<string>("");
   const [actualQris, setActualQris] = useState<string>("");
-  const [expirySummary, setExpirySummary] = useState<{ expired: number; le30: number; le60: number; le90: number }>({ expired: 0, le30: 0, le60: 0, le90: 0 });
-  const [assetSummary, setAssetSummary] = useState<{ totalValue: number; totalUnits: number; productCount: number; topProducts: { name: string; qty: number; value: number }[] }>({ totalValue: 0, totalUnits: 0, productCount: 0, topProducts: [] });
+  const [expirySummary, setExpirySummary] = useState<{ expired: number; le30: number; le60: number; le90: number }>({
+    expired: 0,
+    le30: 0,
+    le60: 0,
+    le90: 0,
+  });
+  const [assetSummary, setAssetSummary] = useState<{
+    totalValue: number;
+    totalUnits: number;
+    productCount: number;
+    topProducts: { name: string; qty: number; value: number }[];
+  }>({ totalValue: 0, totalUnits: 0, productCount: 0, topProducts: [] });
   const chartsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,7 +111,9 @@ function KeuntunganPage() {
       const [itemsRes, txRes] = await Promise.all([
         supabase
           .from("transaction_items")
-          .select("qty, unit_price, unit_cost, subtotal, product_name, product_id, products(category), transactions(created_at)")
+          .select(
+            "qty, unit_price, unit_cost, subtotal, product_name, product_id, products(category), transactions(created_at)",
+          )
           .order("id", { ascending: false })
           .limit(5000),
         supabase
@@ -86,10 +126,9 @@ function KeuntunganPage() {
       else setItems((itemsRes.data || []) as unknown as Item[]);
       if (!txRes.error) setTxs((txRes.data || []) as { created_at: string; total: number; payment_method: string }[]);
 
-      const { data: batches } = await (supabase as any)
-        .from("product_batches")
-        .select("product_id, qty, expiry_date");
-      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const { data: batches } = await (supabase as any).from("product_batches").select("product_id, qty, expiry_date");
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
       const sum = { expired: 0, le30: 0, le60: 0, le90: 0 };
       const batchQtyByProduct = new Map<string, number>();
       for (const b of (batches || []) as { product_id: string; qty: number; expiry_date: string }[]) {
@@ -103,14 +142,14 @@ function KeuntunganPage() {
       setExpirySummary(sum);
 
       // Total Aset: harga modal × qty (pakai batch kalau ada, fallback stok produk)
-      const { data: allProducts } = await supabase
-        .from("products")
-        .select("id, name, cost_price, stock");
-      let totalValue = 0, totalUnits = 0, productCount = 0;
+      const { data: allProducts } = await supabase.from("products").select("id, name, cost_price, stock");
+      let totalValue = 0,
+        totalUnits = 0,
+        productCount = 0;
       const assetRows: { name: string; qty: number; value: number }[] = [];
       for (const p of (allProducts || []) as { id: string; name: string; cost_price: number; stock: number }[]) {
         const batchQty = batchQtyByProduct.get(p.id) || 0;
-        const qty = batchQty > 0 ? batchQty : (Number(p.stock) || 0);
+        const qty = batchQty > 0 ? batchQty : Number(p.stock) || 0;
         if (qty <= 0) continue;
         const value = (Number(p.cost_price) || 0) * qty;
         totalValue += value;
@@ -128,23 +167,37 @@ function KeuntunganPage() {
   const reconcile = useMemo(() => {
     const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
     const to = toDate ? new Date(toDate + "T23:59:59") : null;
-    let cash = 0, qris = 0, other = 0, cashCount = 0, qrisCount = 0;
+    let cash = 0,
+      qris = 0,
+      other = 0,
+      cashCount = 0,
+      qrisCount = 0;
     for (const t of txs) {
       const d = new Date(t.created_at);
       if (from && d < from) continue;
       if (to && d > to) continue;
       const total = Number(t.total) || 0;
       const m = (t.payment_method || "cash").toLowerCase();
-      if (m === "cash" || m === "tunai") { cash += total; cashCount++; }
-      else if (m === "qris" || m === "qr") { qris += total; qrisCount++; }
-      else other += total;
+      if (m === "cash" || m === "tunai") {
+        cash += total;
+        cashCount++;
+      } else if (m === "qris" || m === "qr") {
+        qris += total;
+        qrisCount++;
+      } else other += total;
     }
     const aCash = Number(actualCash.replace(/[^\d-]/g, "")) || 0;
     const aQris = Number(actualQris.replace(/[^\d-]/g, "")) || 0;
     return {
-      cash, qris, other, cashCount, qrisCount,
-      actualCash: aCash, actualQris: aQris,
-      diffCash: aCash - cash, diffQris: aQris - qris,
+      cash,
+      qris,
+      other,
+      cashCount,
+      qrisCount,
+      actualCash: aCash,
+      actualQris: aQris,
+      diffCash: aCash - cash,
+      diffQris: aQris - qris,
     };
   }, [txs, fromDate, toDate, actualCash, actualQris]);
 
@@ -168,10 +221,14 @@ function KeuntunganPage() {
     const monthKey = `${now.getFullYear()}-${pad(now.getMonth() + 1)}`;
     const yearKey = String(now.getFullYear());
 
-    let todayProfit = 0, todayRev = 0;
-    let monthProfit = 0, monthRev = 0;
-    let yearProfit = 0, yearRev = 0;
-    let allProfit = 0, allRev = 0;
+    let todayProfit = 0,
+      todayRev = 0;
+    let monthProfit = 0,
+      monthRev = 0;
+    let yearProfit = 0,
+      yearRev = 0;
+    let allProfit = 0,
+      allRev = 0;
     let totalQty = 0;
     let txSet = new Set<string>();
 
@@ -179,8 +236,14 @@ function KeuntunganPage() {
     const monthlyMap = new Map<string, Bucket>();
     const yearlyMap = new Map<string, Bucket>();
     const productMap = new Map<string, { name: string; qty: number; revenue: number; cost: number; profit: number }>();
-    const categoryMap = new Map<string | null, { category: string | null; revenue: number; cost: number; profit: number; count: number }>();
-    const lossMap = new Map<string, { name: string; qty: number; revenue: number; cost: number; loss: number; occurrences: number }>();
+    const categoryMap = new Map<
+      string | null,
+      { category: string | null; revenue: number; cost: number; profit: number; count: number }
+    >();
+    const lossMap = new Map<
+      string,
+      { name: string; qty: number; revenue: number; cost: number; loss: number; occurrences: number }
+    >();
 
     for (const it of filteredItems) {
       const at = it.transactions?.created_at;
@@ -193,29 +256,57 @@ function KeuntunganPage() {
       const cost = Number(it.unit_cost) * it.qty;
       const profit = rev - cost;
 
-      allRev += rev; allProfit += profit; totalQty += it.qty;
+      allRev += rev;
+      allProfit += profit;
+      totalQty += it.qty;
       txSet.add(at);
-      if (dk === todayKey) { todayRev += rev; todayProfit += profit; }
-      if (mk === monthKey) { monthRev += rev; monthProfit += profit; }
-      if (yk === yearKey) { yearRev += rev; yearProfit += profit; }
+      if (dk === todayKey) {
+        todayRev += rev;
+        todayProfit += profit;
+      }
+      if (mk === monthKey) {
+        monthRev += rev;
+        monthProfit += profit;
+      }
+      if (yk === yearKey) {
+        yearRev += rev;
+        yearProfit += profit;
+      }
 
       bump(dailyMap, dk, dk, rev, cost, profit);
       bump(monthlyMap, mk, mk, rev, cost, profit);
       bump(yearlyMap, yk, yk, rev, cost, profit);
 
       const pm = productMap.get(it.product_name) || { name: it.product_name, qty: 0, revenue: 0, cost: 0, profit: 0 };
-      pm.qty += it.qty; pm.revenue += rev; pm.cost += cost; pm.profit += profit;
+      pm.qty += it.qty;
+      pm.revenue += rev;
+      pm.cost += cost;
+      pm.profit += profit;
       productMap.set(it.product_name, pm);
 
       // category aggregation (if available)
       const cat = (it as any).products?.category ?? null;
       const cm = categoryMap.get(cat) || { category: cat, revenue: 0, cost: 0, profit: 0, count: 0 };
-      cm.revenue += rev; cm.cost += cost; cm.profit += profit; cm.count += it.qty;
+      cm.revenue += rev;
+      cm.cost += cost;
+      cm.profit += profit;
+      cm.count += it.qty;
       categoryMap.set(cat, cm);
 
       if (profit < 0 && Number(it.unit_cost) > 0) {
-        const lm = lossMap.get(it.product_name) || { name: it.product_name, qty: 0, revenue: 0, cost: 0, loss: 0, occurrences: 0 };
-        lm.qty += it.qty; lm.revenue += rev; lm.cost += cost; lm.loss += profit; lm.occurrences += 1;
+        const lm = lossMap.get(it.product_name) || {
+          name: it.product_name,
+          qty: 0,
+          revenue: 0,
+          cost: 0,
+          loss: 0,
+          occurrences: 0,
+        };
+        lm.qty += it.qty;
+        lm.revenue += rev;
+        lm.cost += cost;
+        lm.loss += profit;
+        lm.occurrences += 1;
         lossMap.set(it.product_name, lm);
       }
     }
@@ -228,10 +319,22 @@ function KeuntunganPage() {
     const lossMakers = Array.from(lossMap.values()).sort((a, b) => a.loss - b.loss);
 
     return {
-      todayProfit, todayRev, monthProfit, monthRev, yearProfit, yearRev,
+      todayProfit,
+      todayRev,
+      monthProfit,
+      monthRev,
+      yearProfit,
+      yearRev,
       categories,
-      allProfit, allRev, totalQty, txCount: txSet.size,
-      daily, monthly, yearly, topProducts, lossMakers,
+      allProfit,
+      allRev,
+      totalQty,
+      txCount: txSet.size,
+      daily,
+      monthly,
+      yearly,
+      topProducts,
+      lossMakers,
     };
   }, [filteredItems]);
 
@@ -262,7 +365,10 @@ function KeuntunganPage() {
     const bucketRows = (arr: Bucket[], labelFn: (k: string) => string) => [
       ["Periode", "Omset", "Modal", "Keuntungan", "Margin (%)", "Jumlah Item"],
       ...arr.map((r) => [
-        labelFn(r.key), r.revenue, r.cost, r.profit,
+        labelFn(r.key),
+        r.revenue,
+        r.cost,
+        r.profit,
         r.revenue > 0 ? Number(((r.profit / r.revenue) * 100).toFixed(2)) : 0,
         r.count,
       ]),
@@ -274,7 +380,11 @@ function KeuntunganPage() {
     const productRows = [
       ["Produk", "Qty Terjual", "Omset", "Modal", "Keuntungan", "Margin (%)"],
       ...stats.topProducts.map((p) => [
-        p.name, p.qty, p.revenue, p.cost, p.profit,
+        p.name,
+        p.qty,
+        p.revenue,
+        p.cost,
+        p.profit,
         p.revenue > 0 ? Number(((p.profit / p.revenue) * 100).toFixed(2)) : 0,
       ]),
     ];
@@ -288,7 +398,6 @@ function KeuntunganPage() {
       XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(lossRows), "Rugi");
     }
 
-
     const ts = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `Laporan-Keuntungan-${ts}.xlsx`);
     toast.success("Laporan Excel berhasil diunduh");
@@ -297,14 +406,21 @@ function KeuntunganPage() {
   function exportCSV() {
     const header = ["Tanggal", "Omset", "Modal", "Keuntungan", "Margin %", "Jumlah Item"];
     const rows = stats.daily.map((r) => [
-      formatDate(r.key), r.revenue, r.cost, r.profit,
-      r.revenue > 0 ? ((r.profit / r.revenue) * 100).toFixed(2) : "0", r.count,
+      formatDate(r.key),
+      r.revenue,
+      r.cost,
+      r.profit,
+      r.revenue > 0 ? ((r.profit / r.revenue) * 100).toFixed(2) : "0",
+      r.count,
     ]);
-    const csv = [header, ...rows].map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const csv = [header, ...rows]
+      .map((row) => row.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
     const blob = new Blob([`\ufeff${csv}`], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    a.href = url; a.download = `Keuntungan-Harian-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.href = url;
+    a.download = `Keuntungan-Harian-${new Date().toISOString().slice(0, 10)}.csv`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("CSV berhasil diunduh");
@@ -340,9 +456,24 @@ function KeuntunganPage() {
       // ===== KPI CARDS =====
       const kpis = [
         { label: "Total Omset", value: formatRupiah(stats.allRev), color: [59, 130, 246] as [number, number, number] },
-        { label: "Total Modal", value: formatRupiah(stats.allRev - stats.allProfit), color: [148, 163, 184] as [number, number, number] },
-        { label: "Total Keuntungan", value: formatRupiah(stats.allProfit), color: stats.allProfit >= 0 ? [16, 185, 129] as [number, number, number] : [220, 38, 38] as [number, number, number] },
-        { label: "Margin", value: `${stats.allRev > 0 ? ((stats.allProfit / stats.allRev) * 100).toFixed(1) : 0}%`, color: [234, 88, 12] as [number, number, number] },
+        {
+          label: "Total Modal",
+          value: formatRupiah(stats.allRev - stats.allProfit),
+          color: [148, 163, 184] as [number, number, number],
+        },
+        {
+          label: "Total Keuntungan",
+          value: formatRupiah(stats.allProfit),
+          color:
+            stats.allProfit >= 0
+              ? ([16, 185, 129] as [number, number, number])
+              : ([220, 38, 38] as [number, number, number]),
+        },
+        {
+          label: "Margin",
+          value: `${stats.allRev > 0 ? ((stats.allProfit / stats.allRev) * 100).toFixed(1) : 0}%`,
+          color: [234, 88, 12] as [number, number, number],
+        },
       ];
       const cardW = (pageW - margin * 2 - 6) / 4;
       kpis.forEach((k, i) => {
@@ -364,7 +495,11 @@ function KeuntunganPage() {
 
       doc.setFontSize(8);
       doc.setTextColor(100, 100, 100);
-      doc.text(`Transaksi: ${stats.txCount}   •   Item terjual: ${stats.totalQty}   •   Hari ini: ${formatRupiah(stats.todayProfit)}   •   Bulan ini: ${formatRupiah(stats.monthProfit)}`, margin, y);
+      doc.text(
+        `Transaksi: ${stats.txCount}   •   Item terjual: ${stats.totalQty}   •   Hari ini: ${formatRupiah(stats.todayProfit)}   •   Bulan ini: ${formatRupiah(stats.monthProfit)}`,
+        margin,
+        y,
+      );
       y += 6;
 
       // ===== CHARTS (capture from DOM) =====
@@ -374,7 +509,10 @@ function KeuntunganPage() {
           const imgData = canvas.toDataURL("image/png");
           const imgW = pageW - margin * 2;
           const imgH = (canvas.height * imgW) / canvas.width;
-          if (y + imgH > pageH - margin) { doc.addPage(); y = margin; }
+          if (y + imgH > pageH - margin) {
+            doc.addPage();
+            y = margin;
+          }
           doc.setFont("helvetica", "bold");
           doc.setFontSize(11);
           doc.setTextColor(20, 20, 20);
@@ -389,7 +527,10 @@ function KeuntunganPage() {
 
       // ===== LOSS MAKERS (root cause) =====
       if (stats.lossMakers.length > 0) {
-        if (y > pageH - 60) { doc.addPage(); y = margin; }
+        if (y > pageH - 60) {
+          doc.addPage();
+          y = margin;
+        }
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.setTextColor(220, 38, 38);
@@ -398,21 +539,37 @@ function KeuntunganPage() {
         autoTable(doc, {
           startY: y + 2,
           head: [["Produk", "Qty", "Omset", "Modal", "Kerugian", "Kejadian"]],
-          body: stats.lossMakers.slice(0, 15).map((l) => [
-            l.name, l.qty, formatRupiah(l.revenue), formatRupiah(l.cost), formatRupiah(l.loss), `${l.occurrences}x`,
-          ]),
+          body: stats.lossMakers
+            .slice(0, 15)
+            .map((l) => [
+              l.name,
+              l.qty,
+              formatRupiah(l.revenue),
+              formatRupiah(l.cost),
+              formatRupiah(l.loss),
+              `${l.occurrences}x`,
+            ]),
           theme: "striped",
           headStyles: { fillColor: [220, 38, 38], textColor: 255, fontSize: 8 },
           bodyStyles: { fontSize: 8 },
           margin: { left: margin, right: margin },
-          columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right", textColor: [220, 38, 38] }, 5: { halign: "right" } },
+          columnStyles: {
+            1: { halign: "right" },
+            2: { halign: "right" },
+            3: { halign: "right" },
+            4: { halign: "right", textColor: [220, 38, 38] },
+            5: { halign: "right" },
+          },
         });
         y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
       }
 
       // ===== TOP PRODUCTS =====
       if (stats.topProducts.length > 0) {
-        if (y > pageH - 60) { doc.addPage(); y = margin; }
+        if (y > pageH - 60) {
+          doc.addPage();
+          y = margin;
+        }
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.setTextColor(20, 20, 20);
@@ -420,22 +577,37 @@ function KeuntunganPage() {
         autoTable(doc, {
           startY: y + 2,
           head: [["Produk", "Qty", "Omset", "Modal", "Untung", "Margin"]],
-          body: stats.topProducts.slice(0, 20).map((p) => [
-            p.name, p.qty, formatRupiah(p.revenue), formatRupiah(p.cost), formatRupiah(p.profit),
-            `${p.revenue > 0 ? ((p.profit / p.revenue) * 100).toFixed(1) : 0}%`,
-          ]),
+          body: stats.topProducts
+            .slice(0, 20)
+            .map((p) => [
+              p.name,
+              p.qty,
+              formatRupiah(p.revenue),
+              formatRupiah(p.cost),
+              formatRupiah(p.profit),
+              `${p.revenue > 0 ? ((p.profit / p.revenue) * 100).toFixed(1) : 0}%`,
+            ]),
           theme: "striped",
           headStyles: { fillColor: [234, 88, 12], textColor: 255, fontSize: 8 },
           bodyStyles: { fontSize: 8 },
           margin: { left: margin, right: margin },
-          columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right" } },
+          columnStyles: {
+            1: { halign: "right" },
+            2: { halign: "right" },
+            3: { halign: "right" },
+            4: { halign: "right" },
+            5: { halign: "right" },
+          },
         });
         y = (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 6;
       }
 
       // ===== DAILY =====
       if (stats.daily.length > 0) {
-        if (y > pageH - 60) { doc.addPage(); y = margin; }
+        if (y > pageH - 60) {
+          doc.addPage();
+          y = margin;
+        }
         doc.setFont("helvetica", "bold");
         doc.setFontSize(11);
         doc.setTextColor(20, 20, 20);
@@ -445,22 +617,32 @@ function KeuntunganPage() {
           startY: y + 2,
           head: [["Tanggal", "Omset", "Modal", "Keuntungan", "Margin"]],
           body: dailyRows.map((r) => [
-            formatDate(r.key), formatRupiah(r.revenue), formatRupiah(r.cost), formatRupiah(r.profit),
+            formatDate(r.key),
+            formatRupiah(r.revenue),
+            formatRupiah(r.cost),
+            formatRupiah(r.profit),
             `${r.revenue > 0 ? ((r.profit / r.revenue) * 100).toFixed(1) : 0}%`,
           ]),
-          foot: [[
-            "TOTAL",
-            formatRupiah(dailyRows.reduce((s, r) => s + r.revenue, 0)),
-            formatRupiah(dailyRows.reduce((s, r) => s + r.cost, 0)),
-            formatRupiah(dailyRows.reduce((s, r) => s + r.profit, 0)),
-            "",
-          ]],
+          foot: [
+            [
+              "TOTAL",
+              formatRupiah(dailyRows.reduce((s, r) => s + r.revenue, 0)),
+              formatRupiah(dailyRows.reduce((s, r) => s + r.cost, 0)),
+              formatRupiah(dailyRows.reduce((s, r) => s + r.profit, 0)),
+              "",
+            ],
+          ],
           theme: "striped",
           headStyles: { fillColor: [234, 88, 12], textColor: 255, fontSize: 8 },
           footStyles: { fillColor: [240, 240, 240], textColor: 20, fontStyle: "bold", fontSize: 8 },
           bodyStyles: { fontSize: 8 },
           margin: { left: margin, right: margin },
-          columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" } },
+          columnStyles: {
+            1: { halign: "right" },
+            2: { halign: "right" },
+            3: { halign: "right" },
+            4: { halign: "right" },
+          },
         });
       }
 
@@ -485,7 +667,6 @@ function KeuntunganPage() {
     }
   }
 
-
   if (loading) {
     return <div className="py-12 text-center text-sm text-muted-foreground">Memuat data keuntungan...</div>;
   }
@@ -502,7 +683,16 @@ function KeuntunganPage() {
           <Label className="text-xs">Sampai Tanggal</Label>
           <Input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} className="h-9 w-[160px]" />
         </div>
-        <Button variant="outline" size="sm" onClick={() => { setFromDate(""); setToDate(""); }}>Reset</Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setFromDate("");
+            setToDate("");
+          }}
+        >
+          Reset
+        </Button>
         <div className="ml-auto flex flex-wrap gap-2">
           <Button size="sm" variant="outline" onClick={exportCSV}>
             <Download className="mr-1 h-4 w-4" /> CSV
@@ -538,10 +728,32 @@ function KeuntunganPage() {
       )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={<Calendar className="h-5 w-5" />} label="Keuntungan Hari Ini" value={formatRupiah(stats.todayProfit)} sub={`Omset ${formatRupiah(stats.todayRev)}`} tone="primary" />
-        <StatCard icon={<TrendingUp className="h-5 w-5" />} label="Keuntungan Bulan Ini" value={formatRupiah(stats.monthProfit)} sub={`Omset ${formatRupiah(stats.monthRev)}`} tone="success" />
-        <StatCard icon={<DollarSign className="h-5 w-5" />} label="Keuntungan Tahun Ini" value={formatRupiah(stats.yearProfit)} sub={`Omset ${formatRupiah(stats.yearRev)}`} />
-        <StatCard icon={<ShoppingBag className="h-5 w-5" />} label="Total Keuntungan" value={formatRupiah(stats.allProfit)} sub={`${stats.txCount} transaksi • ${stats.totalQty} item`} />
+        <StatCard
+          icon={<Calendar className="h-5 w-5" />}
+          label="Keuntungan Hari Ini"
+          value={formatRupiah(stats.todayProfit)}
+          sub={`Omset ${formatRupiah(stats.todayRev)}`}
+          tone="primary"
+        />
+        <StatCard
+          icon={<TrendingUp className="h-5 w-5" />}
+          label="Keuntungan Bulan Ini"
+          value={formatRupiah(stats.monthProfit)}
+          sub={`Omset ${formatRupiah(stats.monthRev)}`}
+          tone="success"
+        />
+        <StatCard
+          icon={<DollarSign className="h-5 w-5" />}
+          label="Keuntungan Tahun Ini"
+          value={formatRupiah(stats.yearProfit)}
+          sub={`Omset ${formatRupiah(stats.yearRev)}`}
+        />
+        <StatCard
+          icon={<ShoppingBag className="h-5 w-5" />}
+          label="Total Keuntungan"
+          value={formatRupiah(stats.allProfit)}
+          sub={`${stats.txCount} transaksi • ${stats.totalQty} item`}
+        />
       </div>
 
       {/* Total Aset (Nilai Inventori) */}
@@ -594,16 +806,17 @@ function KeuntunganPage() {
         )}
       </Card>
 
-
       {/* Ringkasan Kadaluarsa */}
-      {(expirySummary.expired + expirySummary.le30 + expirySummary.le60 + expirySummary.le90) > 0 && (
+      {expirySummary.expired + expirySummary.le30 + expirySummary.le60 + expirySummary.le90 > 0 && (
         <Card className="p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <AlarmClock className="h-4 w-4 text-amber-500" />
               Barang Mendekati Kadaluarsa
             </div>
-            <Link to="/kadaluarsa" className="text-xs font-medium text-primary hover:underline">Kelola batch →</Link>
+            <Link to="/kadaluarsa" className="text-xs font-medium text-primary hover:underline">
+              Kelola batch →
+            </Link>
           </div>
           <div className="grid gap-2 grid-cols-2 md:grid-cols-4">
             <ExpiryStat label="Expired" count={expirySummary.expired} tone="destructive" />
@@ -621,7 +834,8 @@ function KeuntunganPage() {
           Rekonsiliasi Kas — Cocokkan uang fisik dengan data
         </div>
         <p className="mb-4 text-xs text-muted-foreground">
-          Masukkan jumlah uang fisik (cash di laci) dan saldo masuk QRIS pada rentang tanggal di atas. Sistem akan menghitung selisihnya dengan data transaksi.
+          Masukkan jumlah uang fisik (cash di laci) dan saldo masuk QRIS pada rentang tanggal di atas. Sistem akan
+          menghitung selisihnya dengan data transaksi.
         </p>
         <div className="grid gap-3 md:grid-cols-2">
           <ReconRow
@@ -645,19 +859,33 @@ function KeuntunganPage() {
         </div>
         {reconcile.other > 0 && (
           <div className="mt-3 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
-            Metode lain (transfer/dll): <span className="font-semibold text-foreground">{formatRupiah(reconcile.other)}</span>
+            Metode lain (transfer/dll):{" "}
+            <span className="font-semibold text-foreground">{formatRupiah(reconcile.other)}</span>
           </div>
         )}
         <div className="mt-3 flex flex-wrap gap-2">
-          <Button variant="outline" size="sm" onClick={() => { setActualCash(""); setActualQris(""); }}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setActualCash("");
+              setActualQris("");
+            }}
+          >
             Reset Input
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => { setActualCash(String(reconcile.cash)); setActualQris(String(reconcile.qris)); }}>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setActualCash(String(reconcile.cash));
+              setActualQris(String(reconcile.qris));
+            }}
+          >
             Isi dari Data
           </Button>
         </div>
       </Card>
-
 
       {stats.lossMakers.length > 0 && (
         <Card className="border-destructive/40 bg-destructive/5 p-4">
@@ -666,7 +894,8 @@ function KeuntunganPage() {
             Penyebab Keuntungan Minus — {stats.lossMakers.length} produk dijual di bawah modal
           </div>
           <p className="mb-3 text-xs text-muted-foreground">
-            Produk berikut harga jualnya lebih rendah dari harga modal. Naikkan harga jual (terutama tier grosir/slove) atau perbaiki harga modal di menu Produk.
+            Produk berikut harga jualnya lebih rendah dari harga modal. Naikkan harga jual (terutama tier grosir/slove)
+            atau perbaiki harga modal di menu Produk.
           </p>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -700,9 +929,7 @@ function KeuntunganPage() {
       )}
 
       {filteredItems.length === 0 && (
-        <Card className="p-6 text-sm text-muted-foreground">
-          Belum ada data transaksi pada rentang ini.
-        </Card>
+        <Card className="p-6 text-sm text-muted-foreground">Belum ada data transaksi pada rentang ini.</Card>
       )}
 
       {/* Charts */}
@@ -711,7 +938,11 @@ function KeuntunganPage() {
           <Card className="p-4">
             <div className="mb-3 text-sm font-semibold">Tren Omset & Keuntungan Harian</div>
             <ResponsiveContainer width="100%" height={260}>
-              <LineChart data={stats.daily.slice(-30).map((d) => ({ tgl: d.key.slice(5), Omset: d.revenue, Keuntungan: d.profit }))}>
+              <LineChart
+                data={stats.daily
+                  .slice(-30)
+                  .map((d) => ({ tgl: d.key.slice(5), Omset: d.revenue, Keuntungan: d.profit }))}
+              >
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="tgl" fontSize={11} />
                 <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
@@ -726,7 +957,14 @@ function KeuntunganPage() {
           <Card className="p-4">
             <div className="mb-3 text-sm font-semibold">Top 8 Produk Berdasarkan Keuntungan</div>
             <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={stats.topProducts.slice(0, 8).map((p) => ({ name: p.name.length > 12 ? p.name.slice(0, 12) + "…" : p.name, Keuntungan: p.profit }))}>
+              <BarChart
+                data={stats.topProducts
+                  .slice(0, 8)
+                  .map((p) => ({
+                    name: p.name.length > 12 ? p.name.slice(0, 12) + "…" : p.name,
+                    Keuntungan: p.profit,
+                  }))}
+              >
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="name" fontSize={10} angle={-20} textAnchor="end" height={60} />
                 <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
@@ -740,7 +978,11 @@ function KeuntunganPage() {
             <Card className="p-4">
               <div className="mb-3 text-sm font-semibold">Perbandingan Modal vs Omset (Bulanan)</div>
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={stats.monthly.slice(-12).map((m) => ({ bln: m.key, Omset: m.revenue, Modal: m.cost, Keuntungan: m.profit }))}>
+                <BarChart
+                  data={stats.monthly
+                    .slice(-12)
+                    .map((m) => ({ bln: m.key, Omset: m.revenue, Modal: m.cost, Keuntungan: m.profit }))}
+                >
                   <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                   <XAxis dataKey="bln" fontSize={11} />
                   <YAxis fontSize={11} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
@@ -761,7 +1003,10 @@ function KeuntunganPage() {
                 <PieChart>
                   <Pie
                     data={stats.topProducts.slice(0, 6).map((p) => ({ name: p.name, value: p.revenue }))}
-                    dataKey="value" nameKey="name" outerRadius={90} label={(e) => e.name}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={90}
+                    label={(e) => e.name}
                   >
                     {stats.topProducts.slice(0, 6).map((_, i) => (
                       <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
@@ -775,7 +1020,6 @@ function KeuntunganPage() {
         </div>
       )}
 
-
       <Tabs defaultValue="daily">
         <TabsList>
           <TabsTrigger value="daily">Per Hari</TabsTrigger>
@@ -785,10 +1029,18 @@ function KeuntunganPage() {
         </TabsList>
 
         <TabsContent value="daily">
-          <BucketTable rows={[...stats.daily].reverse().slice(0, 60)} labelHeader="Tanggal" formatLabel={(k) => formatDate(k)} />
+          <BucketTable
+            rows={[...stats.daily].reverse().slice(0, 60)}
+            labelHeader="Tanggal"
+            formatLabel={(k) => formatDate(k)}
+          />
         </TabsContent>
         <TabsContent value="monthly">
-          <BucketTable rows={[...stats.monthly].reverse().slice(0, 24)} labelHeader="Bulan" formatLabel={(k) => formatMonth(k)} />
+          <BucketTable
+            rows={[...stats.monthly].reverse().slice(0, 24)}
+            labelHeader="Bulan"
+            formatLabel={(k) => formatMonth(k)}
+          />
         </TabsContent>
         <TabsContent value="yearly">
           <BucketTable rows={[...stats.yearly].reverse()} labelHeader="Tahun" formatLabel={(k) => k} />
@@ -808,21 +1060,33 @@ function KeuntunganPage() {
                 </thead>
                 <tbody>
                   {stats.topProducts.length === 0 ? (
-                    <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Belum ada data</td></tr>
-                  ) : stats.topProducts.slice(0, 30).map((p) => {
-                    const margin = p.revenue > 0 ? (p.profit / p.revenue) * 100 : 0;
-                    return (
-                      <tr key={p.name} className="border-t hover:bg-muted/40">
-                        <td className="p-3 font-medium">{p.name}</td>
-                        <td className="p-3 text-right">{p.qty}</td>
-                        <td className="p-3 text-right">{formatRupiah(p.revenue)}</td>
-                        <td className={`p-3 text-right font-semibold ${p.profit < 0 ? "text-destructive" : "text-primary"}`}>{formatRupiah(p.profit)}</td>
-                        <td className="p-3 text-right">
-                          <Badge variant={margin >= 20 ? "default" : margin < 0 ? "destructive" : "secondary"}>{margin.toFixed(1)}%</Badge>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                        Belum ada data
+                      </td>
+                    </tr>
+                  ) : (
+                    stats.topProducts.slice(0, 30).map((p) => {
+                      const margin = p.revenue > 0 ? (p.profit / p.revenue) * 100 : 0;
+                      return (
+                        <tr key={p.name} className="border-t hover:bg-muted/40">
+                          <td className="p-3 font-medium">{p.name}</td>
+                          <td className="p-3 text-right">{p.qty}</td>
+                          <td className="p-3 text-right">{formatRupiah(p.revenue)}</td>
+                          <td
+                            className={`p-3 text-right font-semibold ${p.profit < 0 ? "text-destructive" : "text-primary"}`}
+                          >
+                            {formatRupiah(p.profit)}
+                          </td>
+                          <td className="p-3 text-right">
+                            <Badge variant={margin >= 20 ? "default" : margin < 0 ? "destructive" : "secondary"}>
+                              {margin.toFixed(1)}%
+                            </Badge>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -833,9 +1097,22 @@ function KeuntunganPage() {
   );
 }
 
-function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; labelHeader: string; formatLabel: (k: string) => string }) {
+function BucketTable({
+  rows,
+  labelHeader,
+  formatLabel,
+}: {
+  rows: Bucket[];
+  labelHeader: string;
+  formatLabel: (k: string) => string;
+}) {
   const totals = rows.reduce(
-    (acc, r) => ({ revenue: acc.revenue + r.revenue, cost: acc.cost + r.cost, profit: acc.profit + r.profit, count: acc.count + r.count }),
+    (acc, r) => ({
+      revenue: acc.revenue + r.revenue,
+      cost: acc.cost + r.cost,
+      profit: acc.profit + r.profit,
+      count: acc.count + r.count,
+    }),
     { revenue: 0, cost: 0, profit: 0, count: 0 },
   );
   const totalMargin = totals.revenue > 0 ? (totals.profit / totals.revenue) * 100 : 0;
@@ -862,21 +1139,33 @@ function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; label
           </thead>
           <tbody>
             {rows.length === 0 ? (
-              <tr><td colSpan={5} className="p-8 text-center text-muted-foreground">Belum ada data</td></tr>
-            ) : rows.map((r) => {
-              const margin = r.revenue > 0 ? (r.profit / r.revenue) * 100 : 0;
-              return (
-                <tr key={r.key} className="border-t hover:bg-muted/40">
-                  <td className="p-3 font-medium">{formatLabel(r.key)}</td>
-                  <td className="p-3 text-right">{formatRupiah(r.revenue)}</td>
-                  <td className="p-3 text-right text-muted-foreground">{formatRupiah(r.cost)}</td>
-                  <td className={`p-3 text-right font-semibold ${r.profit < 0 ? "text-destructive" : "text-primary"}`}>{formatRupiah(r.profit)}</td>
-                  <td className="p-3 text-right">
-                    <Badge variant={margin >= 20 ? "default" : margin < 0 ? "destructive" : "secondary"}>{margin.toFixed(1)}%</Badge>
-                  </td>
-                </tr>
-              );
-            })}
+              <tr>
+                <td colSpan={5} className="p-8 text-center text-muted-foreground">
+                  Belum ada data
+                </td>
+              </tr>
+            ) : (
+              rows.map((r) => {
+                const margin = r.revenue > 0 ? (r.profit / r.revenue) * 100 : 0;
+                return (
+                  <tr key={r.key} className="border-t hover:bg-muted/40">
+                    <td className="p-3 font-medium">{formatLabel(r.key)}</td>
+                    <td className="p-3 text-right">{formatRupiah(r.revenue)}</td>
+                    <td className="p-3 text-right text-muted-foreground">{formatRupiah(r.cost)}</td>
+                    <td
+                      className={`p-3 text-right font-semibold ${r.profit < 0 ? "text-destructive" : "text-primary"}`}
+                    >
+                      {formatRupiah(r.profit)}
+                    </td>
+                    <td className="p-3 text-right">
+                      <Badge variant={margin >= 20 ? "default" : margin < 0 ? "destructive" : "secondary"}>
+                        {margin.toFixed(1)}%
+                      </Badge>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
           {rows.length > 0 && (
             <tfoot className="bg-muted/60 font-semibold">
@@ -884,7 +1173,9 @@ function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; label
                 <td className="p-3">TOTAL</td>
                 <td className="p-3 text-right">{formatRupiah(totals.revenue)}</td>
                 <td className="p-3 text-right text-muted-foreground">{formatRupiah(totals.cost)}</td>
-                <td className={`p-3 text-right ${totals.profit < 0 ? "text-destructive" : "text-primary"}`}>{formatRupiah(totals.profit)}</td>
+                <td className={`p-3 text-right ${totals.profit < 0 ? "text-destructive" : "text-primary"}`}>
+                  {formatRupiah(totals.profit)}
+                </td>
                 <td className="p-3 text-right">{totalMargin.toFixed(1)}%</td>
               </tr>
             </tfoot>
@@ -895,7 +1186,15 @@ function BucketTable({ rows, labelHeader, formatLabel }: { rows: Bucket[]; label
   );
 }
 
-function ExpiryStat({ label, count, tone }: { label: string; count: number; tone: "destructive" | "red" | "orange" | "amber" }) {
+function ExpiryStat({
+  label,
+  count,
+  tone,
+}: {
+  label: string;
+  count: number;
+  tone: "destructive" | "red" | "orange" | "amber";
+}) {
   const cls: Record<string, string> = {
     destructive: "border-destructive/50 bg-destructive/10 text-destructive",
     red: "border-red-500/50 bg-red-500/10 text-red-600",
@@ -911,16 +1210,40 @@ function ExpiryStat({ label, count, tone }: { label: string; count: number; tone
   );
 }
 
-function SummaryItem({ label, value, accent, muted }: { label: string; value: string; accent?: boolean; muted?: boolean }) {
+function SummaryItem({
+  label,
+  value,
+  accent,
+  muted,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+  muted?: boolean;
+}) {
   return (
     <div>
       <div className="text-xs uppercase text-muted-foreground">{label}</div>
-      <div className={`mt-1 text-lg font-bold ${accent ? "text-primary" : muted ? "text-muted-foreground" : ""}`}>{value}</div>
+      <div className={`mt-1 text-lg font-bold ${accent ? "text-primary" : muted ? "text-muted-foreground" : ""}`}>
+        {value}
+      </div>
     </div>
   );
 }
 
-function StatCard({ icon, label, value, sub, tone }: { icon: React.ReactNode; label: string; value: string; sub?: string; tone?: "primary" | "success" }) {
+function StatCard({
+  icon,
+  label,
+  value,
+  sub,
+  tone,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  sub?: string;
+  tone?: "primary" | "success";
+}) {
   const toneCls = tone === "primary" ? "text-primary" : tone === "success" ? "text-success" : "text-foreground";
   return (
     <Card className="p-4">
@@ -936,21 +1259,41 @@ function StatCard({ icon, label, value, sub, tone }: { icon: React.ReactNode; la
 
 function bump(m: Map<string, Bucket>, key: string, label: string, rev: number, cost: number, profit: number) {
   const b = m.get(key) || { key, label, revenue: 0, cost: 0, profit: 0, count: 0 };
-  b.revenue += rev; b.cost += cost; b.profit += profit; b.count += 1;
+  b.revenue += rev;
+  b.cost += cost;
+  b.profit += profit;
+  b.count += 1;
   m.set(key, b);
 }
-function pad(n: number) { return String(n).padStart(2, "0"); }
-function ymd(d: Date) { return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; }
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+function ymd(d: Date) {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
 function formatDate(k: string) {
   const [y, m, d] = k.split("-").map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString("id-ID", { weekday: "short", day: "2-digit", month: "short", year: "numeric" });
+  return new Date(y, m - 1, d).toLocaleDateString("id-ID", {
+    weekday: "short",
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
 }
 function formatMonth(k: string) {
   const [y, m] = k.split("-").map(Number);
   return new Date(y, m - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 }
 
-function ReconRow({ label, count, system, actual, onChange, diff, tone }: {
+function ReconRow({
+  label,
+  count,
+  system,
+  actual,
+  onChange,
+  diff,
+  tone,
+}: {
   label: string;
   count: number;
   system: number;
@@ -961,13 +1304,27 @@ function ReconRow({ label, count, system, actual, onChange, diff, tone }: {
 }) {
   const toneCls = tone === "primary" ? "text-primary" : tone === "success" ? "text-emerald-600" : "";
   const hasInput = actual.trim() !== "";
-  const diffCls = !hasInput ? "text-muted-foreground" : diff === 0 ? "text-emerald-600" : diff > 0 ? "text-amber-600" : "text-destructive";
-  const diffLabel = !hasInput ? "—" : diff === 0 ? "Cocok ✓" : diff > 0 ? `Lebih ${formatRupiah(diff)}` : `Kurang ${formatRupiah(Math.abs(diff))}`;
+  const diffCls = !hasInput
+    ? "text-muted-foreground"
+    : diff === 0
+      ? "text-emerald-600"
+      : diff > 0
+        ? "text-amber-600"
+        : "text-destructive";
+  const diffLabel = !hasInput
+    ? "—"
+    : diff === 0
+      ? "Cocok ✓"
+      : diff > 0
+        ? `Lebih ${formatRupiah(diff)}`
+        : `Kurang ${formatRupiah(Math.abs(diff))}`;
   return (
     <div className="rounded-lg border bg-card p-3">
       <div className="mb-2 flex items-center justify-between">
         <div className={`text-sm font-semibold ${toneCls}`}>{label}</div>
-        <Badge variant="secondary" className="text-[10px]">{count} transaksi</Badge>
+        <Badge variant="secondary" className="text-[10px]">
+          {count} transaksi
+        </Badge>
       </div>
       <div className="grid gap-2 text-sm">
         <div className="flex justify-between">
