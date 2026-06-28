@@ -18,6 +18,8 @@ import {
   CheckCircle2, Star, MessageSquare, ArrowRight, Zap, TrendingUp, Users, Sparkles, Clock, Wifi,
   Lock, Fingerprint, Eye, ArrowUpRight, ArrowDownRight, Wallet, QrCode, CreditCard, PiggyBank, Bell, LineChart,
 } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { getTodayRevenueAndCategories } from "@/lib/dashboard.functions";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -179,6 +181,9 @@ function Hero({ signedIn }: { signedIn: boolean }) {
 }
 
 function HeroDashboardPreview() {
+  const getSummary = useServerFn(getTodayRevenueAndCategories);
+  const summary = getSummary.data ?? { todayTotal: 0, totalAllTime: 0, byCategory: [] };
+
   return (
     <div className="relative mx-auto w-full max-w-md lg:max-w-none">
       {/* Floating mini cards */}
@@ -190,7 +195,7 @@ function HeroDashboardPreview() {
             </div>
             <div>
               <div className="text-[10px] text-muted-foreground">Omzet hari ini</div>
-              <div className="text-sm font-semibold">{formatRupiah(2450000)}</div>
+              <div className="text-sm font-semibold">{formatRupiah(summary.todayTotal || 0)}</div>
             </div>
           </div>
         </div>
@@ -222,10 +227,10 @@ function HeroDashboardPreview() {
 
         {/* Balance / Omzet */}
         <div className="mt-5 rounded-2xl gradient-primary p-5 text-primary-foreground shadow-elegant">
-          <div className="text-xs opacity-80">Saldo Keuntungan</div>
-          <div className="mt-1 text-3xl font-bold tracking-tight">{formatRupiah(18750000)}</div>
+          <div className="text-xs opacity-80">Omzet Hari Ini</div>
+          <div className="mt-1 text-3xl font-bold tracking-tight">{formatRupiah(summary.todayTotal || 0)}</div>
           <div className="mt-1 flex items-center gap-1 text-xs opacity-90">
-            <TrendingUp className="h-3 w-3" /> +12,4% vs minggu lalu
+            <TrendingUp className="h-3 w-3" /> {summary.totalAllTime ? `Total ${formatRupiah(summary.totalAllTime)}` : ""}
           </div>
 
           {/* mini bars */}
@@ -236,6 +241,16 @@ function HeroDashboardPreview() {
                 className="flex-1 rounded-md bg-primary-foreground/30"
                 style={{ height: `${h}%` }}
               />
+            ))}
+          </div>
+
+          {/* top categories */}
+          <div className="mt-3 flex gap-2 flex-wrap">
+            {summary.byCategory && summary.byCategory.slice(0, 4).map((c: any, i: number) => (
+              <div key={i} className="rounded-md bg-background/60 px-3 py-1 text-xs">
+                <div className="text-muted-foreground">{c.category || "Lainnya"}</div>
+                <div className="font-semibold">{formatRupiah(c.revenue)}</div>
+              </div>
             ))}
           </div>
         </div>
@@ -386,6 +401,7 @@ function OverviewTile({ icon: Icon, label, value, delta, positive }: { icon: any
 }
 
 const FEATURES = [
+  { icon: Sparkles, title: "AI Input Produk", desc: "Tambah produk cukup dengan foto atau scan barcode — AI isi nama, harga, dan detail otomatis." },
   { icon: ShoppingCart, title: "Kasir Cepat", desc: "Scan barcode, hitung kembalian, simpan transaksi dalam hitungan detik." },
   { icon: Package, title: "Manajemen Stok", desc: "Pantau stok masuk-keluar, harga grosir & eceran, dan kode produk otomatis." },
   { icon: BarChart3, title: "Laporan Keuntungan", desc: "Lihat omzet, laba, dan produk terlaris setiap hari, minggu, atau bulan." },
@@ -637,6 +653,7 @@ function MobileSection() {
           <ul className="mt-6 space-y-3 text-sm">
             <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /> Bekerja di Android, iOS, dan desktop.</li>
             <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /> Scan barcode pakai kamera HP.</li>
+            <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /> AI untuk input produk: ambil foto kemasan, AI bantu isi nama, harga, dan tanggal kadaluarsa.</li>
             <li className="flex items-start gap-2"><CheckCircle2 className="mt-0.5 h-4 w-4 flex-shrink-0 text-primary" /> Notifikasi realtime untuk transaksi & stok.</li>
           </ul>
         </div>
@@ -647,7 +664,7 @@ function MobileSection() {
 
 const STEPS = [
   { n: "1", title: "Daftar Akun", desc: "Buat akun dalam hitungan detik, gratis tanpa kartu kredit." },
-  { n: "2", title: "Input Produk", desc: "Tambah produk satu per satu atau import dari Excel." },
+  { n: "2", title: "Input Produk", desc: "Tambah produk cepat dengan AI: foto kemasan atau scan barcode, lalu periksa sebelum simpan." },
   { n: "3", title: "Mulai Berjualan", desc: "Jalankan transaksi, pantau stok, dan lihat untung secara realtime." },
 ];
 

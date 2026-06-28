@@ -15,6 +15,7 @@ import { formatRupiah } from "@/lib/format";
 import {
   TrendingUp, DollarSign, ShoppingBag, Calendar,
   Download, AlertTriangle, FileSpreadsheet, FileText, AlarmClock, Boxes,
+  BarChart3,
 } from "lucide-react";
 import {
   ResponsiveContainer, LineChart, Line, BarChart, Bar, XAxis, YAxis,
@@ -72,7 +73,7 @@ function KeuntunganPage() {
       const [itemsRes, txRes] = await Promise.all([
         supabase
           .from("transaction_items")
-          .select("qty, unit_price, unit_cost, subtotal, product_name, transactions(created_at)")
+          .select("qty, unit_price, unit_cost, subtotal, product_name, product_id, products(category), transactions(created_at)")
           .order("id", { ascending: false })
           .limit(5000),
         supabase
@@ -178,6 +179,7 @@ function KeuntunganPage() {
     const monthlyMap = new Map<string, Bucket>();
     const yearlyMap = new Map<string, Bucket>();
     const productMap = new Map<string, { name: string; qty: number; revenue: number; cost: number; profit: number }>();
+    const categoryMap = new Map<string | null, { category: string | null; revenue: number; cost: number; profit: number; count: number }>();
     const lossMap = new Map<string, { name: string; qty: number; revenue: number; cost: number; loss: number; occurrences: number }>();
 
     for (const it of filteredItems) {
@@ -205,6 +207,12 @@ function KeuntunganPage() {
       pm.qty += it.qty; pm.revenue += rev; pm.cost += cost; pm.profit += profit;
       productMap.set(it.product_name, pm);
 
+      // category aggregation (if available)
+      const cat = (it as any).products?.category ?? null;
+      const cm = categoryMap.get(cat) || { category: cat, revenue: 0, cost: 0, profit: 0, count: 0 };
+      cm.revenue += rev; cm.cost += cost; cm.profit += profit; cm.count += it.qty;
+      categoryMap.set(cat, cm);
+
       if (profit < 0 && Number(it.unit_cost) > 0) {
         const lm = lossMap.get(it.product_name) || { name: it.product_name, qty: 0, revenue: 0, cost: 0, loss: 0, occurrences: 0 };
         lm.qty += it.qty; lm.revenue += rev; lm.cost += cost; lm.loss += profit; lm.occurrences += 1;
@@ -216,10 +224,12 @@ function KeuntunganPage() {
     const monthly = Array.from(monthlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const yearly = Array.from(yearlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const topProducts = Array.from(productMap.values()).sort((a, b) => b.profit - a.profit);
+    const categories = Array.from(categoryMap.values()).sort((a, b) => b.revenue - a.revenue);
     const lossMakers = Array.from(lossMap.values()).sort((a, b) => a.loss - b.loss);
 
     return {
       todayProfit, todayRev, monthProfit, monthRev, yearProfit, yearRev,
+      categories,
       allProfit, allRev, totalQty, txCount: txSet.size,
       daily, monthly, yearly, topProducts, lossMakers,
     };
@@ -505,6 +515,27 @@ function KeuntunganPage() {
           </Button>
         </div>
       </Card>
+
+      {/* Omset per Kategori */}
+      {stats.categories && stats.categories.length > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-sm font-semibold">
+              <BarChart3 className="h-4 w-4 text-primary" />
+              Omset per Kategori
+            </div>
+            <div className="text-xs text-muted-foreground">Ringkasan omset berdasarkan kategori produk</div>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+            {stats.categories.slice(0, 8).map((c: any) => (
+              <div key={c.category ?? "-"} className="rounded-md border p-3">
+                <div className="text-xs text-muted-foreground">{c.category || "Lainnya"}</div>
+                <div className="mt-1 text-lg font-semibold">{formatRupiah(c.revenue)}</div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard icon={<Calendar className="h-5 w-5" />} label="Keuntungan Hari Ini" value={formatRupiah(stats.todayProfit)} sub={`Omset ${formatRupiah(stats.todayRev)}`} tone="primary" />

@@ -21,6 +21,8 @@ export type ReceiptData = {
   paymentMethod: string; // cash | qris | split
   cashPart?: number;
   qrisPart?: number;
+  customerName?: string | null;
+  customerPhone?: string | null;
 };
 
 /** Render struk ke PNG (data URL). Width fixed 600px, height auto. */
@@ -60,6 +62,9 @@ export function renderReceiptPng(r: ReceiptData): { dataUrl: string; base64: str
   y += headerFs + 4; // store name
   y += subFs + 4; // note
   y += subFs + 10; // tx id + date
+  // optional customer lines
+  if (r.customerName) y += subFs + 4;
+  if (r.customerPhone) y += subFs + 4;
   y += 1 + 12; // separator
 
   const itemMeasures: { lines: string[]; detailLines: string[] }[] = [];
@@ -114,6 +119,20 @@ export function renderReceiptPng(r: ReceiptData): { dataUrl: string; base64: str
   yy += subFs + 4;
   ctx.fillText(r.at.toLocaleString("id-ID"), W / 2, yy + subFs - 2);
   yy += subFs + 10;
+
+  // customer info (optional)
+  if (r.customerName) {
+    ctx.font = `${subFs}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.fillStyle = "#475569";
+    ctx.fillText(`Pelanggan: ${r.customerName}`, W / 2, yy + subFs - 2);
+    yy += subFs + 4;
+  }
+  if (r.customerPhone) {
+    ctx.font = `${subFs}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.fillStyle = "#475569";
+    ctx.fillText(`No: ${r.customerPhone}`, W / 2, yy + subFs - 2);
+    yy += subFs + 4;
+  }
 
   // separator (dashed)
   ctx.strokeStyle = "#cbd5e1";

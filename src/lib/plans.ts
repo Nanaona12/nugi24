@@ -14,7 +14,7 @@ export type PlanDef = {
   monthlyOnly?: boolean;
   highlight?: boolean;
   /** Subsidi MDR QRIS per bulan (Rupiah omzet QRIS gratis admin). */
-  qrisMonthlyQuota: number;
+  // qrisMonthlyQuota removed
   features: string[];
   /** Features unique to this tier vs the lower one. */
   unlocks?: string[];
@@ -27,16 +27,16 @@ export const PLANS: Record<PlanId, PlanDef> = {
     tagline: "Cocok untuk warung kecil & UMKM eceran",
     monthly: 25_000,
     yearly: 250_000, // hemat 2 bulan
-    qrisMonthlyQuota: 5_000_000,
     features: [
       "Kasir + cetak struk thermal",
       "Manajemen produk & stok",
+      "Tambah produk cepat dengan AI (foto / scan barcode)",
       "Riwayat transaksi & export Excel/CSV",
       "Laporan keuntungan harian/bulanan",
       "1 akun kasir aktif",
       "Scan barcode (kamera & USB)",
       "Pelanggan dasar (kontak & catatan)",
-      "Admin QRIS ditanggung s/d Rp 5 juta/bulan",
+      // Admin QRIS removed
     ],
   },
   grosir: {
@@ -45,10 +45,10 @@ export const PLANS: Record<PlanId, PlanDef> = {
     tagline: "Untuk grosir, distributor & toko skala menengah",
     monthly: 50_000,
     yearly: 500_000, // hemat 2 bulan
-    qrisMonthlyQuota: 50_000_000,
     highlight: true,
     features: [
       "Semua fitur Paket Warung",
+      "Tambah produk cepat dengan AI (foto / scan barcode)",
       "Multi-satuan harga: eceran / slove / dus / karton",
       "Multi-kasir tanpa batas + log absen per kasir",
       "Closing shift detail + rekonsiliasi kas",
@@ -59,7 +59,7 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "Import / export Excel lengkap (produk + batch)",
       "Laporan PDF profesional & total aset inventori",
       "Prioritas dukungan WhatsApp",
-      "Admin QRIS ditanggung s/d Rp 50 juta/bulan",
+      // Admin QRIS removed
     ],
     unlocks: [
       "Multi-satuan harga (slove / dus)",
@@ -70,14 +70,12 @@ export const PLANS: Record<PlanId, PlanDef> = {
       "Closing shift & rekonsiliasi kas",
       "Total aset inventori",
       "Laporan PDF lengkap",
-      "Kuota QRIS gratis 10x lebih besar",
+      
     ],
   },
 };
 
-export function qrisQuotaFor(plan?: string | null): number {
-  return PLANS[plan === "grosir" ? "grosir" : "warung"].qrisMonthlyQuota;
-}
+// qrisQuotaFor removed
 
 export function priceFor(plan: PlanId, period: BillingPeriod): number {
   const p = PLANS[plan];

@@ -181,6 +181,7 @@ function KasirPage() {
     lines.push(`Struk #${r.id.slice(0, 8)}`);
     lines.push(new Date(r.at).toLocaleString("id-ID"));
     if (r.customerName) lines.push(`Pelanggan: ${r.customerName}`);
+    if (r.customerPhone) lines.push(`No: ${r.customerPhone}`);
     lines.push(`--------------------------------`);
     for (const it of r.items) {
       const c = computeLine(it, getUnits(it.product, unitsByProduct));
@@ -743,6 +744,8 @@ function KasirPage() {
         paymentMethod: receipt.paymentMethod,
         cashPart: receipt.cashPart,
         qrisPart: receipt.qrisPart,
+        customerName: receipt.customerName,
+        customerPhone: receipt.customerPhone,
       });
       setReceiptImg(dataUrl);
       if (sendWa && phoneClean) {
