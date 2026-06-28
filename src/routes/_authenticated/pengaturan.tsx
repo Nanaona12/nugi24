@@ -301,6 +301,30 @@ function StaticQrisCard() {
           }}>Tes Validasi</Button>}
         </div>
       </CardContent>
+
+      <AlertDialog open={showDelete} onOpenChange={(o) => { setShowDelete(o); if (!o) setDelPwd(""); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus QRIS statis?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Demi keamanan, masukkan password akun toko Anda untuk menghapus QRIS statis tersimpan. QRIS akan tetap tersimpan selama tidak dihapus.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Password Toko</Label>
+            <Input type="password" value={delPwd} autoFocus
+              onChange={(e) => setDelPwd(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") confirmDelete(); }}
+              placeholder="Password akun pemilik toko" />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmDelete(); }} disabled={deleting || !delPwd}>
+              {deleting ? "Memverifikasi..." : "Ya, Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
