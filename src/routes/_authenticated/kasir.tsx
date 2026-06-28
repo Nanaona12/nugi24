@@ -158,43 +158,6 @@ function KasirPage() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
 
-  // Poll QRIS status while pending (Midtrans only)
-  useEffect(() => {
-    if (!qris || qris.status !== "pending" || qris.source !== "midtrans") return;
-    let stopped = false;
-    const tick = async () => {
-      try {
-        const r = (await checkQrisFn({ data: { order_id: qris.order_id } })) as any;
-        if (stopped) return;
-        if (r.status !== "pending") {
-          setQris((q) => (q ? { ...q, status: r.status } : q));
-          if (r.status === "paid") toast.success("Pembayaran QRIS diterima");
-          else if (r.status === "expired") toast.error("QRIS kedaluwarsa");
-          else if (r.status === "failed") toast.error("Pembayaran QRIS gagal");
-        }
-      } catch {}
-    };
-    const id = setInterval(tick, 4000);
-    return () => { stopped = true; clearInterval(id); };
-  }, [qris?.order_id, qris?.status, qris?.source]);
-
-  const handleCreateQris = async (amountOverride?: number) => {
-    const amt = amountOverride ?? totals.total;
-    if (amt <= 0) { toast.error("Nominal QRIS tidak valid"); return; }
-    setQrisLoading(true);
-    try {
-      const r = (await createQrisFn({ data: { amount: amt, shift_id: activeShift?.shift_id ?? null } })) as any;
-      setQris({ order_id: r.order_id, qr_url: r.qr_url, amount: r.amount, status: "pending", source: "midtrans", quota_info: r.quota_info ?? null });
-      if (r.quota_info?.over_quota) {
-        toast.warning(`Kuota QRIS gratis bulan ini terlampaui Rp ${(r.quota_info.over_amount).toLocaleString("id-ID")}. Kelebihan akan dikenakan MDR ±0,7%.`);
-      }
-    } catch (e: any) {
-      toast.error(e?.message || "Gagal membuat QRIS");
-    } finally {
-      setQrisLoading(false);
-    }
-  };
-
   const handleCreateStaticQris = async (amountOverride?: number) => {
     const amt = amountOverride ?? totals.total;
     if (amt <= 0) { toast.error("Nominal QRIS tidak valid"); return; }
@@ -206,7 +169,7 @@ function KasirPage() {
       const payload = convertStaticToDynamicQris(staticQrisPayload, amt);
       const url = await QRCode.toDataURL(payload, { width: 320, margin: 1 });
       const orderId = `STAT-${Date.now()}`;
-      setQris({ order_id: orderId, qr_url: url, amount: amt, status: "pending", source: "static", quota_info: null });
+      setQris({ order_id: orderId, qr_url: url, amount: amt, status: "pending", source: "static" });
     } catch (e: any) {
       toast.error(e?.message || "Gagal membuat QRIS statis");
     } finally {
@@ -215,10 +178,6 @@ function KasirPage() {
   };
 
   const handleCancelQris = async () => {
-    if (!qris) return;
-    if (qris.source === "midtrans") {
-      try { await cancelQrisFn({ data: { order_id: qris.order_id } }); } catch {}
-    }
     setQris(null);
   };
 
