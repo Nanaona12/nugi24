@@ -21,7 +21,7 @@ import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
 import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
-import { createCashierQris, checkCashierQrisStatus, cancelCashierQris } from "@/lib/qris.functions";
+
 import { parseNumber } from "@/lib/format";
 
 
