@@ -188,7 +188,13 @@ function KasirPage() {
       const packName = it.mode === "grosiran" ? it.unit.name : c.autoUnit?.name || "";
       lines.push(`${it.product.name}`);
       if (showPack) {
+<<<<<<< HEAD
         lines.push(`  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
+=======
+        lines.push(
+          `  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`,
+        );
+>>>>>>> bfccd5d (tes)
         if (c.remainder > 0) {
           lines.push(
             `  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(
@@ -277,7 +283,12 @@ function KasirPage() {
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
   const [storeName, setStoreName] = useState<string>("Toko");
   const [staticQrisPayload, setStaticQrisPayload] = useState<string | null>(null);
-  const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null }[]>([]);
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  const [customerId, setCustomerId] = useState<string | null>(null);
+  const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null; points: number }[]>([]);
+  const normalizePhone = (phone: string) => phone.replace(/[^\d]/g, "");
+  const selectedCustomer = customers.find((c) => c.id === customerId) ??
+    customers.find((c) => c.phone && normalizePhone(c.phone) === normalizePhone(customerPhone));
 
   // QRIS state (static-only)
   const [qris, setQris] = useState<null | {
@@ -402,6 +413,18 @@ function KasirPage() {
     Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }>
   >({});
 
+  const loadCustomers = async () => {
+    const { data: cs, error } = await supabase
+      .from("customers")
+      .select("id, name, phone, points")
+      .order("name", { ascending: true });
+    if (error) {
+      toast.error("Gagal memuat pelanggan: " + error.message);
+      return;
+    }
+    setCustomers((cs || []) as { id: string; name: string; phone: string | null; points: number }[]);
+  };
+
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
     if (error) {
@@ -439,17 +462,14 @@ function KasirPage() {
 
   useEffect(() => {
     loadProducts();
+    loadCustomers();
     searchRef.current?.focus();
     (async () => {
       const { data: ti } = await supabase.rpc("current_tenant_info");
       const row = Array.isArray(ti) ? ti[0] : ti;
+      if (row?.id) setTenantId(row.id as string);
       if (row?.name) setStoreName(row.name as string);
       if ((row as any)?.static_qris_payload) setStaticQrisPayload((row as any).static_qris_payload as string);
-      const { data: cs } = await supabase
-        .from("customers")
-        .select("id, name, phone")
-        .order("name", { ascending: true });
-      setCustomers((cs || []) as any);
     })();
   }, []);
 
@@ -566,8 +586,8 @@ function KasirPage() {
       }
       cashPart = paidNum;
     }
-    const phoneClean = customerPhone.replace(/[^\d]/g, "");
-    if (sendWa && phoneClean.length < 8) {
+    const phoneClean = normalizePhone(customerPhone);
+    if (customerPhone && phoneClean.length < 8) {
       toast.error("Nomor HP tidak valid");
       return;
     }
@@ -584,6 +604,33 @@ function KasirPage() {
       toast.error("Akun ini tidak terhubung ke toko" + (tidErr ? `: ${tidErr.message}` : ""));
       setSubmitting(false);
       return;
+    }
+    if (phoneClean) {
+      try {
+        const existing = await supabase
+          .from("customers")
+          .select("id, points")
+          .eq("phone", phoneClean)
+          .limit(1)
+          .maybeSingle();
+        if (existing.error) throw existing.error;
+        if (existing.data) {
+          await supabase.from("customers").update({ name: customerName.trim() || undefined }).eq("id", existing.data.id);
+          setCustomerId(existing.data.id);
+        } else {
+          const { data: newCustomer, error: insertError } = await supabase.from("customers").insert({
+            tenant_id: tenantId,
+            name: customerName.trim() || "Pelanggan",
+            phone: phoneClean,
+            points: 0,
+          } as any).select("id").single();
+          if (insertError) throw insertError;
+          setCustomerId(newCustomer.id);
+        }
+        loadCustomers();
+      } catch (e: any) {
+        toast.error("Gagal simpan pelanggan: " + (e?.message || "unknown"));
+      }
     }
     const change = paidNum - totals.total;
     const { data: tx, error: txErr } = await supabase
@@ -700,7 +747,16 @@ function KasirPage() {
       setReceiptImg(dataUrl);
       if (sendWa && phoneClean) {
         const caption = buildReceiptCaption(receipt);
+<<<<<<< HEAD
         await sendReceiptImageWa(phoneClean, caption, dataUrl, `struk-${tx.id.slice(0, 8)}.png`);
+=======
+        await sendReceiptImageWa(
+          phoneClean,
+          caption,
+          dataUrl,
+          `struk-${tx.id.slice(0, 8)}.png`,
+        );
+>>>>>>> bfccd5d (tes)
       }
     } catch (e) {
       setReceiptImg(null);
@@ -1114,6 +1170,44 @@ function KasirPage() {
                 <div className="rounded-lg bg-muted p-4 text-center">
                   <div className="text-sm text-muted-foreground">Total Belanja</div>
                   <div className="text-3xl font-bold text-primary">{formatRupiah(totals.total)}</div>
+<<<<<<< HEAD
+=======
+                </div>
+
+                <div>
+                <Label className="mb-1.5 block">Metode Pembayaran</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "cash" ? "default" : "outline"}
+                    onClick={() => {
+                      setPaymentMethod("cash");
+                      if (qris) handleCancelQris();
+                    }}
+                  >
+                    💵 Cash
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "qris" ? "default" : "outline"}
+                    onClick={() => {
+                      setPaymentMethod("qris");
+                      setPaid(String(totals.total));
+                    }}
+                  >
+                    📱 QRIS
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "split" ? "default" : "outline"}
+                    onClick={() => {
+                      setPaymentMethod("split");
+                      if (qris) handleCancelQris();
+                    }}
+                  >
+                    🔀 Split
+                  </Button>
+>>>>>>> bfccd5d (tes)
                 </div>
 
                 <div>
@@ -1362,6 +1456,49 @@ function KasirPage() {
                     </div>
                   )}
                 </div>
+<<<<<<< HEAD
+=======
+              )}
+
+                <div className="space-y-2 rounded-lg border p-3">
+                  <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4"
+                      checked={sendWa}
+                      onChange={(e) => setSendWa(e.target.checked)}
+                    />
+                    Kirim e-struk via WhatsApp
+                  </label>
+                  {sendWa && (
+                    <div className="space-y-2">
+                      <CustomerPicker
+                        customers={customers}
+                        name={customerName}
+                        phone={customerPhone}
+                        onPick={(c) => {
+                          setCustomerName(c.name);
+                          if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+                        }}
+                        onChangeName={setCustomerName}
+                        onChangePhone={(v) => setCustomerPhone(v.replace(/[^\d+]/g, ""))}
+                      />
+                      {selectedCustomer ? (
+                        <div className="text-xs text-muted-foreground">
+                          Poin pelanggan: <span className="font-semibold">{selectedCustomer.points}</span>
+                        </div>
+                      ) : customerPhone ? (
+                        <div className="text-xs text-muted-foreground">
+                          Pelanggan baru akan disimpan dengan poin 0.
+                        </div>
+                      ) : null}
+                      <div className="text-xs text-muted-foreground">
+                        Cari pelanggan tersimpan via nama atau no. HP. Data akan dicantumkan pada caption WhatsApp.
+                      </div>
+                    </div>
+                  )}
+                </div>
+>>>>>>> bfccd5d (tes)
               </div>
             </div>
             <DialogFooter className="mt-4 shrink-0 border-t pt-4">
