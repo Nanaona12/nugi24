@@ -6,14 +6,41 @@ import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Plus, Minus, Trash2, Search, Receipt as ReceiptIcon, X, Copy, Check, Loader2, LockKeyhole, LogOut as LogOutIcon, Wallet, AlertTriangle } from "lucide-react";
+import {
+  Plus,
+  Minus,
+  Trash2,
+  Search,
+  Receipt as ReceiptIcon,
+  X,
+  Copy,
+  Check,
+  Loader2,
+  LockKeyhole,
+  LogOut as LogOutIcon,
+  Wallet,
+  AlertTriangle,
+} from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ProductUnit, loadUnitsForProducts, fallbackUnitFromProduct, tierPriceFor, PriceTier } from "@/lib/product-pricing";
+import {
+  ProductUnit,
+  loadUnitsForProducts,
+  fallbackUnitFromProduct,
+  tierPriceFor,
+  PriceTier,
+} from "@/lib/product-pricing";
 import { useServerFn } from "@tanstack/react-start";
 import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
@@ -23,7 +50,6 @@ import { RefundDialog } from "@/components/RefundDialog";
 import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
 
 import { parseNumber } from "@/lib/format";
-
 
 export const Route = createFileRoute("/_authenticated/kasir")({
   component: KasirPage,
@@ -50,9 +76,9 @@ type CartLine = {
   mode: SaleMode;
   // Eceran: unit = base unit, qty = jumlah pcs
   // Grosiran: unit = grosir unit (conv>1), qty = jumlah pcs total (auto split pak + sisa eceran)
-  unit: ProductUnit;          // unit grosir untuk mode grosiran; base unit untuk eceran
-  baseUnit: ProductUnit;      // selalu unit dasar (untuk harga eceran sisa)
-  qty: number;                // dalam pcs (unit dasar)
+  unit: ProductUnit; // unit grosir untuk mode grosiran; base unit untuk eceran
+  baseUnit: ProductUnit; // selalu unit dasar (untuk harga eceran sisa)
+  qty: number; // dalam pcs (unit dasar)
 };
 
 function getUnits(p: Product, map: Record<string, ProductUnit[]>): ProductUnit[] {
@@ -121,7 +147,19 @@ function KasirPage() {
   const [sendWa, setSendWa] = useState(false);
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
-  const [lastReceipt, setLastReceipt] = useState<null | { id: string; total: number; paid: number; change: number; items: CartLine[]; at: Date; paymentMethod: "cash" | "qris" | "split"; cashPart?: number; qrisPart?: number; customerPhone: string | null; customerName: string | null }>(null);
+  const [lastReceipt, setLastReceipt] = useState<null | {
+    id: string;
+    total: number;
+    paid: number;
+    change: number;
+    items: CartLine[];
+    at: Date;
+    paymentMethod: "cash" | "qris" | "split";
+    cashPart?: number;
+    qrisPart?: number;
+    customerPhone: string | null;
+    customerName: string | null;
+  }>(null);
   const [copied, setCopied] = useState(false);
   const [sendingWa, setSendingWa] = useState(false);
   const [modePicker, setModePicker] = useState<Product | null>(null);
@@ -134,7 +172,13 @@ function KasirPage() {
   const [customers, setCustomers] = useState<{ id: string; name: string; phone: string | null }[]>([]);
 
   // QRIS state (static-only)
-  const [qris, setQris] = useState<null | { order_id: string; qr_url: string; amount: number; status: "pending" | "paid" | "expired" | "failed"; source: "static" }>(null);
+  const [qris, setQris] = useState<null | {
+    order_id: string;
+    qr_url: string;
+    amount: number;
+    status: "pending" | "paid" | "expired" | "failed";
+    source: "static";
+  }>(null);
   const [qrisLoading, setQrisLoading] = useState(false);
 
   // --- Shift / Cashier lock ---
@@ -142,12 +186,22 @@ function KasirPage() {
   const CASHIER_KEY = "dp.active_cashier";
   const [activeCashier, setActiveCashier] = useState<{ id: string; name: string } | null>(() => {
     if (typeof window === "undefined") return null;
-    try { const s = localStorage.getItem(CASHIER_KEY); return s ? JSON.parse(s) : null; } catch { return null; }
+    try {
+      const s = localStorage.getItem(CASHIER_KEY);
+      return s ? JSON.parse(s) : null;
+    } catch {
+      return null;
+    }
   });
   const isCashierSession = !!activeCashier;
   const [activeShift, setActiveShift] = useState<ActiveShift | null>(() => {
     if (typeof window === "undefined") return null;
-    try { const s = localStorage.getItem(SHIFT_KEY); return s ? (JSON.parse(s) as ActiveShift) : null; } catch { return null; }
+    try {
+      const s = localStorage.getItem(SHIFT_KEY);
+      return s ? (JSON.parse(s) as ActiveShift) : null;
+    } catch {
+      return null;
+    }
   });
   const [lockOpen, setLockOpen] = useState(!activeShift && !isCashierSession);
   const [openingDialogOpen, setOpeningDialogOpen] = useState(isCashierSession && !activeShift);
@@ -160,8 +214,14 @@ function KasirPage() {
 
   const handleCreateStaticQris = async (amountOverride?: number) => {
     const amt = amountOverride ?? totals.total;
-    if (amt <= 0) { toast.error("Nominal QRIS tidak valid"); return; }
-    if (!staticQrisPayload) { toast.error("QRIS statis belum diatur. Set di Pengaturan → QRIS Statis Toko."); return; }
+    if (amt <= 0) {
+      toast.error("Nominal QRIS tidak valid");
+      return;
+    }
+    if (!staticQrisPayload) {
+      toast.error("QRIS statis belum diatur. Set di Pengaturan → QRIS Statis Toko.");
+      return;
+    }
     setQrisLoading(true);
     try {
       const { convertStaticToDynamicQris } = await import("@/lib/qris-static");
@@ -180,7 +240,6 @@ function KasirPage() {
   const handleCancelQris = async () => {
     setQris(null);
   };
-
 
   const persistShift = (s: ActiveShift | null) => {
     setActiveShift(s);
@@ -208,7 +267,9 @@ function KasirPage() {
       toast.success(`Shift dibuka untuk ${activeCashier.name}`);
     } catch (e: any) {
       toast.error(e.message || "Gagal buka shift");
-    } finally { setOpeningShiftLoading(false); }
+    } finally {
+      setOpeningShiftLoading(false);
+    }
   };
 
   const handleShiftClosed = async () => {
@@ -228,13 +289,17 @@ function KasirPage() {
     }
   };
 
-
   // --- Expiry batch summary per product ---
-  const [expiryByProduct, setExpiryByProduct] = useState<Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }>>({});
+  const [expiryByProduct, setExpiryByProduct] = useState<
+    Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }>
+  >({});
 
   const loadProducts = async () => {
     const { data, error } = await supabase.from("products").select("*").order("name");
-    if (error) { toast.error(error.message); return; }
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     const prods = (data || []) as Product[];
     setProducts(prods);
     try {
@@ -244,10 +309,9 @@ function KasirPage() {
       toast.error("Gagal memuat satuan: " + e.message);
     }
     // Load batches → ringkasan expiry per produk (untuk badge warning)
-    const { data: bs } = await (supabase as any)
-      .from("product_batches")
-      .select("product_id, qty, expiry_date");
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const { data: bs } = await (supabase as any).from("product_batches").select("product_id, qty, expiry_date");
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     const exp: Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }> = {};
     for (const b of (bs || []) as { product_id: string; qty: number; expiry_date: string }[]) {
       const d = Math.ceil((new Date(b.expiry_date + "T00:00:00").getTime() - today.getTime()) / 86400000);
@@ -256,7 +320,10 @@ function KasirPage() {
       else {
         cur.totalQty += b.qty;
         cur.batches += 1;
-        if (d < cur.minDays) { cur.minDays = d; cur.nearestDate = b.expiry_date; }
+        if (d < cur.minDays) {
+          cur.minDays = d;
+          cur.nearestDate = b.expiry_date;
+        }
       }
     }
     setExpiryByProduct(exp);
@@ -282,7 +349,12 @@ function KasirPage() {
     const q = query.trim().toLowerCase();
     if (!q) return products.slice(0, 60);
     return products
-      .filter((p) => p.code.toLowerCase().includes(q) || (p.barcode || "").toLowerCase().includes(q) || p.name.toLowerCase().includes(q))
+      .filter(
+        (p) =>
+          p.code.toLowerCase().includes(q) ||
+          (p.barcode || "").toLowerCase().includes(q) ||
+          p.name.toLowerCase().includes(q),
+      )
       .slice(0, 60);
   }, [products, query]);
 
@@ -307,13 +379,14 @@ function KasirPage() {
     setCart((c) => {
       const idx = c.findIndex((x) => x.key === key);
       if (idx >= 0) {
-        const copy = [...c]; copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 }; return copy;
+        const copy = [...c];
+        copy[idx] = { ...copy[idx], qty: copy[idx].qty + 1 };
+        return copy;
       }
       return [...c, { key, product: p, mode: "eceran", unit: base, baseUnit: base, qty: 1 }];
     });
     setModePicker(null);
   };
-
 
   const setQty = (key: string, qty: number) => {
     if (qty <= 0) return setCart((c) => c.filter((l) => l.key !== key));
@@ -343,38 +416,60 @@ function KasirPage() {
     e.preventDefault();
     const q = query.trim().toLowerCase();
     // Exact match by barcode/code → buka dialog pilih satuan. Else: pakai hasil pertama.
-    const exact = products.find((p) => (p.barcode || "").toLowerCase() === q)
-      || products.find((p) => p.code.toLowerCase() === q);
+    const exact =
+      products.find((p) => (p.barcode || "").toLowerCase() === q) || products.find((p) => p.code.toLowerCase() === q);
     setModePicker(exact || filtered[0]);
     setQuery("");
   };
 
-
   const checkout = async () => {
-    if (!activeShift) { toast.error("Kasir belum login"); setLockOpen(true); return; }
+    if (!activeShift) {
+      toast.error("Kasir belum login");
+      setLockOpen(true);
+      return;
+    }
     let paidNum: number;
     let cashPart = 0;
     let qrisPart = 0;
     if (paymentMethod === "qris") {
-      if (!qris || qris.status !== "paid") { toast.error("QRIS belum dibayar"); return; }
+      if (!qris || qris.status !== "paid") {
+        toast.error("QRIS belum dibayar");
+        return;
+      }
       paidNum = totals.total;
       qrisPart = totals.total;
     } else if (paymentMethod === "split") {
       cashPart = Number(splitCash.replace(/[^\d]/g, "")) || 0;
       qrisPart = Number(splitQris.replace(/[^\d]/g, "")) || 0;
-      if (qrisPart > 0 && (!qris || qris.status !== "paid")) { toast.error("QRIS belum dibayar"); return; }
-      if (cashPart + qrisPart < totals.total) { toast.error("Total pembayaran kurang"); return; }
+      if (qrisPart > 0 && (!qris || qris.status !== "paid")) {
+        toast.error("QRIS belum dibayar");
+        return;
+      }
+      if (cashPart + qrisPart < totals.total) {
+        toast.error("Total pembayaran kurang");
+        return;
+      }
       paidNum = cashPart + qrisPart;
     } else {
       paidNum = Number(paid.replace(/[^\d]/g, ""));
-      if (paidNum < totals.total) { toast.error("Uang dibayar kurang"); return; }
+      if (paidNum < totals.total) {
+        toast.error("Uang dibayar kurang");
+        return;
+      }
       cashPart = paidNum;
     }
     const phoneClean = customerPhone.replace(/[^\d]/g, "");
-    if (sendWa && phoneClean.length < 8) { toast.error("Nomor HP tidak valid"); return; }
+    if (sendWa && phoneClean.length < 8) {
+      toast.error("Nomor HP tidak valid");
+      return;
+    }
     setSubmitting(true);
     const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user?.id) { toast.error("Sesi habis"); setSubmitting(false); return; }
+    if (!userData.user?.id) {
+      toast.error("Sesi habis");
+      setSubmitting(false);
+      return;
+    }
     const { data: tidData, error: tidErr } = await supabase.rpc("current_tenant_id");
     const tenantId = tidData as string | null;
     if (!tenantId) {
@@ -399,7 +494,11 @@ function KasirPage() {
       } as any)
       .select()
       .single();
-    if (txErr || !tx) { toast.error(txErr?.message || "Gagal menyimpan"); setSubmitting(false); return; }
+    if (txErr || !tx) {
+      toast.error(txErr?.message || "Gagal menyimpan");
+      setSubmitting(false);
+      return;
+    }
     const items = cart.map((l) => {
       const c = computeLine(l, getUnits(l.product, unitsByProduct));
       const avgUnitPrice = l.qty > 0 ? c.total / l.qty : 0;
@@ -421,7 +520,11 @@ function KasirPage() {
       };
     });
     const { error: itErr } = await supabase.from("transaction_items").insert(items as any);
-    if (itErr) { toast.error(itErr.message); setSubmitting(false); return; }
+    if (itErr) {
+      toast.error(itErr.message);
+      setSubmitting(false);
+      return;
+    }
     // gabung pengurangan stok per produk — dikerjakan di server (cashier tidak bisa UPDATE products)
     const stockMap = new Map<string, number>();
     for (const l of cart) stockMap.set(l.product.id, (stockMap.get(l.product.id) || 0) + l.qty);
@@ -455,7 +558,7 @@ function KasirPage() {
         const c = computeLine(l, getUnits(l.product, unitsByProduct));
         let detail = "";
         const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
-        const packUnitName = l.mode === "grosiran" ? l.unit.name : (c.autoUnit?.name || "");
+        const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
         if (showPack) {
           const parts: string[] = [];
           parts.push(`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`);
@@ -490,8 +593,17 @@ function KasirPage() {
     } catch (e) {
       setReceiptImg(null);
     }
-    setCart([]); setPaid(""); setSplitCash(""); setSplitQris(""); setQris(null); setPayOpen(false); setSubmitting(false);
-    setSendWa(false); setCustomerPhone(""); setCustomerName(""); setPaymentMethod("cash");
+    setCart([]);
+    setPaid("");
+    setSplitCash("");
+    setSplitQris("");
+    setQris(null);
+    setPayOpen(false);
+    setSubmitting(false);
+    setSendWa(false);
+    setCustomerPhone("");
+    setCustomerName("");
+    setPaymentMethod("cash");
     loadProducts();
   };
 
@@ -504,7 +616,10 @@ function KasirPage() {
           {activeShift ? (
             <>
               <span className="font-medium">Kasir: {activeShift.cashier_name}</span>
-              <span className="text-muted-foreground">• Buka {new Date(activeShift.opened_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</span>
+              <span className="text-muted-foreground">
+                • Buka{" "}
+                {new Date(activeShift.opened_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+              </span>
               <span className="text-muted-foreground">• Saldo awal {formatRupiah(activeShift.opening_cash)}</span>
             </>
           ) : (
@@ -521,7 +636,14 @@ function KasirPage() {
                 <ReceiptIcon className="mr-1 h-4 w-4" /> Closing
               </Button>
               {!isCashierSession && (
-                <Button size="sm" variant="ghost" onClick={() => { persistShift(null); setLockOpen(true); }}>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    persistShift(null);
+                    setLockOpen(true);
+                  }}
+                >
                   <LogOutIcon className="mr-1 h-4 w-4" /> Ganti Kasir
                 </Button>
               )}
@@ -544,18 +666,32 @@ function KasirPage() {
         <CashierLock
           open={lockOpen}
           forceLocked={!activeShift}
-          onClose={() => { if (activeShift) setLockOpen(false); }}
+          onClose={() => {
+            if (activeShift) setLockOpen(false);
+          }}
           onExit={() => router.navigate({ to: "/produk", replace: true })}
-          onUnlocked={(s) => { persistShift(s); setLockOpen(false); }}
+          onUnlocked={(s) => {
+            persistShift(s);
+            setLockOpen(false);
+          }}
         />
       )}
 
       {isCashierSession && activeCashier && (
-        <Dialog open={openingDialogOpen} onOpenChange={(o) => { if (!o && activeShift) setOpeningDialogOpen(false); }}>
+        <Dialog
+          open={openingDialogOpen}
+          onOpenChange={(o) => {
+            if (!o && activeShift) setOpeningDialogOpen(false);
+          }}
+        >
           <DialogContent
             className="max-w-sm"
-            onInteractOutside={(e) => { if (!activeShift) e.preventDefault(); }}
-            onEscapeKeyDown={(e) => { if (!activeShift) e.preventDefault(); }}
+            onInteractOutside={(e) => {
+              if (!activeShift) e.preventDefault();
+            }}
+            onEscapeKeyDown={(e) => {
+              if (!activeShift) e.preventDefault();
+            }}
           >
             <DialogHeader>
               <DialogTitle>Buka Shift — {activeCashier.name}</DialogTitle>
@@ -570,7 +706,9 @@ function KasirPage() {
                 inputMode="numeric"
                 value={openingCash}
                 onChange={(e) => setOpeningCash(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") handleStartShift(); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleStartShift();
+                }}
                 placeholder="0"
               />
               {openingCash && (
@@ -598,578 +736,714 @@ function KasirPage() {
 
       <RefundDialog open={refundOpen} onOpenChange={setRefundOpen} onDone={loadProducts} />
 
-
       <div className={`grid gap-4 lg:grid-cols-[1fr_420px] ${!activeShift ? "pointer-events-none opacity-50" : ""}`}>
         {/* Product picker */}
-      <Card className="flex flex-col p-4">
-        <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            ref={searchRef}
-            placeholder="Cari nama atau scan kode barang... (Enter = pilih pertama)"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleSearchKey}
-            className="pl-9"
-          />
-        </div>
-        <ScrollArea className="h-[calc(100vh-260px)] pr-2">
-          {filtered.length === 0 ? (
-            <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-              {products.length === 0 ? "Belum ada produk. Import dari Excel di menu Produk." : "Tidak ada hasil"}
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
-              {filtered.map((p) => {
-                const units = getUnits(p, unitsByProduct);
-                const base = units.find((u) => u.is_base) || units[0];
-                const ecer = tierPriceFor(base, 1).price;
-                const grosirCount = units.filter((u) => u.conversion > 1).length;
-                const ex = expiryByProduct[p.id];
-                let expBadge: null | { cls: string; txt: string; title: string } = null;
-                if (ex) {
-                  const dateStr = new Date(ex.nearestDate + "T00:00:00").toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" });
-                  if (ex.minDays < 0) expBadge = { cls: "bg-foreground text-background", txt: "Expired", title: `Expired ${Math.abs(ex.minDays)} hari lalu (${dateStr}) • ${ex.totalQty} unit` };
-                  else if (ex.minDays <= 30) expBadge = { cls: "bg-destructive text-destructive-foreground", txt: `≤${ex.minDays}h`, title: `Exp terdekat ${dateStr} (${ex.minDays} hari lagi) • ${ex.totalQty} unit` };
-                  else if (ex.minDays <= 90) expBadge = { cls: "bg-amber-500 text-white", txt: `≤${ex.minDays}h`, title: `Exp terdekat ${dateStr} (${ex.minDays} hari lagi) • ${ex.totalQty} unit` };
-                }
-                return (
-                  <button
-                    key={p.id}
-                    onClick={() => onPickProduct(p)}
-                    className="group relative flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
-                  >
-                    {expBadge && (
-                      <span
-                        className={`absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold ${expBadge.cls}`}
-                        title={expBadge.title}
-                      >
-                        <AlertTriangle className="h-3 w-3" /> {expBadge.txt}
-                      </span>
-                    )}
-                    <div className="mb-1 line-clamp-2 pr-12 text-sm font-medium">{p.name}</div>
-                    <div className="text-xs text-muted-foreground">{p.code}</div>
-                    <div className="mt-2 flex w-full items-center justify-between">
-                      <div className="text-sm font-semibold text-primary">{formatRupiah(ecer)}<span className="text-[10px] text-muted-foreground">/{base.name}</span></div>
-                      <Badge variant="secondary" className="text-[10px]">stok {p.stock}</Badge>
-                    </div>
-                    {grosirCount > 0 && (
-                      <div className="mt-1 text-[10px] text-success">tersedia grosir</div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </ScrollArea>
-      </Card>
-
-      {/* Cart */}
-      <Card className="flex flex-col p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Keranjang</h2>
-          {cart.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={() => setCart([])}>
-              <X className="mr-1 h-4 w-4" /> Kosongkan
-            </Button>
-          )}
-        </div>
-        <ScrollArea className="h-[calc(100vh-440px)] pr-2">
-          {cart.length === 0 ? (
-            <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
-              Pilih produk untuk mulai
-            </div>
-          ) : (
-            <ul className="space-y-2">
-              {cart.map((l) => {
-                const allUnits = getUnits(l.product, unitsByProduct);
-                const c = computeLine(l, allUnits);
-                const grosirUnits = allUnits.filter((u) => u.conversion > 1);
-                const packUnitName = l.mode === "grosiran" ? l.unit.name : (c.autoUnit?.name || "");
-                const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
-                const displayQty = l.mode === "grosiran" ? Math.max(1, c.packs) : l.qty;
-                const displayUnitName = l.mode === "grosiran" ? l.unit.name : l.baseUnit.name;
-                return (
-                  <li key={l.key} className="rounded-lg border p-3">
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center gap-1.5">
-                          <Badge variant={l.mode === "grosiran" ? "default" : "secondary"} className="text-[10px]">
-                            {l.mode === "grosiran" ? "Grosir" : "Eceran"}
-                          </Badge>
-                          <span className="truncate text-sm font-medium">{l.product.name}</span>
-                        </div>
-                        {showPack ? (
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {c.packs} {packUnitName} × {formatRupiah(c.packPrice)}
-                            {c.remainder > 0 && <> + {c.remainder} {l.baseUnit.name} × {formatRupiah(c.ecerPrice)}</>}
-                          </div>
-                        ) : (
-                          <div className="mt-0.5 text-xs text-muted-foreground">
-                            {formatRupiah(c.ecerPrice)} / {l.baseUnit.name}
-                          </div>
-                        )}
-                      </div>
-                      <button onClick={() => removeLine(l.key)} className="text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    </div>
-                    <div className="mt-2 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1">
-                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setDisplayQty(l, displayQty - 1)}>
-                          <Minus className="h-3 w-3" />
-                        </Button>
-                        <Input
-                          className="h-7 w-14 text-center"
-                          type="number"
-                          value={displayQty}
-                          onChange={(e) => setDisplayQty(l, parseInt(e.target.value || "0", 10))}
-                        />
-                        <Button size="icon" variant="outline" className="h-7 w-7" onClick={() => setDisplayQty(l, displayQty + 1)}>
-                          <Plus className="h-3 w-3" />
-                        </Button>
-                        <span className="ml-1 text-xs text-muted-foreground">{displayUnitName}</span>
-                        {l.mode === "grosiran" && grosirUnits.length > 1 && (
-                          <Select value={l.unit.name} onValueChange={(v) => changeGrosirUnit(l.key, v)}>
-                            <SelectTrigger className="h-7 w-[90px] text-xs ml-1">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {grosirUnits.map((u) => (
-                                <SelectItem key={u.name} value={u.name} className="text-xs">
-                                  {u.name} ({u.conversion})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </div>
-                      <div className="text-sm font-semibold">{formatRupiah(c.total)}</div>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </ScrollArea>
-
-        <div className="mt-4 space-y-2 border-t pt-4">
-          <Row label={`Item (${totals.items})`} value={formatRupiah(totals.total)} />
-          <div className="flex items-center justify-between text-xl font-bold">
-            <span>Total</span>
-            <span className="text-primary">{formatRupiah(totals.total)}</span>
+        <Card className="flex flex-col p-4">
+          <div className="relative mb-3">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              ref={searchRef}
+              placeholder="Cari nama atau scan kode barang... (Enter = pilih pertama)"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleSearchKey}
+              className="pl-9"
+            />
           </div>
-          <Button className="h-12 w-full text-base" disabled={cart.length === 0} onClick={() => setPayOpen(true)}>
-            Bayar
-          </Button>
-        </div>
-      </Card>
-
-      {/* Picker dialog (radio opsi harga + qty pcs) */}
-      <PickerDialog
-        product={modePicker}
-        unitsByProduct={unitsByProduct}
-        onClose={() => setModePicker(null)}
-        onAdd={(p, mode, unit, qtyPcs) => {
-          if (mode === "eceran") {
-            const units = getUnits(p, unitsByProduct);
-            const base = units.find((u) => u.is_base) || units[0];
-            const key = `${p.id}:eceran`;
-            setCart((c) => {
-              const idx = c.findIndex((x) => x.key === key);
-              if (idx >= 0) { const copy = [...c]; copy[idx] = { ...copy[idx], qty: copy[idx].qty + qtyPcs }; return copy; }
-              return [...c, { key, product: p, mode: "eceran", unit: base, baseUnit: base, qty: qtyPcs }];
-            });
-          } else {
-            const units = getUnits(p, unitsByProduct);
-            const base = units.find((u) => u.is_base) || units[0];
-            const key = `${p.id}:grosir:${unit.name}`;
-            setCart((c) => {
-              const idx = c.findIndex((x) => x.key === key);
-              if (idx >= 0) { const copy = [...c]; copy[idx] = { ...copy[idx], qty: copy[idx].qty + qtyPcs }; return copy; }
-              return [...c, { key, product: p, mode: "grosiran", unit, baseUnit: base, qty: qtyPcs }];
-            });
-          }
-          setModePicker(null);
-        }}
-      />
-
-
-      {/* Payment dialog */}
-      <Dialog open={payOpen} onOpenChange={(o) => { setPayOpen(o); if (!o) { if (qris && qris.status === "pending") { handleCancelQris(); } else { setQris(null); } } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Pembayaran</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="rounded-lg bg-muted p-4 text-center">
-              <div className="text-sm text-muted-foreground">Total Belanja</div>
-              <div className="text-3xl font-bold text-primary">{formatRupiah(totals.total)}</div>
-            </div>
-
-            <div>
-              <Label className="mb-1.5 block">Metode Pembayaran</Label>
-              <div className="grid grid-cols-3 gap-2">
-                <Button
-                  type="button"
-                  variant={paymentMethod === "cash" ? "default" : "outline"}
-                  onClick={() => { setPaymentMethod("cash"); if (qris) handleCancelQris(); }}
-                >
-                  💵 Cash
-                </Button>
-                <Button
-                  type="button"
-                  variant={paymentMethod === "qris" ? "default" : "outline"}
-                  onClick={() => { setPaymentMethod("qris"); setPaid(String(totals.total)); }}
-                >
-                  📱 QRIS
-                </Button>
-                <Button
-                  type="button"
-                  variant={paymentMethod === "split" ? "default" : "outline"}
-                  onClick={() => { setPaymentMethod("split"); if (qris) handleCancelQris(); }}
-                >
-                  🔀 Split
-                </Button>
+          <ScrollArea className="h-[calc(100vh-260px)] pr-2">
+            {filtered.length === 0 ? (
+              <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
+                {products.length === 0 ? "Belum ada produk. Import dari Excel di menu Produk." : "Tidak ada hasil"}
               </div>
-            </div>
-
-            {paymentMethod === "cash" && (
-              <div>
-                <Label>Uang Diterima</Label>
-                <Input
-                  autoFocus
-                  inputMode="numeric"
-                  value={paid}
-                  onChange={(e) => setPaid(e.target.value.replace(/[^\d]/g, ""))}
-                  placeholder="0"
-                  className="mt-1 h-12 text-2xl"
-                />
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {[totals.total, 50000, 100000, 200000].map((n, i) => (
-                    <Button key={i} variant="outline" size="sm" onClick={() => setPaid(String(n))}>
-                      {formatRupiah(n)}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {paymentMethod === "cash" && (
-              <div className="flex items-center justify-between rounded-lg border p-3">
-                <span className="text-sm">Kembalian</span>
-                <span className="text-lg font-semibold">
-                  {formatRupiah(Math.max(0, Number(paid || 0) - totals.total))}
-                </span>
-              </div>
-            )}
-
-            {paymentMethod === "split" && (() => {
-              const cashN = Number(splitCash.replace(/[^\d]/g, "")) || 0;
-              const qrisN = Number(splitQris.replace(/[^\d]/g, "")) || 0;
-              const sumPaid = cashN + qrisN;
-              const remaining = Math.max(0, totals.total - sumPaid);
-              const change = Math.max(0, sumPaid - totals.total);
-              return (
-                <div className="space-y-2 rounded-lg border p-3">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs">💵 Cash</Label>
-                      <Input
-                        inputMode="numeric"
-                        value={splitCash}
-                        onChange={(e) => setSplitCash(e.target.value.replace(/[^\d]/g, ""))}
-                        placeholder="0"
-                        className="mt-1 h-11"
-                      />
-                    </div>
-                    <div>
-                      <Label className="text-xs">📱 QRIS</Label>
-                      <Input
-                        inputMode="numeric"
-                        value={splitQris}
-                        onChange={(e) => setSplitQris(e.target.value.replace(/[^\d]/g, ""))}
-                        placeholder="0"
-                        className="mt-1 h-11"
-                        disabled={!!qris}
-                      />
-                    </div>
-                  </div>
-                  <div className="flex flex-wrap gap-1 text-xs">
-                    <Button variant="ghost" size="sm" onClick={() => { setSplitCash(String(totals.total)); setSplitQris("0"); }}>Semua Cash</Button>
-                    <Button variant="ghost" size="sm" onClick={() => { setSplitQris(String(totals.total)); setSplitCash("0"); }}>Semua QRIS</Button>
-                    <Button variant="ghost" size="sm" onClick={() => { const half = Math.round(totals.total / 2); setSplitCash(String(half)); setSplitQris(String(totals.total - half)); }}>Bagi 2</Button>
-                    {remaining > 0 && (
-                      <Button variant="ghost" size="sm" onClick={() => setSplitCash(String(cashN + remaining))}>Sisa ke Cash</Button>
-                    )}
-                  </div>
-                  <div className="flex justify-between border-t pt-2 text-sm">
-                    <span>Total Dibayar</span><span className="font-semibold">{formatRupiah(sumPaid)}</span>
-                  </div>
-                  {remaining > 0 ? (
-                    <div className="flex justify-between text-sm text-destructive">
-                      <span>Kurang</span><span className="font-semibold">{formatRupiah(remaining)}</span>
-                    </div>
-                  ) : (
-                    <div className="flex justify-between text-sm">
-                      <span>Kembalian</span><span className="font-semibold">{formatRupiah(change)}</span>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {(paymentMethod === "qris" || (paymentMethod === "split" && (Number(splitQris.replace(/[^\d]/g, "")) || 0) > 0)) && (
-              <div className="space-y-2 rounded-lg border p-3">
-                {!qris && (() => {
-                  const amt = paymentMethod === "split" ? (Number(splitQris.replace(/[^\d]/g, "")) || 0) : totals.total;
+            ) : (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                {filtered.map((p) => {
+                  const units = getUnits(p, unitsByProduct);
+                  const base = units.find((u) => u.is_base) || units[0];
+                  const ecer = tierPriceFor(base, 1).price;
+                  const grosirCount = units.filter((u) => u.conversion > 1).length;
+                  const ex = expiryByProduct[p.id];
+                  let expBadge: null | { cls: string; txt: string; title: string } = null;
+                  if (ex) {
+                    const dateStr = new Date(ex.nearestDate + "T00:00:00").toLocaleDateString("id-ID", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                    });
+                    if (ex.minDays < 0)
+                      expBadge = {
+                        cls: "bg-foreground text-background",
+                        txt: "Expired",
+                        title: `Expired ${Math.abs(ex.minDays)} hari lalu (${dateStr}) • ${ex.totalQty} unit`,
+                      };
+                    else if (ex.minDays <= 30)
+                      expBadge = {
+                        cls: "bg-destructive text-destructive-foreground",
+                        txt: `≤${ex.minDays}h`,
+                        title: `Exp terdekat ${dateStr} (${ex.minDays} hari lagi) • ${ex.totalQty} unit`,
+                      };
+                    else if (ex.minDays <= 90)
+                      expBadge = {
+                        cls: "bg-amber-500 text-white",
+                        txt: `≤${ex.minDays}h`,
+                        title: `Exp terdekat ${dateStr} (${ex.minDays} hari lagi) • ${ex.totalQty} unit`,
+                      };
+                  }
                   return (
-                    <div className="space-y-2">
-                      {staticQrisPayload ? (
-                        <Button
-                          type="button"
-                          className="w-full"
-                          disabled={qrisLoading || amt <= 0}
-                          onClick={() => handleCreateStaticQris(amt)}
+                    <button
+                      key={p.id}
+                      onClick={() => onPickProduct(p)}
+                      className="group relative flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
+                    >
+                      {expBadge && (
+                        <span
+                          className={`absolute right-1.5 top-1.5 flex items-center gap-0.5 rounded px-1.5 py-0.5 text-[10px] font-semibold ${expBadge.cls}`}
+                          title={expBadge.title}
                         >
-                          {qrisLoading ? "Membuat QR…" : `Buat QRIS ${paymentMethod === "split" ? formatRupiah(amt) : ""}`}
+                          <AlertTriangle className="h-3 w-3" /> {expBadge.txt}
+                        </span>
+                      )}
+                      <div className="mb-1 line-clamp-2 pr-12 text-sm font-medium">{p.name}</div>
+                      <div className="text-xs text-muted-foreground">{p.code}</div>
+                      <div className="mt-2 flex w-full items-center justify-between">
+                        <div className="text-sm font-semibold text-primary">
+                          {formatRupiah(ecer)}
+                          <span className="text-[10px] text-muted-foreground">/{base.name}</span>
+                        </div>
+                        <Badge variant="secondary" className="text-[10px]">
+                          stok {p.stock}
+                        </Badge>
+                      </div>
+                      {grosirCount > 0 && <div className="mt-1 text-[10px] text-success">tersedia grosir</div>}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </Card>
+
+        {/* Cart */}
+        <Card className="flex flex-col p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Keranjang</h2>
+            {cart.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setCart([])}>
+                <X className="mr-1 h-4 w-4" /> Kosongkan
+              </Button>
+            )}
+          </div>
+          <ScrollArea className="h-[calc(100vh-440px)] pr-2">
+            {cart.length === 0 ? (
+              <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
+                Pilih produk untuk mulai
+              </div>
+            ) : (
+              <ul className="space-y-2">
+                {cart.map((l) => {
+                  const allUnits = getUnits(l.product, unitsByProduct);
+                  const c = computeLine(l, allUnits);
+                  const grosirUnits = allUnits.filter((u) => u.conversion > 1);
+                  const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
+                  const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
+                  const displayQty = l.mode === "grosiran" ? Math.max(1, c.packs) : l.qty;
+                  const displayUnitName = l.mode === "grosiran" ? l.unit.name : l.baseUnit.name;
+                  return (
+                    <li key={l.key} className="rounded-lg border p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant={l.mode === "grosiran" ? "default" : "secondary"} className="text-[10px]">
+                              {l.mode === "grosiran" ? "Grosir" : "Eceran"}
+                            </Badge>
+                            <span className="truncate text-sm font-medium">{l.product.name}</span>
+                          </div>
+                          {showPack ? (
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              {c.packs} {packUnitName} × {formatRupiah(c.packPrice)}
+                              {c.remainder > 0 && (
+                                <>
+                                  {" "}
+                                  + {c.remainder} {l.baseUnit.name} × {formatRupiah(c.ecerPrice)}
+                                </>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="mt-0.5 text-xs text-muted-foreground">
+                              {formatRupiah(c.ecerPrice)} / {l.baseUnit.name}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeLine(l.key)}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-7 w-7"
+                            onClick={() => setDisplayQty(l, displayQty - 1)}
+                          >
+                            <Minus className="h-3 w-3" />
+                          </Button>
+                          <Input
+                            className="h-7 w-14 text-center"
+                            type="number"
+                            value={displayQty}
+                            onChange={(e) => setDisplayQty(l, parseInt(e.target.value || "0", 10))}
+                          />
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="h-7 w-7"
+                            onClick={() => setDisplayQty(l, displayQty + 1)}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                          <span className="ml-1 text-xs text-muted-foreground">{displayUnitName}</span>
+                          {l.mode === "grosiran" && grosirUnits.length > 1 && (
+                            <Select value={l.unit.name} onValueChange={(v) => changeGrosirUnit(l.key, v)}>
+                              <SelectTrigger className="h-7 w-[90px] text-xs ml-1">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {grosirUnits.map((u) => (
+                                  <SelectItem key={u.name} value={u.name} className="text-xs">
+                                    {u.name} ({u.conversion})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                        <div className="text-sm font-semibold">{formatRupiah(c.total)}</div>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </ScrollArea>
+
+          <div className="mt-4 space-y-2 border-t pt-4">
+            <Row label={`Item (${totals.items})`} value={formatRupiah(totals.total)} />
+            <div className="flex items-center justify-between text-xl font-bold">
+              <span>Total</span>
+              <span className="text-primary">{formatRupiah(totals.total)}</span>
+            </div>
+            <Button className="h-12 w-full text-base" disabled={cart.length === 0} onClick={() => setPayOpen(true)}>
+              Bayar
+            </Button>
+          </div>
+        </Card>
+
+        {/* Picker dialog (radio opsi harga + qty pcs) */}
+        <PickerDialog
+          product={modePicker}
+          unitsByProduct={unitsByProduct}
+          onClose={() => setModePicker(null)}
+          onAdd={(p, mode, unit, qtyPcs) => {
+            if (mode === "eceran") {
+              const units = getUnits(p, unitsByProduct);
+              const base = units.find((u) => u.is_base) || units[0];
+              const key = `${p.id}:eceran`;
+              setCart((c) => {
+                const idx = c.findIndex((x) => x.key === key);
+                if (idx >= 0) {
+                  const copy = [...c];
+                  copy[idx] = { ...copy[idx], qty: copy[idx].qty + qtyPcs };
+                  return copy;
+                }
+                return [...c, { key, product: p, mode: "eceran", unit: base, baseUnit: base, qty: qtyPcs }];
+              });
+            } else {
+              const units = getUnits(p, unitsByProduct);
+              const base = units.find((u) => u.is_base) || units[0];
+              const key = `${p.id}:grosir:${unit.name}`;
+              setCart((c) => {
+                const idx = c.findIndex((x) => x.key === key);
+                if (idx >= 0) {
+                  const copy = [...c];
+                  copy[idx] = { ...copy[idx], qty: copy[idx].qty + qtyPcs };
+                  return copy;
+                }
+                return [...c, { key, product: p, mode: "grosiran", unit, baseUnit: base, qty: qtyPcs }];
+              });
+            }
+            setModePicker(null);
+          }}
+        />
+
+        {/* Payment dialog */}
+        <Dialog
+          open={payOpen}
+          onOpenChange={(o) => {
+            setPayOpen(o);
+            if (!o) {
+              if (qris && qris.status === "pending") {
+                handleCancelQris();
+              } else {
+                setQris(null);
+              }
+            }
+          }}
+        >
+          <DialogContent className="max-h-screen overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Pembayaran</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="rounded-lg bg-muted p-4 text-center">
+                <div className="text-sm text-muted-foreground">Total Belanja</div>
+                <div className="text-3xl font-bold text-primary">{formatRupiah(totals.total)}</div>
+              </div>
+
+              <div>
+                <Label className="mb-1.5 block">Metode Pembayaran</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "cash" ? "default" : "outline"}
+                    onClick={() => {
+                      setPaymentMethod("cash");
+                      if (qris) handleCancelQris();
+                    }}
+                  >
+                    💵 Cash
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "qris" ? "default" : "outline"}
+                    onClick={() => {
+                      setPaymentMethod("qris");
+                      setPaid(String(totals.total));
+                    }}
+                  >
+                    📱 QRIS
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={paymentMethod === "split" ? "default" : "outline"}
+                    onClick={() => {
+                      setPaymentMethod("split");
+                      if (qris) handleCancelQris();
+                    }}
+                  >
+                    🔀 Split
+                  </Button>
+                </div>
+              </div>
+
+              {paymentMethod === "cash" && (
+                <div>
+                  <Label>Uang Diterima</Label>
+                  <Input
+                    autoFocus
+                    inputMode="numeric"
+                    value={paid}
+                    onChange={(e) => setPaid(e.target.value.replace(/[^\d]/g, ""))}
+                    placeholder="0"
+                    className="mt-1 h-12 text-2xl"
+                  />
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {[totals.total, 50000, 100000, 200000].map((n, i) => (
+                      <Button key={i} variant="outline" size="sm" onClick={() => setPaid(String(n))}>
+                        {formatRupiah(n)}
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {paymentMethod === "cash" && (
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <span className="text-sm">Kembalian</span>
+                  <span className="text-lg font-semibold">
+                    {formatRupiah(Math.max(0, Number(paid || 0) - totals.total))}
+                  </span>
+                </div>
+              )}
+
+              {paymentMethod === "split" &&
+                (() => {
+                  const cashN = Number(splitCash.replace(/[^\d]/g, "")) || 0;
+                  const qrisN = Number(splitQris.replace(/[^\d]/g, "")) || 0;
+                  const sumPaid = cashN + qrisN;
+                  const remaining = Math.max(0, totals.total - sumPaid);
+                  const change = Math.max(0, sumPaid - totals.total);
+                  return (
+                    <div className="space-y-2 rounded-lg border p-3">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">💵 Cash</Label>
+                          <Input
+                            inputMode="numeric"
+                            value={splitCash}
+                            onChange={(e) => setSplitCash(e.target.value.replace(/[^\d]/g, ""))}
+                            placeholder="0"
+                            className="mt-1 h-11"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs">📱 QRIS</Label>
+                          <Input
+                            inputMode="numeric"
+                            value={splitQris}
+                            onChange={(e) => setSplitQris(e.target.value.replace(/[^\d]/g, ""))}
+                            placeholder="0"
+                            className="mt-1 h-11"
+                            disabled={!!qris}
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1 text-xs">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSplitCash(String(totals.total));
+                            setSplitQris("0");
+                          }}
+                        >
+                          Semua Cash
                         </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            setSplitQris(String(totals.total));
+                            setSplitCash("0");
+                          }}
+                        >
+                          Semua QRIS
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            const half = Math.round(totals.total / 2);
+                            setSplitCash(String(half));
+                            setSplitQris(String(totals.total - half));
+                          }}
+                        >
+                          Bagi 2
+                        </Button>
+                        {remaining > 0 && (
+                          <Button variant="ghost" size="sm" onClick={() => setSplitCash(String(cashN + remaining))}>
+                            Sisa ke Cash
+                          </Button>
+                        )}
+                      </div>
+                      <div className="flex justify-between border-t pt-2 text-sm">
+                        <span>Total Dibayar</span>
+                        <span className="font-semibold">{formatRupiah(sumPaid)}</span>
+                      </div>
+                      {remaining > 0 ? (
+                        <div className="flex justify-between text-sm text-destructive">
+                          <span>Kurang</span>
+                          <span className="font-semibold">{formatRupiah(remaining)}</span>
+                        </div>
                       ) : (
-                        <div className="text-[11px] text-muted-foreground">
-                          QRIS statis toko belum diatur. Upload di <b>Pengaturan → QRIS Statis Toko</b> agar bisa menerima pembayaran QRIS.
+                        <div className="flex justify-between text-sm">
+                          <span>Kembalian</span>
+                          <span className="font-semibold">{formatRupiah(change)}</span>
                         </div>
                       )}
                     </div>
                   );
                 })()}
-                {qris && (
-                  <div className="space-y-2 text-center">
-                    <div className="text-xs text-muted-foreground">QRIS Toko</div>
-                    <div className="mx-auto inline-block rounded-md border bg-white p-2">
-                      <img src={qris.qr_url} alt="QRIS" className="h-56 w-56 object-contain" />
-                    </div>
-                    <div className="text-sm">
-                      Nominal: <span className="font-semibold">{formatRupiah(qris.amount)}</span>
-                    </div>
-                    {qris.status === "pending" && (
-                      <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-left text-[11px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
-                        ⚠️ Konfirmasi pembayaran masuk lewat aplikasi merchant Anda (GoPay/OVO/BCA), lalu klik <b>Tandai Sudah Dibayar</b>.
+
+              {(paymentMethod === "qris" ||
+                (paymentMethod === "split" && (Number(splitQris.replace(/[^\d]/g, "")) || 0) > 0)) && (
+                <div className="space-y-2 rounded-lg border p-3">
+                  {!qris &&
+                    (() => {
+                      const amt =
+                        paymentMethod === "split" ? Number(splitQris.replace(/[^\d]/g, "")) || 0 : totals.total;
+                      return (
+                        <div className="space-y-2">
+                          {staticQrisPayload ? (
+                            <Button
+                              type="button"
+                              className="w-full"
+                              disabled={qrisLoading || amt <= 0}
+                              onClick={() => handleCreateStaticQris(amt)}
+                            >
+                              {qrisLoading
+                                ? "Membuat QR…"
+                                : `Buat QRIS ${paymentMethod === "split" ? formatRupiah(amt) : ""}`}
+                            </Button>
+                          ) : (
+                            <div className="text-[11px] text-muted-foreground">
+                              QRIS statis toko belum diatur. Upload di <b>Pengaturan → QRIS Statis Toko</b> agar bisa
+                              menerima pembayaran QRIS.
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  {qris && (
+                    <div className="space-y-2 text-center">
+                      <div className="text-xs text-muted-foreground">QRIS Toko</div>
+                      <div className="mx-auto inline-block rounded-md border bg-white p-2">
+                        <img src={qris.qr_url} alt="QRIS" className="h-56 w-56 object-contain" />
                       </div>
-                    )}
-                    {qris.status === "paid" && (
-                      <div className="text-sm font-semibold text-success">✓ Pembayaran diterima</div>
-                    )}
-                    <div className="flex flex-wrap justify-center gap-2 pt-1">
+                      <div className="text-sm">
+                        Nominal: <span className="font-semibold">{formatRupiah(qris.amount)}</span>
+                      </div>
                       {qris.status === "pending" && (
-                        <Button type="button" size="sm" onClick={() => setQris({ ...qris, status: "paid" })}>
-                          Tandai Sudah Dibayar
-                        </Button>
+                        <div className="rounded-md border border-amber-300 bg-amber-50 p-2 text-left text-[11px] text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+                          ⚠️ Konfirmasi pembayaran masuk lewat aplikasi merchant Anda (GoPay/OVO/BCA), lalu klik{" "}
+                          <b>Tandai Sudah Dibayar</b>.
+                        </div>
                       )}
-                      <Button type="button" size="sm" variant="ghost" onClick={handleCancelQris}>Batalkan QR</Button>
+                      {qris.status === "paid" && (
+                        <div className="text-sm font-semibold text-success">✓ Pembayaran diterima</div>
+                      )}
+                      <div className="flex flex-wrap justify-center gap-2 pt-1">
+                        {qris.status === "pending" && (
+                          <Button type="button" size="sm" onClick={() => setQris({ ...qris, status: "paid" })}>
+                            Tandai Sudah Dibayar
+                          </Button>
+                        )}
+                        <Button type="button" size="sm" variant="ghost" onClick={handleCancelQris}>
+                          Batalkan QR
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="space-y-2 rounded-lg border p-3">
+                <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
+                  <input
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={sendWa}
+                    onChange={(e) => setSendWa(e.target.checked)}
+                  />
+                  Kirim e-struk via WhatsApp
+                </label>
+                {sendWa && (
+                  <div className="space-y-2">
+                    <CustomerPicker
+                      customers={customers}
+                      name={customerName}
+                      phone={customerPhone}
+                      onPick={(c) => {
+                        setCustomerName(c.name);
+                        if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+                      }}
+                      onChangeName={setCustomerName}
+                      onChangePhone={(v) => setCustomerPhone(v.replace(/[^\d+]/g, ""))}
+                    />
+                    <div className="text-xs text-muted-foreground">
+                      Cari pelanggan tersimpan via nama atau no. HP. Data akan dicantumkan pada caption WhatsApp.
                     </div>
                   </div>
                 )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setPayOpen(false)}>
+                Batal
+              </Button>
+              <Button
+                onClick={checkout}
+                disabled={submitting || (paymentMethod === "qris" && (!qris || qris.status !== "paid"))}
+              >
+                {submitting ? "Memproses..." : "Selesaikan"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Receipt dialog */}
+        <Dialog
+          open={!!lastReceipt}
+          onOpenChange={(o) => {
+            if (!o) {
+              setLastReceipt(null);
+              setReceiptImg(null);
+            }
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <ReceiptIcon className="h-5 w-5 text-success" /> Transaksi Berhasil
+              </DialogTitle>
+            </DialogHeader>
+            {lastReceipt && (
+              <div className="space-y-3 text-sm">
+                {receiptImg ? (
+                  <div className="overflow-hidden rounded-md border bg-white">
+                    <img src={receiptImg} alt="Struk" className="block w-full" />
+                  </div>
+                ) : (
+                  <div className="rounded-md border p-4 text-center text-xs text-muted-foreground">
+                    Memuat gambar struk…
+                  </div>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {receiptImg && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        const a = document.createElement("a");
+                        a.href = receiptImg;
+                        a.download = `struk-${lastReceipt.id.slice(0, 8)}.png`;
+                        a.click();
+                      }}
+                    >
+                      ⬇️ Unduh
+                    </Button>
+                  )}
+                  {lastReceipt.customerPhone && receiptImg && (
+                    <Button
+                      className="flex-1"
+                      disabled={sendingWa}
+                      onClick={async () => {
+                        const r = lastReceipt;
+                        const base64 = receiptImg.split(",")[1] || "";
+                        const lines: string[] = [];
+                        lines.push(`*${storeName || "Toko"}*`);
+                        lines.push(`Struk #${r.id.slice(0, 8)}`);
+                        lines.push(new Date(r.at).toLocaleString("id-ID"));
+                        if (r.customerName) lines.push(`Pelanggan: ${r.customerName}`);
+                        lines.push(`--------------------------------`);
+                        for (const it of r.items) {
+                          const c = computeLine(it, getUnits(it.product, unitsByProduct));
+                          const showPack = c.packs > 0 && (it.mode === "grosiran" || c.autoUnit);
+                          const packName = it.mode === "grosiran" ? it.unit.name : c.autoUnit?.name || "";
+                          lines.push(`${it.product.name}`);
+                          if (showPack) {
+                            lines.push(
+                              `  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`,
+                            );
+                            if (c.remainder > 0) {
+                              lines.push(
+                                `  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.remainder * c.ecerPrice)}`,
+                              );
+                            }
+                          } else {
+                            lines.push(
+                              `  ${it.qty} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.total)}`,
+                            );
+                          }
+                        }
+                        lines.push(`--------------------------------`);
+                        lines.push(`Total   : ${formatRupiah(r.total)}`);
+                        if (r.paymentMethod === "split") {
+                          lines.push(`Cash    : ${formatRupiah(r.cashPart || 0)}`);
+                          lines.push(`QRIS    : ${formatRupiah(r.qrisPart || 0)}`);
+                          lines.push(`Bayar   : ${formatRupiah(r.paid)} (SPLIT)`);
+                        } else {
+                          lines.push(`Bayar   : ${formatRupiah(r.paid)} (${r.paymentMethod.toUpperCase()})`);
+                        }
+                        lines.push(`Kembali : ${formatRupiah(r.change)}`);
+                        lines.push(``);
+                        lines.push(`Terima kasih sudah berbelanja 🙏`);
+                        const caption = lines.join("\n");
+                        setSendingWa(true);
+                        try {
+                          // 1) Upload PNG ke Storage bucket 'receipts'
+                          const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+                          const blob = new Blob([bin], { type: "image/png" });
+                          // resolve tenant id via RPC (works for owner & cashier session)
+                          const { data: tid, error: tidErr } = await supabase.rpc("current_tenant_id");
+                          const tenantId = tid as string | null;
+                          if (!tenantId) {
+                            toast.error("Akun ini tidak terhubung ke toko" + (tidErr ? `: ${tidErr.message}` : ""));
+                            setSendingWa(false);
+                            return;
+                          }
+                          const objectPath = `${tenantId}/${r.id}.png`;
+                          const up = await supabase.storage
+                            .from("receipts")
+                            .upload(objectPath, blob, { upsert: true, contentType: "image/png" });
+                          let publicUrl: string | null = null;
+                          if (!up.error) {
+                            const signed = await supabase.storage
+                              .from("receipts")
+                              .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
+                            publicUrl = signed.data?.signedUrl ?? null;
+                          }
+
+                          // 2) Kirim via Fonnte (prefer URL, fallback ke file base64)
+                          const res = publicUrl
+                            ? await sendWaUrlFn({
+                                data: {
+                                  target: r.customerPhone!,
+                                  message: caption,
+                                  url: publicUrl,
+                                  filename: `struk-${r.id.slice(0, 8)}.png`,
+                                },
+                              })
+                            : await sendWaImgFn({
+                                data: {
+                                  target: r.customerPhone!,
+                                  caption,
+                                  filename: `struk-${r.id.slice(0, 8)}.png`,
+                                  imageBase64: base64,
+                                },
+                              });
+                          if (res.ok) {
+                            toast.success("E-struk (gambar) terkirim via WhatsApp");
+                          } else {
+                            toast.error("Fonnte gagal: " + res.error);
+                          }
+                        } catch (e: any) {
+                          toast.error("Gagal kirim: " + (e?.message || "unknown"));
+                        } finally {
+                          setSendingWa(false);
+                        }
+                      }}
+                    >
+                      {sendingWa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      {sendingWa ? "Mengirim…" : "📲 Kirim Gambar via WhatsApp"}
+                    </Button>
+                  )}
+                  {receiptImg && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          const blob = await (await fetch(receiptImg)).blob();
+                          await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+                          setCopied(true);
+                          setTimeout(() => setCopied(false), 2000);
+                        } catch {
+                          toast.error("Browser tidak mendukung copy gambar");
+                        }
+                      }}
+                    >
+                      {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  )}
+                </div>
               </div>
             )}
-
-
-            <div className="space-y-2 rounded-lg border p-3">
-              <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
-                <input
-                  type="checkbox"
-                  className="h-4 w-4"
-                  checked={sendWa}
-                  onChange={(e) => setSendWa(e.target.checked)}
-                />
-                Kirim e-struk via WhatsApp
-              </label>
-              {sendWa && (
-                <div className="space-y-2">
-                  <CustomerPicker
-                    customers={customers}
-                    name={customerName}
-                    phone={customerPhone}
-                    onPick={(c) => {
-                      setCustomerName(c.name);
-                      if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
-                    }}
-                    onChangeName={setCustomerName}
-                    onChangePhone={(v) => setCustomerPhone(v.replace(/[^\d+]/g, ""))}
-                  />
-                  <div className="text-xs text-muted-foreground">
-                    Cari pelanggan tersimpan via nama atau no. HP. Data akan dicantumkan pada caption WhatsApp.
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setPayOpen(false)}>Batal</Button>
-            <Button onClick={checkout} disabled={submitting || (paymentMethod === "qris" && (!qris || qris.status !== "paid"))}>
-              {submitting ? "Memproses..." : "Selesaikan"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Receipt dialog */}
-      <Dialog open={!!lastReceipt} onOpenChange={(o) => { if (!o) { setLastReceipt(null); setReceiptImg(null); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <ReceiptIcon className="h-5 w-5 text-success" /> Transaksi Berhasil
-            </DialogTitle>
-          </DialogHeader>
-          {lastReceipt && (
-            <div className="space-y-3 text-sm">
-              {receiptImg ? (
-                <div className="overflow-hidden rounded-md border bg-white">
-                  <img src={receiptImg} alt="Struk" className="block w-full" />
-                </div>
-              ) : (
-                <div className="rounded-md border p-4 text-center text-xs text-muted-foreground">Memuat gambar struk…</div>
-              )}
-              <div className="flex flex-wrap gap-2">
-                {receiptImg && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const a = document.createElement("a");
-                      a.href = receiptImg;
-                      a.download = `struk-${lastReceipt.id.slice(0, 8)}.png`;
-                      a.click();
-                    }}
-                  >
-                    ⬇️ Unduh
-                  </Button>
-                )}
-                {lastReceipt.customerPhone && receiptImg && (
-                  <Button
-                    className="flex-1"
-                    disabled={sendingWa}
-                    onClick={async () => {
-                      const r = lastReceipt;
-                      const base64 = receiptImg.split(",")[1] || "";
-                      const lines: string[] = [];
-                      lines.push(`*${storeName || "Toko"}*`);
-                      lines.push(`Struk #${r.id.slice(0, 8)}`);
-                      lines.push(new Date(r.at).toLocaleString("id-ID"));
-                      if (r.customerName) lines.push(`Pelanggan: ${r.customerName}`);
-                      lines.push(`--------------------------------`);
-                      for (const it of r.items) {
-                        const c = computeLine(it, getUnits(it.product, unitsByProduct));
-                        const showPack = c.packs > 0 && (it.mode === "grosiran" || c.autoUnit);
-                        const packName = it.mode === "grosiran" ? it.unit.name : (c.autoUnit?.name || "");
-                        lines.push(`${it.product.name}`);
-                        if (showPack) {
-                          lines.push(`  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
-                          if (c.remainder > 0) {
-                            lines.push(`  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.remainder * c.ecerPrice)}`);
-                          }
-                        } else {
-                          lines.push(`  ${it.qty} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.total)}`);
-                        }
-                      }
-                      lines.push(`--------------------------------`);
-                      lines.push(`Total   : ${formatRupiah(r.total)}`);
-                      if (r.paymentMethod === "split") {
-                        lines.push(`Cash    : ${formatRupiah(r.cashPart || 0)}`);
-                        lines.push(`QRIS    : ${formatRupiah(r.qrisPart || 0)}`);
-                        lines.push(`Bayar   : ${formatRupiah(r.paid)} (SPLIT)`);
-                      } else {
-                        lines.push(`Bayar   : ${formatRupiah(r.paid)} (${r.paymentMethod.toUpperCase()})`);
-                      }
-                      lines.push(`Kembali : ${formatRupiah(r.change)}`);
-                      lines.push(``);
-                      lines.push(`Terima kasih sudah berbelanja 🙏`);
-                      const caption = lines.join("\n");
-                      setSendingWa(true);
-                      try {
-                        // 1) Upload PNG ke Storage bucket 'receipts'
-                        const bin = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
-                        const blob = new Blob([bin], { type: "image/png" });
-                        // resolve tenant id via RPC (works for owner & cashier session)
-                        const { data: tid, error: tidErr } = await supabase.rpc("current_tenant_id");
-                        const tenantId = tid as string | null;
-                        if (!tenantId) {
-                          toast.error("Akun ini tidak terhubung ke toko" + (tidErr ? `: ${tidErr.message}` : ""));
-                          setSendingWa(false);
-                          return;
-                        }
-                        const objectPath = `${tenantId}/${r.id}.png`;
-                        const up = await supabase.storage
-                          .from("receipts")
-                          .upload(objectPath, blob, { upsert: true, contentType: "image/png" });
-                        let publicUrl: string | null = null;
-                        if (!up.error) {
-                          const signed = await supabase.storage
-                            .from("receipts")
-                            .createSignedUrl(objectPath, 60 * 60 * 24 * 7);
-                          publicUrl = signed.data?.signedUrl ?? null;
-                        }
-
-                        // 2) Kirim via Fonnte (prefer URL, fallback ke file base64)
-                        const res = publicUrl
-                          ? await sendWaUrlFn({
-                              data: {
-                                target: r.customerPhone!,
-                                message: caption,
-                                url: publicUrl,
-                                filename: `struk-${r.id.slice(0, 8)}.png`,
-                              },
-                            })
-                          : await sendWaImgFn({
-                              data: {
-                                target: r.customerPhone!,
-                                caption,
-                                filename: `struk-${r.id.slice(0, 8)}.png`,
-                                imageBase64: base64,
-                              },
-                            });
-                        if (res.ok) {
-                          toast.success("E-struk (gambar) terkirim via WhatsApp");
-                        } else {
-                          toast.error("Fonnte gagal: " + res.error);
-                        }
-                      } catch (e: any) {
-                        toast.error("Gagal kirim: " + (e?.message || "unknown"));
-                      } finally {
-                        setSendingWa(false);
-                      }
-                    }}
-                  >
-                    {sendingWa ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                    {sendingWa ? "Mengirim…" : "📲 Kirim Gambar via WhatsApp"}
-                  </Button>
-                )}
-                {receiptImg && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      try {
-                        const blob = await (await fetch(receiptImg)).blob();
-                        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
-                        setCopied(true);
-                        setTimeout(() => setCopied(false), 2000);
-                      } catch {
-                        toast.error("Browser tidak mendukung copy gambar");
-                      }
-                    }}
-                  >
-                    {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                )}
-              </div>
-            </div>
-          )}
-          <DialogFooter>
-            <Button onClick={() => { setLastReceipt(null); setReceiptImg(null); }}>Tutup</Button>
-
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter>
+              <Button
+                onClick={() => {
+                  setLastReceipt(null);
+                  setReceiptImg(null);
+                }}
+              >
+                Tutup
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
@@ -1226,7 +1500,7 @@ function PickerDialog({
   const [selected, setSelected] = useState<string | null>(null);
   const [qty, setQty] = useState<number>(1);
 
-  const units = product ? (unitsByProduct[product.id] || [fallbackUnitFromProduct(product)]) : [];
+  const units = product ? unitsByProduct[product.id] || [fallbackUnitFromProduct(product)] : [];
   const options = useMemo(() => buildOptions(units), [units]);
   const cheapest = options.length ? Math.min(...options.map((o) => o.perBasePrice)) : 0;
 
@@ -1249,7 +1523,10 @@ function PickerDialog({
 
   const submit = () => {
     if (!opt) return;
-    if (!minOk) { toast.error(`Minimal beli ${opt.tier.min_qty} ${opt.unit.name}`); return; }
+    if (!minOk) {
+      toast.error(`Minimal beli ${opt.tier.min_qty} ${opt.unit.name}`);
+      return;
+    }
     if (qty <= 0) return;
     const mode: SaleMode = opt.unit.conversion > 1 ? "grosiran" : "eceran";
     onAdd(product, mode, opt.unit, qtyPcs);
@@ -1305,7 +1582,12 @@ function PickerDialog({
 
         <div className="flex items-center justify-between gap-3 pt-2">
           <div className="flex items-center gap-1">
-            <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => setQty((q) => Math.max(1, q - 1))}>
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-9 w-9 rounded-full"
+              onClick={() => setQty((q) => Math.max(1, q - 1))}
+            >
               <Minus className="h-4 w-4" />
             </Button>
             <Input
@@ -1326,8 +1608,12 @@ function PickerDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Batal</Button>
-          <Button onClick={submit} disabled={!opt || !minOk}>+ Keranjang</Button>
+          <Button variant="outline" onClick={onClose}>
+            Batal
+          </Button>
+          <Button onClick={submit} disabled={!opt || !minOk}>
+            + Keranjang
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -1336,7 +1622,12 @@ function PickerDialog({
 
 type PickCustomer = { id: string; name: string; phone: string | null };
 function CustomerPicker({
-  customers, name, phone, onPick, onChangeName, onChangePhone,
+  customers,
+  name,
+  phone,
+  onPick,
+  onChangeName,
+  onChangePhone,
 }: {
   customers: PickCustomer[];
   name: string;
@@ -1361,7 +1652,10 @@ function CustomerPicker({
         <Input
           placeholder="🔍 Cari pelanggan (nama / no. HP)..."
           value={q}
-          onChange={(e) => { setQ(e.target.value); setOpenList(true); }}
+          onChange={(e) => {
+            setQ(e.target.value);
+            setOpenList(true);
+          }}
           onFocus={() => setOpenList(true)}
           onBlur={() => setTimeout(() => setOpenList(false), 150)}
         />
@@ -1392,7 +1686,12 @@ function CustomerPicker({
         )}
       </div>
       <Input placeholder="Nama pelanggan" value={name} onChange={(e) => onChangeName(e.target.value)} />
-      <Input inputMode="numeric" placeholder="08xxxxxxxxxx" value={phone} onChange={(e) => onChangePhone(e.target.value)} />
+      <Input
+        inputMode="numeric"
+        placeholder="08xxxxxxxxxx"
+        value={phone}
+        onChange={(e) => onChangePhone(e.target.value)}
+      />
     </div>
   );
 }
