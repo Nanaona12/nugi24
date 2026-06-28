@@ -958,12 +958,10 @@ function KeuntunganPage() {
             <div className="mb-3 text-sm font-semibold">Top 8 Produk Berdasarkan Keuntungan</div>
             <ResponsiveContainer width="100%" height={260}>
               <BarChart
-                data={stats.topProducts
-                  .slice(0, 8)
-                  .map((p) => ({
-                    name: p.name.length > 12 ? p.name.slice(0, 12) + "…" : p.name,
-                    Keuntungan: p.profit,
-                  }))}
+                data={stats.topProducts.slice(0, 8).map((p) => ({
+                  name: p.name.length > 12 ? p.name.slice(0, 12) + "…" : p.name,
+                  Keuntungan: p.profit,
+                }))}
               >
                 <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
                 <XAxis dataKey="name" fontSize={10} angle={-20} textAnchor="end" height={60} />
