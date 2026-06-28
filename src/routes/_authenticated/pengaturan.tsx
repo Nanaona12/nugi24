@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { User, KeyRound, Store, ArrowLeft, Mail, ShieldQuestion, RefreshCcw, Copy, Check, QrCode, Upload, Trash2 } from "lucide-react";
 
 
@@ -244,11 +245,25 @@ function StaticQrisCard() {
     finally { setSaving(false); }
   };
 
-  const clear = async () => {
-    if (!confirm("Hapus QRIS statis tersimpan?")) return;
-    setPayload(""); setPreview(null);
-    try { await setFn({ data: { payload: null } }); toast.success("QRIS statis dihapus"); }
-    catch (e: any) { toast.error(e.message); }
+  const [showDelete, setShowDelete] = useState(false);
+  const [delPwd, setDelPwd] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!delPwd) { toast.error("Masukkan password toko"); return; }
+    setDeleting(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const email = u.user?.email;
+      if (!email) throw new Error("Sesi tidak ditemukan. Hanya pemilik toko yang bisa menghapus.");
+      const { error: verifyErr } = await supabase.auth.signInWithPassword({ email, password: delPwd });
+      if (verifyErr) throw new Error("Password toko salah");
+      await setFn({ data: { payload: null } });
+      setPayload(""); setPreview(null);
+      toast.success("QRIS statis dihapus");
+      setShowDelete(false); setDelPwd("");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setDeleting(false); }
   };
 
   return (
@@ -277,7 +292,7 @@ function StaticQrisCard() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button onClick={save} disabled={saving || !payload}>Simpan QRIS</Button>
-          {payload && <Button variant="outline" onClick={clear}><Trash2 className="mr-1 h-4 w-4" />Hapus</Button>}
+          {payload && <Button variant="outline" onClick={() => setShowDelete(true)}><Trash2 className="mr-1 h-4 w-4" />Hapus</Button>}
           {payload && <Button variant="ghost" onClick={() => {
             try {
               const test = convertStaticToDynamicQris(payload, 1000);
@@ -287,6 +302,30 @@ function StaticQrisCard() {
           }}>Tes Validasi</Button>}
         </div>
       </CardContent>
+
+      <AlertDialog open={showDelete} onOpenChange={(o) => { setShowDelete(o); if (!o) setDelPwd(""); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus QRIS statis?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Demi keamanan, masukkan password akun toko Anda untuk menghapus QRIS statis tersimpan. QRIS akan tetap tersimpan selama tidak dihapus.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label>Password Toko</Label>
+            <Input type="password" value={delPwd} autoFocus
+              onChange={(e) => setDelPwd(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") confirmDelete(); }}
+              placeholder="Password akun pemilik toko" />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={(e) => { e.preventDefault(); confirmDelete(); }} disabled={deleting || !delPwd}>
+              {deleting ? "Memverifikasi..." : "Ya, Hapus"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
