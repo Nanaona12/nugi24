@@ -244,11 +244,25 @@ function StaticQrisCard() {
     finally { setSaving(false); }
   };
 
-  const clear = async () => {
-    if (!confirm("Hapus QRIS statis tersimpan?")) return;
-    setPayload(""); setPreview(null);
-    try { await setFn({ data: { payload: null } }); toast.success("QRIS statis dihapus"); }
-    catch (e: any) { toast.error(e.message); }
+  const [showDelete, setShowDelete] = useState(false);
+  const [delPwd, setDelPwd] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const confirmDelete = async () => {
+    if (!delPwd) { toast.error("Masukkan password toko"); return; }
+    setDeleting(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const email = u.user?.email;
+      if (!email) throw new Error("Sesi tidak ditemukan. Hanya pemilik toko yang bisa menghapus.");
+      const { error: verifyErr } = await supabase.auth.signInWithPassword({ email, password: delPwd });
+      if (verifyErr) throw new Error("Password toko salah");
+      await setFn({ data: { payload: null } });
+      setPayload(""); setPreview(null);
+      toast.success("QRIS statis dihapus");
+      setShowDelete(false); setDelPwd("");
+    } catch (e: any) { toast.error(e.message); }
+    finally { setDeleting(false); }
   };
 
   return (
