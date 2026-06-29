@@ -367,9 +367,9 @@ function POPage() {
     if (status === "received") {
       const { data: poItems } = await supabase
         .from("purchase_order_items")
-        .select("product_id, qty")
+        .select("product_id, qty, unit_cost, sell_price")
         .eq("po_id", po.id);
-      for (const it of (poItems as { product_id: string | null; qty: number }[]) || []) {
+      for (const it of (poItems as { product_id: string | null; qty: number; unit_cost: number | null; sell_price: number | null }[]) || []) {
         if (!it.product_id) continue;
         const { data: prod } = await supabase
           .from("products")
@@ -377,13 +377,14 @@ function POPage() {
           .eq("id", it.product_id)
           .single();
         if (prod) {
-          await supabase
-            .from("products")
-            .update({ stock: (prod.stock || 0) + it.qty })
-            .eq("id", it.product_id);
+          const upd: Record<string, unknown> = { stock: (prod.stock || 0) + it.qty };
+          if (it.unit_cost && it.unit_cost > 0) upd.cost_price = it.unit_cost;
+          if (it.sell_price && it.sell_price > 0) upd.price = it.sell_price;
+          await supabase.from("products").update(upd).eq("id", it.product_id);
         }
       }
-      toast.success("PO diterima — stok diperbarui");
+      toast.success("PO diterima — stok & harga diperbarui");
+
     } else {
       toast.success(`Status: ${STATUS_LABEL[status] || status}`);
     }
