@@ -162,42 +162,6 @@ function KeuntunganPage() {
     })();
   }, []);
 
-  const reconcile = useMemo(() => {
-    const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
-    const to = toDate ? new Date(toDate + "T23:59:59") : null;
-    let cash = 0,
-      qris = 0,
-      other = 0,
-      cashCount = 0,
-      qrisCount = 0;
-    for (const t of txs) {
-      const d = new Date(t.created_at);
-      if (from && d < from) continue;
-      if (to && d > to) continue;
-      const total = Number(t.total) || 0;
-      const m = (t.payment_method || "cash").toLowerCase();
-      if (m === "cash" || m === "tunai") {
-        cash += total;
-        cashCount++;
-      } else if (m === "qris" || m === "qr") {
-        qris += total;
-        qrisCount++;
-      } else other += total;
-    }
-    const aCash = Number(actualCash.replace(/[^\d-]/g, "")) || 0;
-    const aQris = Number(actualQris.replace(/[^\d-]/g, "")) || 0;
-    return {
-      cash,
-      qris,
-      other,
-      cashCount,
-      qrisCount,
-      actualCash: aCash,
-      actualQris: aQris,
-      diffCash: aCash - cash,
-      diffQris: aQris - qris,
-    };
-  }, [txs, fromDate, toDate, actualCash, actualQris]);
 
   const filteredItems = useMemo(() => {
     if (!fromDate && !toDate) return items;
