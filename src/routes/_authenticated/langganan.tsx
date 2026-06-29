@@ -137,38 +137,6 @@ function LanggananPage() {
         </CardContent>
       </Card>
 
-      {/* QRIS quota usage */}
-      {(() => {
-        const used = Number((data as any)?.qris_month_usage ?? 0);
-        const quota = qrisQuotaFor(currentPlan);
-        const pct = quota > 0 ? Math.min(100, Math.round((used / quota) * 100)) : 0;
-        const over = used > quota;
-        return (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Zap className="h-4 w-4" /> Kuota QRIS Gratis (bulan ini)
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-                <span>
-                  Terpakai <b>{formatRupiah(used)}</b>
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className={`h-full rounded-full transition-all ${over ? "bg-destructive" : pct >= 80 ? "bg-amber-500" : "bg-primary"}`}
-                  style={{ width: `${over ? 100 : pct}%` }}
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Admin QRIS ditanggung Dagang Pintar hingga batas kuota paket Anda. Kelebihan akan dikenakan MDR ±0,7% pada tagihan berikutnya.
-              </p>
-            </CardContent>
-          </Card>
-        );
-      })()}
 
       {/* Plan selector */}
       <div id="pilih-paket" className="scroll-mt-20 space-y-3">
