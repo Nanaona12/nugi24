@@ -15,8 +15,10 @@ type POItem = {
   product_name: string;
   qty: number;
   unit_cost: number;
+  sell_price?: number | null;
   qty_received?: number | null;
 };
+
 
 export function ReceivingDialog({
   open, onOpenChange, poId, poSupplier, onDone,
