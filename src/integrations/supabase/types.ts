@@ -654,6 +654,7 @@ export type Database = {
           product_name: string
           qty: number
           qty_received: number
+          sell_price: number | null
           subtotal: number
           tenant_id: string
           unit_cost: number
@@ -667,6 +668,7 @@ export type Database = {
           product_name: string
           qty: number
           qty_received?: number
+          sell_price?: number | null
           subtotal?: number
           tenant_id?: string
           unit_cost?: number
@@ -680,6 +682,7 @@ export type Database = {
           product_name?: string
           qty?: number
           qty_received?: number
+          sell_price?: number | null
           subtotal?: number
           tenant_id?: string
           unit_cost?: number

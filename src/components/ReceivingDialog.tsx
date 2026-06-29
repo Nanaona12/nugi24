@@ -15,8 +15,10 @@ type POItem = {
   product_name: string;
   qty: number;
   unit_cost: number;
+  sell_price?: number | null;
   qty_received?: number | null;
 };
+
 
 export function ReceivingDialog({
   open, onOpenChange, poId, poSupplier, onDone,
@@ -38,8 +40,9 @@ export function ReceivingDialog({
       setLoading(true);
       const { data, error } = await supabase
         .from("purchase_order_items")
-        .select("id,product_id,product_code,product_name,qty,unit_cost,qty_received")
+        .select("id,product_id,product_code,product_name,qty,unit_cost,sell_price,qty_received")
         .eq("po_id", poId);
+
       setLoading(false);
       if (error) { toast.error(error.message); return; }
       const list = (data || []) as POItem[];
@@ -72,7 +75,11 @@ export function ReceivingDialog({
         // Increment stock
         if (it.product_id) {
           const { data: p } = await supabase.from("products").select("stock").eq("id", it.product_id).single();
-          await supabase.from("products").update({ stock: (p?.stock || 0) + addQty }).eq("id", it.product_id);
+          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (p?.stock || 0) + addQty };
+          if (it.unit_cost && it.unit_cost > 0) upd.cost_price = it.unit_cost;
+          if (it.sell_price && it.sell_price > 0) upd.price = it.sell_price;
+          await supabase.from("products").update(upd).eq("id", it.product_id);
+
           // Batch if exp date set
           if (r.exp) {
             const { data: tid } = await (supabase as any).rpc("current_tenant_id");

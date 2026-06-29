@@ -37,10 +37,11 @@ import {
   PackageX,
   Sparkles,
 } from "lucide-react";
-import { AIPhotoCapture } from "@/components/AIPhotoCapture";
-import type { AiVisionResult } from "@/lib/ai-vision.functions";
+import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
+import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
 import { ReceivingDialog } from "@/components/ReceivingDialog";
 import { PackageCheck } from "lucide-react";
+
 
 
 export const Route = createFileRoute("/_authenticated/po")({
@@ -84,7 +85,9 @@ type DraftItem = {
   product_name: string;
   qty: string;
   unit_cost: string;
+  sell_price: string;
 };
+
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
@@ -191,7 +194,8 @@ function POPage() {
         product_code: p.code,
         product_name: p.name,
         qty: "1",
-        unit_cost: String(p.price),
+        unit_cost: String(p.cost_price || p.price),
+        sell_price: String(p.price),
       },
     ]);
   };
@@ -201,7 +205,8 @@ function POPage() {
     product_code: p.code,
     product_name: p.name,
     qty: String(Math.max(1, suggestedQty)),
-    unit_cost: String(p.price),
+    unit_cost: String(p.cost_price || p.price),
+    sell_price: String(p.price),
   });
 
   const openCreateForLowStock = (mode: "out" | "low") => {
@@ -213,7 +218,6 @@ function POPage() {
       return;
     }
     resetForm();
-    // suggested qty: restock to (threshold * 2) - current stock, min 1
     const target = Math.max(lowThreshold * 2, 10);
     setItems(pool.map((p) => buildDraftItem(p, target - (p.stock ?? 0))));
     setCreateOpen(true);
@@ -239,35 +243,34 @@ function POPage() {
   const addManual = () => {
     setItems((prev) => [
       ...prev,
-      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0" },
+      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0" },
     ]);
   };
 
-  const applyAiResultToPO = (r: AiVisionResult) => {
-    // Try to match existing product by barcode or name
-    const matched = products.find((p) =>
-      (r.barcode && p.barcode && p.barcode === r.barcode) ||
-      (r.name && p.name.toLowerCase() === r.name.toLowerCase()),
-    );
-    const totalQty = r.expiry_batches.reduce((s, b) => s + b.qty, 0);
-    const qty = totalQty > 0 ? totalQty : 1;
-    const cost = r.cost_price ?? matched?.price ?? r.recommended_price?.price ?? 0;
-    setItems((prev) => [
-      ...prev,
-      {
+  const applyInvoiceResult = (r: AiInvoiceResult) => {
+    if (r.supplier && !supplier.trim()) setSupplier(r.supplier);
+    if (r.invoice_no) {
+      const note = `Faktur ${r.invoice_no}${r.invoice_date ? ` (${r.invoice_date})` : ""}`;
+      setNotes((n) => n ? n : note);
+    }
+    const newItems: DraftItem[] = r.items.map((it) => {
+      let matched: Product | undefined;
+      if (it.matched_product_id) matched = products.find((p) => p.id === it.matched_product_id);
+      if (!matched && it.barcode) matched = products.find((p) => p.barcode === it.barcode);
+      if (!matched) matched = products.find((p) => p.name.toLowerCase() === it.name.toLowerCase());
+      return {
         product_id: matched?.id ?? null,
         product_code: matched?.code ?? "",
-        product_name: matched?.name ?? r.name ?? "",
-        qty: String(qty),
-        unit_cost: String(Math.round(cost)),
-      },
-    ]);
-    if (r.recommended_price?.price) {
-      toast.success(`Rekomendasi harga jual: Rp ${Math.round(r.recommended_price.price).toLocaleString("id-ID")} (margin ~${Math.round(r.recommended_price.margin_pct ?? 0)}%)`);
-    } else {
-      toast.success("Item ditambahkan dari AI");
-    }
+        product_name: matched?.name ?? it.name,
+        qty: String(Math.max(1, it.qty)),
+        unit_cost: String(Math.round(it.cost_price || 0)),
+        sell_price: String(Math.round(it.sell_price ?? matched?.price ?? 0)),
+      };
+    });
+    setItems((prev) => [...prev, ...newItems]);
+    toast.success(`${newItems.length} item dari struk ditambahkan`);
   };
+
 
 
 
@@ -318,6 +321,7 @@ function POPage() {
     const rows = valid.map((it) => {
       const qty = parseInt(it.qty || "0", 10) || 0;
       const unit_cost = parseNumber(it.unit_cost);
+      const sell_price = parseNumber(it.sell_price);
       const prod = it.product_id ? products.find((p) => p.id === it.product_id) : null;
       return {
         po_id: po.id,
@@ -327,9 +331,11 @@ function POPage() {
         product_name: it.product_name,
         qty,
         unit_cost,
+        sell_price: sell_price > 0 ? sell_price : null,
         subtotal: qty * unit_cost,
       };
     });
+
 
     const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
     setSaving(false);
@@ -361,9 +367,9 @@ function POPage() {
     if (status === "received") {
       const { data: poItems } = await supabase
         .from("purchase_order_items")
-        .select("product_id, qty")
+        .select("product_id, qty, unit_cost, sell_price")
         .eq("po_id", po.id);
-      for (const it of (poItems as { product_id: string | null; qty: number }[]) || []) {
+      for (const it of (poItems as { product_id: string | null; qty: number; unit_cost: number | null; sell_price: number | null }[]) || []) {
         if (!it.product_id) continue;
         const { data: prod } = await supabase
           .from("products")
@@ -371,13 +377,15 @@ function POPage() {
           .eq("id", it.product_id)
           .single();
         if (prod) {
-          await supabase
-            .from("products")
-            .update({ stock: (prod.stock || 0) + it.qty })
-            .eq("id", it.product_id);
+          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (prod.stock || 0) + it.qty };
+          if (it.unit_cost && it.unit_cost > 0) upd.cost_price = it.unit_cost;
+          if (it.sell_price && it.sell_price > 0) upd.price = it.sell_price;
+          await supabase.from("products").update(upd).eq("id", it.product_id);
         }
+
       }
-      toast.success("PO diterima — stok diperbarui");
+      toast.success("PO diterima — stok & harga diperbarui");
+
     } else {
       toast.success(`Status: ${STATUS_LABEL[status] || status}`);
     }
@@ -684,8 +692,9 @@ function POPage() {
                   <Plus className="mr-2 h-4 w-4" /> Item Manual
                 </Button>
                 <Button type="button" size="sm" onClick={() => setAiOpen(true)} className="flex-1">
-                  <Sparkles className="mr-2 h-4 w-4" /> Scan dengan AI
+                  <Sparkles className="mr-2 h-4 w-4" /> Scan Struk/Faktur
                 </Button>
+
               </div>
             </div>
 
@@ -697,20 +706,23 @@ function POPage() {
                     <tr>
                       <th className="p-2">Kode</th>
                       <th className="p-2">Nama</th>
-                      <th className="p-2 w-20 text-right">Qty</th>
-                      <th className="p-2 w-28 text-right">Harga</th>
+                      <th className="p-2 w-16 text-right">Qty</th>
+                      <th className="p-2 w-24 text-right">Modal</th>
+                      <th className="p-2 w-24 text-right">Jual</th>
                       <th className="p-2 w-24 text-right">Subtotal</th>
                       <th className="p-2"></th>
                     </tr>
+
                   </thead>
                   <tbody>
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="p-6 text-center text-muted-foreground">
+                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
                           Belum ada item
                         </td>
                       </tr>
                     ) : (
+
                       items.map((it, i) => {
                         const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
                         return (
@@ -747,7 +759,17 @@ function POPage() {
                                 className="h-8 text-xs text-right"
                               />
                             </td>
+                            <td className="p-1">
+                              <Input
+                                type="number"
+                                value={it.sell_price}
+                                onChange={(e) => updateItem(i, { sell_price: e.target.value })}
+                                className="h-8 text-xs text-right"
+                                placeholder="—"
+                              />
+                            </td>
                             <td className="p-1 text-right font-medium">{formatRupiah(sub)}</td>
+
                             <td className="p-1 text-center">
                               <Button
                                 size="icon"
@@ -868,11 +890,13 @@ function POPage() {
         </DialogContent>
       </Dialog>
 
-      <AIPhotoCapture
+      <AIInvoiceCapture
         open={aiOpen}
         onClose={() => setAiOpen(false)}
-        onResult={applyAiResultToPO}
+        onResult={applyInvoiceResult}
+        existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
       />
+
 
       <ReceivingDialog
         open={!!receiveFor}

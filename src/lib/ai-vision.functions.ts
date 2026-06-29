@@ -208,3 +208,105 @@ function extractJson(text: string): any {
     throw new Error("Tidak ada JSON di respons AI");
   }
 }
+
+// ============================================================
+// Invoice / Receipt scan for Purchase Orders
+// ============================================================
+
+const InvoiceInput = z.object({
+  images: z.array(z.object({ data_url: z.string().min(20) })).min(1).max(4),
+  existing_products: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    barcode: z.string().nullable().optional(),
+    code: z.string().optional(),
+  })).default([]),
+  store_type: z.enum(["auto", "warung", "grosiran", "both"]).default("auto"),
+});
+
+const InvoiceItem = z.object({
+  name: z.string(),
+  barcode: z.string().nullable().optional(),
+  qty: z.number().min(1).default(1),
+  cost_price: z.number().min(0).describe("Harga modal per pcs"),
+  sell_price: z.number().min(0).nullable().describe("Rekomendasi harga jual per pcs"),
+  matched_product_id: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+});
+
+const InvoiceOutput = z.object({
+  supplier: z.string().nullable(),
+  invoice_no: z.string().nullable().optional(),
+  invoice_date: z.string().nullable().optional(),
+  total: z.number().nullable().optional(),
+  items: z.array(InvoiceItem).default([]),
+  detected_store_type: z.enum(["warung", "grosiran", "both"]).nullable().optional(),
+});
+
+export type AiInvoiceResult = z.infer<typeof InvoiceOutput>;
+
+function invoicePrompt(existing: { id: string; name: string; barcode?: string | null }[], storeType: "auto" | "warung" | "grosiran" | "both") {
+  const guide = storeTypeGuidance(storeType);
+  const list = existing.slice(0, 200).map((p) => `- ${p.id} | ${p.name}${p.barcode ? ` | ${p.barcode}` : ""}`).join("\n");
+  return `Anda asisten kasir warung & grosir Indonesia. Tugas: baca foto STRUK / FAKTUR pembelian dari supplier dan ekstrak data terstruktur untuk membuat Purchase Order otomatis.
+
+${guide}
+
+Aturan:
+1. supplier: nama toko/distributor di kepala struk (mis. "Toko Sumber Rejeki", "PT Indomarco", "CV Berkah").
+2. invoice_no & invoice_date jika terlihat (tanggal YYYY-MM-DD).
+3. items: 1 baris struk = 1 item. Field:
+   - name: nama barang seperti tertulis (gabung brand+varian+ukuran bila ada).
+   - barcode: jika ada angka EAN di baris, isi.
+   - qty: jumlah pcs DASAR. Jika baris tertulis "2 DUS @20pcs", qty=40 (kalikan).
+   - cost_price: HARGA MODAL PER PCS. Jika struk tampil total per baris, hitung (subtotal / qty). Jika tampil per dus, BAGI dengan isi dus.
+   - sell_price: REKOMENDASI HARGA JUAL per pcs sesuai mode toko (warung: cost+margin 10-20% bulat 500/1000; grosir: cost+500-1000; both: pakai eceran).
+   - matched_product_id: jika nama/barcode COCOK dengan salah satu produk existing di bawah, isi UUID-nya. Selain itu null.
+4. total: total faktur jika terbaca.
+
+Produk existing di toko (untuk matching):
+${list || "(belum ada)"}
+
+Output JSON sesuai schema, tanpa markdown fence.`;
+}
+
+export const analyzeInvoicePhoto = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => InvoiceInput.parse(data))
+  .handler(async ({ data }) => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("LOVABLE_API_KEY belum di-set");
+
+    const gateway = createLovableAiGatewayProvider(key);
+    const model = gateway("google/gemini-3-flash-preview");
+
+    const userContent: any[] = [
+      { type: "text", text: "Berikut foto struk/faktur. Ekstrak supplier + semua item ke JSON." },
+    ];
+    for (const img of data.images) {
+      userContent.push({ type: "image", image: img.data_url });
+    }
+
+    try {
+      const { text } = await generateText({
+        model,
+        messages: [
+          { role: "system", content: invoicePrompt(data.existing_products, data.store_type) + "\n\nReturn ONLY one JSON object: { supplier, invoice_no?, invoice_date?, total?, detected_store_type?, items:[{name,barcode?,qty,cost_price,sell_price,matched_product_id?,note?}] }" },
+          { role: "user", content: userContent },
+        ],
+      });
+      const json = extractJson(text);
+      const parsed = InvoiceOutput.safeParse(json);
+      if (!parsed.success) {
+        console.error("AI invoice parse error", parsed.error.flatten(), "raw:", text);
+        throw new Error("AI mengembalikan format tidak valid. Foto struk lebih jelas dan tidak terpotong.");
+      }
+      return parsed.data;
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      if (msg.includes("429") || /rate.?limit/i.test(msg)) throw new Error("Terlalu banyak permintaan AI. Coba lagi sebentar.");
+      if (msg.includes("402") || /credit/i.test(msg)) throw new Error("Kredit AI habis. Hubungi admin / top-up workspace.");
+      throw new Error("Gagal menganalisa struk: " + msg);
+    }
+  });
+
