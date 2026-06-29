@@ -85,7 +85,9 @@ type DraftItem = {
   product_name: string;
   qty: string;
   unit_cost: string;
+  sell_price: string;
 };
+
 
 const STATUS_LABEL: Record<string, string> = {
   draft: "Draft",
