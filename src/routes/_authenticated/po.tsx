@@ -706,11 +706,13 @@ function POPage() {
                     <tr>
                       <th className="p-2">Kode</th>
                       <th className="p-2">Nama</th>
-                      <th className="p-2 w-20 text-right">Qty</th>
-                      <th className="p-2 w-28 text-right">Harga</th>
+                      <th className="p-2 w-16 text-right">Qty</th>
+                      <th className="p-2 w-24 text-right">Modal</th>
+                      <th className="p-2 w-24 text-right">Jual</th>
                       <th className="p-2 w-24 text-right">Subtotal</th>
                       <th className="p-2"></th>
                     </tr>
+
                   </thead>
                   <tbody>
                     {items.length === 0 ? (
