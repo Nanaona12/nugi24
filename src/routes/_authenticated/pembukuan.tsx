@@ -6,8 +6,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { BookOpen, TrendingUp, TrendingDown, Wallet, Download } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { BookOpen, TrendingUp, TrendingDown, Wallet, Download, Plus, Trash2 } from "lucide-react";
 import { formatRupiah } from "@/lib/format";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/pembukuan")({
   component: PembukuanPage,
@@ -19,13 +25,14 @@ export const Route = createFileRoute("/_authenticated/pembukuan")({
 
 type Entry = {
   id: string;
-  date: string; // ISO
+  date: string;
   kind: "in" | "out";
-  source: "Penjualan" | "PO";
+  source: "Penjualan" | "PO" | "Manual";
   description: string;
   ref?: string;
-  debit: number; // uang masuk
-  kredit: number; // uang keluar
+  debit: number;
+  kredit: number;
+  manualId?: string;
 };
 
 function todayStr(off = 0) {
@@ -41,63 +48,104 @@ function PembukuanPage() {
   const [toDate, setToDate] = useState(todayStr(0));
   const [filterKind, setFilterKind] = useState<"all" | "in" | "out">("all");
   const [q, setQ] = useState("");
+  const [tenantId, setTenantId] = useState<string | null>(null);
+
+  // Add dialog
+  const [addOpen, setAddOpen] = useState(false);
+  const [addForm, setAddForm] = useState({
+    kind: "in" as "in" | "out",
+    entry_date: todayStr(0),
+    description: "",
+    ref: "",
+    amount: "",
+  });
+  const [saving, setSaving] = useState(false);
+
+  // Delete confirmation + password
+  const [pendingDelete, setPendingDelete] = useState<Entry | null>(null);
+  const [pwOpen, setPwOpen] = useState(false);
+  const [password, setPassword] = useState("");
+  const [deleting, setDeleting] = useState(false);
+
+  const load = async () => {
+    setLoading(true);
+    const { data: tid } = await supabase.rpc("current_tenant_id");
+    const tenant = tid as string | null;
+    setTenantId(tenant);
+    if (!tenant) {
+      setEntries([]);
+      setLoading(false);
+      return;
+    }
+
+    const [txRes, poRes, bkRes] = await Promise.all([
+      supabase
+        .from("transactions")
+        .select("id, total, created_at, payment_method, customer_name")
+        .eq("tenant_id", tenant)
+        .order("created_at", { ascending: false })
+        .limit(5000),
+      supabase
+        .from("purchase_orders")
+        .select("id, total, supplier, status, received_at, created_at")
+        .eq("tenant_id", tenant)
+        .eq("status", "received")
+        .order("received_at", { ascending: false })
+        .limit(2000),
+      supabase
+        .from("bookkeeping_entries" as any)
+        .select("id, entry_date, kind, description, ref, amount")
+        .eq("tenant_id", tenant)
+        .order("entry_date", { ascending: false })
+        .limit(5000),
+    ]);
+
+    const list: Entry[] = [];
+    for (const t of (txRes.data || []) as any[]) {
+      list.push({
+        id: "t-" + t.id,
+        date: t.created_at,
+        kind: "in",
+        source: "Penjualan",
+        description: `Penjualan${t.customer_name ? " — " + t.customer_name : ""} (${(t.payment_method || "cash").toUpperCase()})`,
+        ref: String(t.id).slice(0, 8).toUpperCase(),
+        debit: Number(t.total) || 0,
+        kredit: 0,
+      });
+    }
+    for (const p of (poRes.data || []) as any[]) {
+      list.push({
+        id: "p-" + p.id,
+        date: p.received_at || p.created_at,
+        kind: "out",
+        source: "PO",
+        description: `PO Diterima${p.supplier ? " — " + p.supplier : ""}`,
+        ref: String(p.id).slice(0, 8).toUpperCase(),
+        debit: 0,
+        kredit: Number(p.total) || 0,
+      });
+    }
+    for (const b of (bkRes.data || []) as any[]) {
+      const amt = Number(b.amount) || 0;
+      list.push({
+        id: "b-" + b.id,
+        manualId: b.id,
+        date: b.entry_date,
+        kind: b.kind,
+        source: "Manual",
+        description: b.description,
+        ref: b.ref || undefined,
+        debit: b.kind === "in" ? amt : 0,
+        kredit: b.kind === "out" ? amt : 0,
+      });
+    }
+    list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    setEntries(list);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      const { data: tid } = await supabase.rpc("current_tenant_id");
-      const tenantId = tid as string | null;
-      if (!tenantId) {
-        setEntries([]);
-        setLoading(false);
-        return;
-      }
-
-      const [txRes, poRes] = await Promise.all([
-        supabase
-          .from("transactions")
-          .select("id, total, created_at, payment_method, customer_name")
-          .eq("tenant_id", tenantId)
-          .order("created_at", { ascending: false })
-          .limit(5000),
-        supabase
-          .from("purchase_orders")
-          .select("id, total, supplier, status, received_at, created_at")
-          .eq("tenant_id", tenantId)
-          .eq("status", "received")
-          .order("received_at", { ascending: false })
-          .limit(2000),
-      ]);
-
-      const list: Entry[] = [];
-      for (const t of (txRes.data || []) as any[]) {
-        list.push({
-          id: "t-" + t.id,
-          date: t.created_at,
-          kind: "in",
-          source: "Penjualan",
-          description: `Penjualan${t.customer_name ? " — " + t.customer_name : ""} (${(t.payment_method || "cash").toUpperCase()})`,
-          ref: String(t.id).slice(0, 8).toUpperCase(),
-          debit: Number(t.total) || 0,
-          kredit: 0,
-        });
-      }
-      for (const p of (poRes.data || []) as any[]) {
-        list.push({
-          id: "p-" + p.id,
-          date: p.received_at || p.created_at,
-          kind: "out",
-          source: "PO",
-          description: `PO Diterima${p.supplier ? " — " + p.supplier : ""}`,
-          ref: String(p.id).slice(0, 8).toUpperCase(),
-          debit: 0,
-          kredit: Number(p.total) || 0,
-        });
-      }
-      list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-      setEntries(list);
-      setLoading(false);
-    })();
+    load();
   }, []);
 
   const filtered = useMemo(() => {
@@ -114,7 +162,6 @@ function PembukuanPage() {
     });
   }, [entries, fromDate, toDate, filterKind, q]);
 
-  // running balance computed from oldest -> newest
   const withBalance = useMemo(() => {
     const asc = [...filtered].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     let bal = 0;
@@ -159,14 +206,94 @@ function PembukuanPage() {
     URL.revokeObjectURL(url);
   };
 
+  const submitAdd = async () => {
+    if (!tenantId) {
+      toast.error("Toko belum terhubung.");
+      return;
+    }
+    const amt = Number(addForm.amount);
+    if (!addForm.description.trim() || !Number.isFinite(amt) || amt <= 0) {
+      toast.error("Lengkapi keterangan dan nominal (> 0).");
+      return;
+    }
+    setSaving(true);
+    const { error } = await supabase.from("bookkeeping_entries" as any).insert({
+      tenant_id: tenantId,
+      entry_date: new Date(addForm.entry_date + "T" + new Date().toTimeString().slice(0, 8)).toISOString(),
+      kind: addForm.kind,
+      description: addForm.description.trim(),
+      ref: addForm.ref.trim() || null,
+      amount: amt,
+    });
+    setSaving(false);
+    if (error) {
+      toast.error("Gagal menyimpan: " + error.message);
+      return;
+    }
+    toast.success("Catatan ditambahkan");
+    setAddOpen(false);
+    setAddForm({ kind: "in", entry_date: todayStr(0), description: "", ref: "", amount: "" });
+    load();
+  };
+
+  const askDelete = (e: Entry) => {
+    if (!e.manualId) {
+      toast.error("Hanya catatan manual yang bisa dihapus dari sini.");
+      return;
+    }
+    setPendingDelete(e);
+  };
+
+  const confirmDeleteOpenPw = () => {
+    setPwOpen(true);
+  };
+
+  const doDelete = async () => {
+    if (!pendingDelete?.manualId) return;
+    setDeleting(true);
+    // verify password via supabase re-auth
+    const { data: userRes } = await supabase.auth.getUser();
+    const email = userRes.user?.email;
+    if (!email) {
+      setDeleting(false);
+      toast.error("Sesi tidak valid.");
+      return;
+    }
+    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password });
+    if (authErr) {
+      setDeleting(false);
+      toast.error("Password salah.");
+      return;
+    }
+    const { error } = await supabase
+      .from("bookkeeping_entries" as any)
+      .delete()
+      .eq("id", pendingDelete.manualId);
+    setDeleting(false);
+    if (error) {
+      toast.error("Gagal hapus: " + error.message);
+      return;
+    }
+    toast.success("Catatan dihapus");
+    setPassword("");
+    setPwOpen(false);
+    setPendingDelete(null);
+    load();
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <BookOpen className="h-5 w-5 text-primary" />
-        <h1 className="text-xl font-bold">Pembukuan</h1>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-5 w-5 text-primary" />
+          <h1 className="text-xl font-bold">Pembukuan</h1>
+        </div>
+        <Button size="sm" onClick={() => setAddOpen(true)}>
+          <Plus className="h-4 w-4" /> Tambah Catatan
+        </Button>
       </div>
       <p className="text-sm text-muted-foreground">
-        Catatan debit/kredit otomatis. Uang masuk dari penjualan, uang keluar dari PO yang sudah diterima (ACC).
+        Catatan debit/kredit otomatis dari penjualan & PO yang diterima, plus catatan manual.
       </p>
 
       <div className="grid gap-3 sm:grid-cols-3">
@@ -241,19 +368,18 @@ function PembukuanPage() {
                 <th className="p-2 text-right">Debit</th>
                 <th className="p-2 text-right">Kredit</th>
                 <th className="p-2 text-right">Saldo</th>
+                <th className="p-2"></th>
               </tr>
             </thead>
             <tbody>
               {loading && (
                 <tr>
-                  <td colSpan={7} className="p-4 text-center text-muted-foreground">
-                    Memuat...
-                  </td>
+                  <td colSpan={8} className="p-4 text-center text-muted-foreground">Memuat...</td>
                 </tr>
               )}
               {!loading && withBalance.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="p-4 text-center text-muted-foreground">
+                  <td colSpan={8} className="p-4 text-center text-muted-foreground">
                     Tidak ada catatan pada rentang ini.
                   </td>
                 </tr>
@@ -266,7 +392,9 @@ function PembukuanPage() {
                     })}
                   </td>
                   <td className="p-2">
-                    <Badge variant={e.kind === "in" ? "secondary" : "outline"}>{e.source}</Badge>
+                    <Badge variant={e.source === "Manual" ? "default" : e.kind === "in" ? "secondary" : "outline"}>
+                      {e.source}
+                    </Badge>
                   </td>
                   <td className="p-2">{e.description}</td>
                   <td className="p-2 font-mono text-xs text-muted-foreground">{e.ref}</td>
@@ -278,6 +406,19 @@ function PembukuanPage() {
                   </td>
                   <td className={`p-2 text-right font-semibold tabular-nums ${e.balance >= 0 ? "" : "text-destructive"}`}>
                     {formatRupiah(e.balance)}
+                  </td>
+                  <td className="p-2 text-right">
+                    {e.manualId ? (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive"
+                        onClick={() => askDelete(e)}
+                        title="Hapus catatan"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    ) : null}
                   </td>
                 </tr>
               ))}
@@ -291,12 +432,127 @@ function PembukuanPage() {
                   <td className={`p-2 text-right tabular-nums ${totals.saldo >= 0 ? "text-primary" : "text-destructive"}`}>
                     {formatRupiah(totals.saldo)}
                   </td>
+                  <td />
                 </tr>
               </tfoot>
             )}
           </table>
         </div>
       </Card>
+
+      {/* Add dialog */}
+      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Tambah Catatan Pembukuan</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label className="text-xs">Jenis</Label>
+              <div className="mt-1 flex gap-2">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={addForm.kind === "in" ? "default" : "outline"}
+                  onClick={() => setAddForm((f) => ({ ...f, kind: "in" }))}
+                >
+                  <TrendingUp className="h-4 w-4" /> Masuk (Debit)
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={addForm.kind === "out" ? "default" : "outline"}
+                  onClick={() => setAddForm((f) => ({ ...f, kind: "out" }))}
+                >
+                  <TrendingDown className="h-4 w-4" /> Keluar (Kredit)
+                </Button>
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Tanggal</Label>
+              <Input
+                type="date"
+                value={addForm.entry_date}
+                onChange={(e) => setAddForm((f) => ({ ...f, entry_date: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Keterangan</Label>
+              <Input
+                placeholder="cth: Setor modal, Bayar listrik, dll"
+                value={addForm.description}
+                onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Referensi (opsional)</Label>
+              <Input
+                placeholder="cth: No. nota, kwitansi"
+                value={addForm.ref}
+                onChange={(e) => setAddForm((f) => ({ ...f, ref: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Nominal (Rp)</Label>
+              <Input
+                type="number"
+                min={0}
+                value={addForm.amount}
+                onChange={(e) => setAddForm((f) => ({ ...f, amount: e.target.value }))}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddOpen(false)} disabled={saving}>Batal</Button>
+            <Button onClick={submitAdd} disabled={saving}>{saving ? "Menyimpan..." : "Simpan"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog open={!!pendingDelete && !pwOpen} onOpenChange={(o) => !o && setPendingDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Hapus catatan ini?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingDelete?.description} — {formatRupiah((pendingDelete?.debit || 0) + (pendingDelete?.kredit || 0))}.
+              Tindakan ini memerlukan password toko.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Batal</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteOpenPw}>Ya, hapus</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Password verify */}
+      <Dialog open={pwOpen} onOpenChange={(o) => { if (!o) { setPwOpen(false); setPassword(""); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Verifikasi Password Toko</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs">Masukkan password akun tenant Anda</Label>
+            <Input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Password"
+              autoFocus
+              onKeyDown={(e) => { if (e.key === "Enter" && password) doDelete(); }}
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setPwOpen(false); setPassword(""); }} disabled={deleting}>
+              Batal
+            </Button>
+            <Button variant="destructive" onClick={doDelete} disabled={deleting || !password}>
+              {deleting ? "Memverifikasi..." : "Hapus"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
