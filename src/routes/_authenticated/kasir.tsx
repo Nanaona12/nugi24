@@ -845,6 +845,9 @@ function KasirPage() {
               <Button size="sm" variant="outline" onClick={() => setRefundOpen(true)}>
                 <ReceiptIcon className="mr-1 h-4 w-4" /> Refund
               </Button>
+              <Button size="sm" variant="outline" onClick={() => setAiOrderOpen(true)}>
+                <Sparkles className="mr-1 h-4 w-4" /> Scan Pesanan AI
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setCloseOpen(true)}>
                 <ReceiptIcon className="mr-1 h-4 w-4" /> Closing
               </Button>
