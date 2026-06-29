@@ -327,6 +327,7 @@ function KasirPage() {
   const deductStockFn = useServerFn(deductProductStockFn);
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [aiOrderOpen, setAiOrderOpen] = useState(false);
 
   const handleCreateStaticQris = async (amountOverride?: number) => {
     const amt = amountOverride ?? totals.total;
