@@ -872,11 +872,13 @@ function POPage() {
         </DialogContent>
       </Dialog>
 
-      <AIPhotoCapture
+      <AIInvoiceCapture
         open={aiOpen}
         onClose={() => setAiOpen(false)}
-        onResult={applyAiResultToPO}
+        onResult={applyInvoiceResult}
+        existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
       />
+
 
       <ReceivingDialog
         open={!!receiveFor}
