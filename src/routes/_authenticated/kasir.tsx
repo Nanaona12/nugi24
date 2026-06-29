@@ -535,9 +535,25 @@ function KasirPage() {
   const removeLine = (key: string) => setCart((c) => c.filter((l) => l.key !== key));
 
   const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key !== "Enter" || filtered.length === 0) return;
+    if (e.key !== "Enter") return;
+    const raw = query.trim();
+    // Shortcut: "*N" → ubah jumlah baris terakhir di keranjang menjadi N
+    const qtyMatch = raw.match(/^\*\s*(\d+)$/);
+    if (qtyMatch) {
+      e.preventDefault();
+      const n = parseInt(qtyMatch[1], 10);
+      if (!n || n <= 0) { toast.error("Jumlah tidak valid"); return; }
+      if (cart.length === 0) { toast.error("Keranjang masih kosong"); return; }
+      const last = cart[cart.length - 1];
+      const multiplier = last.mode === "grosiran" ? Math.max(1, last.unit.conversion) : 1;
+      setQty(last.key, n * multiplier);
+      toast.success(`Jumlah ${last.product.name} → ${n} ${last.unit.name}`);
+      setQuery("");
+      return;
+    }
+    if (filtered.length === 0) return;
     e.preventDefault();
-    const q = query.trim().toLowerCase();
+    const q = raw.toLowerCase();
     // Exact match by barcode/code → buka dialog pilih satuan. Else: pakai hasil pertama.
     const exact =
       products.find((p) => (p.barcode || "").toLowerCase() === q) || products.find((p) => p.code.toLowerCase() === q);
@@ -904,7 +920,7 @@ function KasirPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={searchRef}
-              placeholder="Cari nama atau scan kode barang... (Enter = pilih pertama)"
+              placeholder="Cari/scan kode barang... (Enter = pilih • *2 Enter = ubah jumlah jadi 2)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleSearchKey}
