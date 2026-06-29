@@ -687,8 +687,9 @@ function POPage() {
                   <Plus className="mr-2 h-4 w-4" /> Item Manual
                 </Button>
                 <Button type="button" size="sm" onClick={() => setAiOpen(true)} className="flex-1">
-                  <Sparkles className="mr-2 h-4 w-4" /> Scan dengan AI
+                  <Sparkles className="mr-2 h-4 w-4" /> Scan Struk/Faktur
                 </Button>
+
               </div>
             </div>
 
