@@ -310,3 +310,98 @@ export const analyzeInvoicePhoto = createServerFn({ method: "POST" })
     }
   });
 
+// ============================================================
+// Customer Order parsing (Kasir AI)
+// ============================================================
+
+const OrderInput = z.object({
+  text: z.string().optional().default(""),
+  images: z.array(z.object({ data_url: z.string().min(20) })).max(3).optional().default([]),
+  products: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    barcode: z.string().nullable().optional(),
+    code: z.string().nullable().optional(),
+    units: z.array(z.string()).default([]),
+  })).max(800).default([]),
+});
+
+const OrderItem = z.object({
+  raw: z.string().describe("Tulisan asli pelanggan"),
+  matched_product_id: z.string().nullable(),
+  matched_name: z.string().nullable(),
+  qty: z.number().min(1).default(1),
+  unit: z.string().nullable().describe("Nama satuan: pcs/bungkus/dus/slove dll bila disebut"),
+  confidence: z.number().min(0).max(1).default(0.5),
+  note: z.string().nullable().optional().describe("Catatan: tidak ditemukan / ambigu / alternatif"),
+});
+
+const OrderOutput = z.object({
+  items: z.array(OrderItem).default([]),
+  summary: z.string().nullable().optional(),
+});
+
+export type AiOrderResult = z.infer<typeof OrderOutput>;
+
+export const analyzeCustomerOrder = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: unknown) => OrderInput.parse(data))
+  .handler(async ({ data }) => {
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("LOVABLE_API_KEY belum di-set");
+    if (!data.text.trim() && data.images.length === 0) throw new Error("Masukkan teks atau foto pesanan.");
+
+    const gateway = createLovableAiGatewayProvider(key);
+    const model = gateway("google/gemini-3-flash-preview");
+
+    const list = data.products.slice(0, 800).map((p) => {
+      const u = p.units && p.units.length ? ` | satuan: ${p.units.join(",")}` : "";
+      const bc = p.barcode ? ` | bc:${p.barcode}` : "";
+      return `- ${p.id} | ${p.name}${bc}${u}`;
+    }).join("\n");
+
+    const system = `Anda asisten kasir warung Indonesia. Pelanggan menulis daftar belanja (mis. di kertas, chat, atau lisan). Tugas Anda: cocokkan setiap item ke katalog produk toko.
+
+Aturan:
+1. Pahami singkatan & ejaan Indonesia: "indomi" = indomie, "rokok sm" = Sampoerna Mild, "aqua btl" = Aqua botol, "telor 1 kg", "minyak 1 lt", "bras 5 kg" = beras, "gulpas" = gula pasir, "kpi" = kopi.
+2. qty: angka yang ditulis pelanggan. Jika tidak disebut → 1.
+3. unit: jika pelanggan menyebut "1 dus indomie" / "2 slove rokok" / "3 botol" → isi unit dengan nama satuan persis seperti yang ada di "satuan" produk (case-insensitive). Jika tidak disebut, biarkan null (pakai eceran).
+4. matched_product_id: HARUS UUID dari daftar di bawah. Pilih yang paling cocok. Jika ragu antara beberapa varian (mis. "indomie" tanpa rasa), pilih yang paling umum dan isi note "ambigu, default goreng" atau sejenis.
+5. Jika benar-benar tidak ada di katalog → matched_product_id=null, matched_name=null, note="tidak ada di stok".
+6. confidence: 0.9+ kalau persis, 0.6-0.8 kalau perlu tebakan, <0.5 kalau ragu.
+7. summary: 1 kalimat ringkas (mis. "8 item, 1 tidak ditemukan").
+
+Katalog produk (id | nama | barcode | satuan):
+${list || "(kosong)"}
+
+Return ONLY JSON: { items:[{raw,matched_product_id,matched_name,qty,unit,confidence,note?}], summary? }`;
+
+    const userContent: any[] = [];
+    if (data.text.trim()) userContent.push({ type: "text", text: `Daftar pesanan pelanggan:\n${data.text}` });
+    for (const img of data.images) userContent.push({ type: "image", image: img.data_url });
+    if (userContent.length === 0) userContent.push({ type: "text", text: "(kosong)" });
+
+    try {
+      const { text } = await generateText({
+        model,
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: userContent },
+        ],
+      });
+      const json = extractJson(text);
+      const parsed = OrderOutput.safeParse(json);
+      if (!parsed.success) {
+        console.error("AI order parse error", parsed.error.flatten(), "raw:", text);
+        throw new Error("AI mengembalikan format tidak valid.");
+      }
+      return parsed.data;
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      if (msg.includes("429") || /rate.?limit/i.test(msg)) throw new Error("Terlalu banyak permintaan AI. Coba lagi sebentar.");
+      if (msg.includes("402") || /credit/i.test(msg)) throw new Error("Kredit AI habis. Hubungi admin / top-up workspace.");
+      throw new Error("Gagal menganalisa pesanan: " + msg);
+    }
+  });
+
+
