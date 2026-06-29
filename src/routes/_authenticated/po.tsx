@@ -377,11 +377,12 @@ function POPage() {
           .eq("id", it.product_id)
           .single();
         if (prod) {
-          const upd: Record<string, unknown> = { stock: (prod.stock || 0) + it.qty };
+          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (prod.stock || 0) + it.qty };
           if (it.unit_cost && it.unit_cost > 0) upd.cost_price = it.unit_cost;
           if (it.sell_price && it.sell_price > 0) upd.price = it.sell_price;
           await supabase.from("products").update(upd).eq("id", it.product_id);
         }
+
       }
       toast.success("PO diterima — stok & harga diperbarui");
 
