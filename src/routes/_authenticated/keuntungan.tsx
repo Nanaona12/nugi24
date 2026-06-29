@@ -83,8 +83,6 @@ function KeuntunganPage() {
   const [toDate, setToDate] = useState<string>("");
   const [storeName, setStoreName] = useState<string>("Toko");
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [actualCash, setActualCash] = useState<string>("");
-  const [actualQris, setActualQris] = useState<string>("");
   const [expirySummary, setExpirySummary] = useState<{ expired: number; le30: number; le60: number; le90: number }>({
     expired: 0,
     le30: 0,
@@ -164,42 +162,6 @@ function KeuntunganPage() {
     })();
   }, []);
 
-  const reconcile = useMemo(() => {
-    const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
-    const to = toDate ? new Date(toDate + "T23:59:59") : null;
-    let cash = 0,
-      qris = 0,
-      other = 0,
-      cashCount = 0,
-      qrisCount = 0;
-    for (const t of txs) {
-      const d = new Date(t.created_at);
-      if (from && d < from) continue;
-      if (to && d > to) continue;
-      const total = Number(t.total) || 0;
-      const m = (t.payment_method || "cash").toLowerCase();
-      if (m === "cash" || m === "tunai") {
-        cash += total;
-        cashCount++;
-      } else if (m === "qris" || m === "qr") {
-        qris += total;
-        qrisCount++;
-      } else other += total;
-    }
-    const aCash = Number(actualCash.replace(/[^\d-]/g, "")) || 0;
-    const aQris = Number(actualQris.replace(/[^\d-]/g, "")) || 0;
-    return {
-      cash,
-      qris,
-      other,
-      cashCount,
-      qrisCount,
-      actualCash: aCash,
-      actualQris: aQris,
-      diffCash: aCash - cash,
-      diffQris: aQris - qris,
-    };
-  }, [txs, fromDate, toDate, actualCash, actualQris]);
 
   const filteredItems = useMemo(() => {
     if (!fromDate && !toDate) return items;
@@ -827,65 +789,6 @@ function KeuntunganPage() {
         </Card>
       )}
 
-      {/* Rekonsiliasi Kas */}
-      <Card className="p-4">
-        <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
-          <DollarSign className="h-4 w-4 text-primary" />
-          Rekonsiliasi Kas — Cocokkan uang fisik dengan data
-        </div>
-        <p className="mb-4 text-xs text-muted-foreground">
-          Masukkan jumlah uang fisik (cash di laci) dan saldo masuk QRIS pada rentang tanggal di atas. Sistem akan
-          menghitung selisihnya dengan data transaksi.
-        </p>
-        <div className="grid gap-3 md:grid-cols-2">
-          <ReconRow
-            label="CASH / Tunai"
-            count={reconcile.cashCount}
-            system={reconcile.cash}
-            actual={actualCash}
-            onChange={setActualCash}
-            diff={reconcile.diffCash}
-            tone="primary"
-          />
-          <ReconRow
-            label="QRIS"
-            count={reconcile.qrisCount}
-            system={reconcile.qris}
-            actual={actualQris}
-            onChange={setActualQris}
-            diff={reconcile.diffQris}
-            tone="success"
-          />
-        </div>
-        {reconcile.other > 0 && (
-          <div className="mt-3 rounded-md bg-muted/40 p-2 text-xs text-muted-foreground">
-            Metode lain (transfer/dll):{" "}
-            <span className="font-semibold text-foreground">{formatRupiah(reconcile.other)}</span>
-          </div>
-        )}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setActualCash("");
-              setActualQris("");
-            }}
-          >
-            Reset Input
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setActualCash(String(reconcile.cash));
-              setActualQris(String(reconcile.qris));
-            }}
-          >
-            Isi dari Data
-          </Button>
-        </div>
-      </Card>
 
       {stats.lossMakers.length > 0 && (
         <Card className="border-destructive/40 bg-destructive/5 p-4">
@@ -1283,68 +1186,3 @@ function formatMonth(k: string) {
   return new Date(y, m - 1, 1).toLocaleDateString("id-ID", { month: "long", year: "numeric" });
 }
 
-function ReconRow({
-  label,
-  count,
-  system,
-  actual,
-  onChange,
-  diff,
-  tone,
-}: {
-  label: string;
-  count: number;
-  system: number;
-  actual: string;
-  onChange: (v: string) => void;
-  diff: number;
-  tone?: "primary" | "success";
-}) {
-  const toneCls = tone === "primary" ? "text-primary" : tone === "success" ? "text-emerald-600" : "";
-  const hasInput = actual.trim() !== "";
-  const diffCls = !hasInput
-    ? "text-muted-foreground"
-    : diff === 0
-      ? "text-emerald-600"
-      : diff > 0
-        ? "text-amber-600"
-        : "text-destructive";
-  const diffLabel = !hasInput
-    ? "—"
-    : diff === 0
-      ? "Cocok ✓"
-      : diff > 0
-        ? `Lebih ${formatRupiah(diff)}`
-        : `Kurang ${formatRupiah(Math.abs(diff))}`;
-  return (
-    <div className="rounded-lg border bg-card p-3">
-      <div className="mb-2 flex items-center justify-between">
-        <div className={`text-sm font-semibold ${toneCls}`}>{label}</div>
-        <Badge variant="secondary" className="text-[10px]">
-          {count} transaksi
-        </Badge>
-      </div>
-      <div className="grid gap-2 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Menurut Data</span>
-          <span className="font-semibold tabular-nums">{formatRupiah(system)}</span>
-        </div>
-        <div className="grid gap-1">
-          <Label className="text-xs text-muted-foreground">Uang Fisik / Saldo Diterima</Label>
-          <Input
-            type="number"
-            inputMode="numeric"
-            placeholder="0"
-            value={actual}
-            onChange={(e) => onChange(e.target.value)}
-            className="h-9 tabular-nums"
-          />
-        </div>
-        <div className="flex justify-between border-t pt-2">
-          <span className="text-muted-foreground">Selisih</span>
-          <span className={`font-bold tabular-nums ${diffCls}`}>{diffLabel}</span>
-        </div>
-      </div>
-    </div>
-  );
-}
