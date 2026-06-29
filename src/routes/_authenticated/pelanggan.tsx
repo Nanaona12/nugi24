@@ -40,8 +40,13 @@ function PelangganPage() {
   const [saving, setSaving] = useState(false);
 
   const load = async () => {
-    const { data: t } = await supabase.from("tenants").select("id").limit(1).maybeSingle();
-    setTenantId(t?.id ?? null);
+    const { data: tid } = await supabase.rpc("current_tenant_id");
+    let resolvedTid = (tid as string | null) ?? null;
+    if (!resolvedTid) {
+      const { data: t } = await supabase.from("tenants").select("id").limit(1).maybeSingle();
+      resolvedTid = t?.id ?? null;
+    }
+    setTenantId(resolvedTid);
     const { data, error } = await supabase
       .from("customers")
       .select("*")
