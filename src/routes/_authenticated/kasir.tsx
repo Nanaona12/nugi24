@@ -543,6 +543,9 @@ function KasirPage() {
       return next;
     });
     if (added > 0) toast.success(`${added} item dimasukkan ke keranjang`);
+  };
+
+
 
   const setQty = (key: string, qty: number) => {
     if (qty <= 0) return setCart((c) => c.filter((l) => l.key !== key));
