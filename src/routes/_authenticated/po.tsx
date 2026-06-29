@@ -759,7 +759,17 @@ function POPage() {
                                 className="h-8 text-xs text-right"
                               />
                             </td>
+                            <td className="p-1">
+                              <Input
+                                type="number"
+                                value={it.sell_price}
+                                onChange={(e) => updateItem(i, { sell_price: e.target.value })}
+                                className="h-8 text-xs text-right"
+                                placeholder="—"
+                              />
+                            </td>
                             <td className="p-1 text-right font-medium">{formatRupiah(sub)}</td>
+
                             <td className="p-1 text-center">
                               <Button
                                 size="icon"
