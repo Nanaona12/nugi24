@@ -32,6 +32,7 @@ import {
   LogOut as LogOutIcon,
   Wallet,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
