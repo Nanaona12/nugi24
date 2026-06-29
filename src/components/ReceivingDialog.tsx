@@ -40,8 +40,9 @@ export function ReceivingDialog({
       setLoading(true);
       const { data, error } = await supabase
         .from("purchase_order_items")
-        .select("id,product_id,product_code,product_name,qty,unit_cost,qty_received")
+        .select("id,product_id,product_code,product_name,qty,unit_cost,sell_price,qty_received")
         .eq("po_id", poId);
+
       setLoading(false);
       if (error) { toast.error(error.message); return; }
       const list = (data || []) as POItem[];
