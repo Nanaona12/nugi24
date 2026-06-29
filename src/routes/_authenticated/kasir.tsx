@@ -32,6 +32,7 @@ import {
   LogOut as LogOutIcon,
   Wallet,
   AlertTriangle,
+  Sparkles,
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -47,6 +48,7 @@ import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
+import { AIOrderDialog, type AiOrderItem } from "@/components/AIOrderDialog";
 import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
 
 import { parseNumber } from "@/lib/format";
@@ -325,6 +327,7 @@ function KasirPage() {
   const deductStockFn = useServerFn(deductProductStockFn);
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
+  const [aiOrderOpen, setAiOrderOpen] = useState(false);
 
   const handleCreateStaticQris = async (amountOverride?: number) => {
     const amt = amountOverride ?? totals.total;
@@ -510,6 +513,39 @@ function KasirPage() {
     });
     setModePicker(null);
   };
+
+  const applyAiOrder = (items: AiOrderItem[]) => {
+    let added = 0;
+    setCart((current) => {
+      const next = [...current];
+      for (const it of items) {
+        if (!it.matched_product_id) continue;
+        const p = products.find((x) => x.id === it.matched_product_id);
+        if (!p) continue;
+        const units = getUnits(p, unitsByProduct);
+        const base = units.find((u) => u.is_base) || units[0];
+        if (!base) continue;
+        let mode: "eceran" | "grosiran" = "eceran";
+        let unit = base;
+        let key = `${p.id}:eceran`;
+        if (it.unit) {
+          const found = units.find((u) => u.name.toLowerCase() === it.unit!.toLowerCase());
+          if (found && found.conversion > 1) {
+            mode = "grosiran"; unit = found; key = `${p.id}:grosir:${unit.name}`;
+          }
+        }
+        const qtyAdd = mode === "grosiran" ? it.qty * unit.conversion : it.qty;
+        const idx = next.findIndex((x) => x.key === key);
+        if (idx >= 0) next[idx] = { ...next[idx], qty: next[idx].qty + qtyAdd };
+        else next.push({ key, product: p, mode, unit, baseUnit: base, qty: qtyAdd });
+        added++;
+      }
+      return next;
+    });
+    if (added > 0) toast.success(`${added} item dimasukkan ke keranjang`);
+  };
+
+
 
   const setQty = (key: string, qty: number) => {
     if (qty <= 0) return setCart((c) => c.filter((l) => l.key !== key));
@@ -809,6 +845,9 @@ function KasirPage() {
               <Button size="sm" variant="outline" onClick={() => setRefundOpen(true)}>
                 <ReceiptIcon className="mr-1 h-4 w-4" /> Refund
               </Button>
+              <Button size="sm" variant="outline" onClick={() => setAiOrderOpen(true)}>
+                <Sparkles className="mr-1 h-4 w-4" /> Scan Pesanan AI
+              </Button>
               <Button size="sm" variant="outline" onClick={() => setCloseOpen(true)}>
                 <ReceiptIcon className="mr-1 h-4 w-4" /> Closing
               </Button>
@@ -912,6 +951,19 @@ function KasirPage() {
       )}
 
       <RefundDialog open={refundOpen} onOpenChange={setRefundOpen} onDone={loadProducts} />
+
+      <AIOrderDialog
+        open={aiOrderOpen}
+        onClose={() => setAiOrderOpen(false)}
+        products={products.map((p) => ({
+          id: p.id,
+          name: p.name,
+          barcode: (p as any).barcode ?? null,
+          code: p.code,
+          units: (unitsByProduct[p.id] || []).map((u) => u.name),
+        }))}
+        onApply={applyAiOrder}
+      />
 
       <div className={`grid gap-4 lg:grid-cols-[1fr_420px] ${!activeShift ? "pointer-events-none opacity-50" : ""}`}>
         {/* Product picker */}
