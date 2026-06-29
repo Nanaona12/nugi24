@@ -321,6 +321,7 @@ function POPage() {
     const rows = valid.map((it) => {
       const qty = parseInt(it.qty || "0", 10) || 0;
       const unit_cost = parseNumber(it.unit_cost);
+      const sell_price = parseNumber(it.sell_price);
       const prod = it.product_id ? products.find((p) => p.id === it.product_id) : null;
       return {
         po_id: po.id,
@@ -330,9 +331,11 @@ function POPage() {
         product_name: it.product_name,
         qty,
         unit_cost,
+        sell_price: sell_price > 0 ? sell_price : null,
         subtotal: qty * unit_cost,
       };
     });
+
 
     const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
     setSaving(false);
