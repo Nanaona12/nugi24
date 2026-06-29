@@ -514,6 +514,36 @@ function KasirPage() {
     setModePicker(null);
   };
 
+  const applyAiOrder = (items: AiOrderItem[]) => {
+    let added = 0;
+    setCart((current) => {
+      const next = [...current];
+      for (const it of items) {
+        if (!it.matched_product_id) continue;
+        const p = products.find((x) => x.id === it.matched_product_id);
+        if (!p) continue;
+        const units = getUnits(p, unitsByProduct);
+        const base = units.find((u) => u.is_base) || units[0];
+        if (!base) continue;
+        let mode: "eceran" | "grosiran" = "eceran";
+        let unit = base;
+        let key = `${p.id}:eceran`;
+        if (it.unit) {
+          const found = units.find((u) => u.name.toLowerCase() === it.unit!.toLowerCase());
+          if (found && found.conversion > 1) {
+            mode = "grosiran"; unit = found; key = `${p.id}:grosir:${unit.name}`;
+          }
+        }
+        const qtyAdd = mode === "grosiran" ? it.qty * unit.conversion : it.qty;
+        const idx = next.findIndex((x) => x.key === key);
+        if (idx >= 0) next[idx] = { ...next[idx], qty: next[idx].qty + qtyAdd };
+        else next.push({ key, product: p, mode, unit, baseUnit: base, qty: qtyAdd });
+        added++;
+      }
+      return next;
+    });
+    if (added > 0) toast.success(`${added} item dimasukkan ke keranjang`);
+
   const setQty = (key: string, qty: number) => {
     if (qty <= 0) return setCart((c) => c.filter((l) => l.key !== key));
     setCart((c) => c.map((l) => (l.key === key ? { ...l, qty } : l)));
