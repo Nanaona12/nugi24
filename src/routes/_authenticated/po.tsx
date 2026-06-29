@@ -37,10 +37,11 @@ import {
   PackageX,
   Sparkles,
 } from "lucide-react";
-import { AIPhotoCapture } from "@/components/AIPhotoCapture";
-import type { AiVisionResult } from "@/lib/ai-vision.functions";
+import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
+import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
 import { ReceivingDialog } from "@/components/ReceivingDialog";
 import { PackageCheck } from "lucide-react";
+
 
 
 export const Route = createFileRoute("/_authenticated/po")({
