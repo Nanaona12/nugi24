@@ -83,8 +83,6 @@ function KeuntunganPage() {
   const [toDate, setToDate] = useState<string>("");
   const [storeName, setStoreName] = useState<string>("Toko");
   const [exportingPdf, setExportingPdf] = useState(false);
-  const [actualCash, setActualCash] = useState<string>("");
-  const [actualQris, setActualQris] = useState<string>("");
   const [expirySummary, setExpirySummary] = useState<{ expired: number; le30: number; le60: number; le90: number }>({
     expired: 0,
     le30: 0,
