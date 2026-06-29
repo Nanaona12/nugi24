@@ -194,7 +194,8 @@ function POPage() {
         product_code: p.code,
         product_name: p.name,
         qty: "1",
-        unit_cost: String(p.price),
+        unit_cost: String(p.cost_price || p.price),
+        sell_price: String(p.price),
       },
     ]);
   };
@@ -204,7 +205,8 @@ function POPage() {
     product_code: p.code,
     product_name: p.name,
     qty: String(Math.max(1, suggestedQty)),
-    unit_cost: String(p.price),
+    unit_cost: String(p.cost_price || p.price),
+    sell_price: String(p.price),
   });
 
   const openCreateForLowStock = (mode: "out" | "low") => {
@@ -216,7 +218,6 @@ function POPage() {
       return;
     }
     resetForm();
-    // suggested qty: restock to (threshold * 2) - current stock, min 1
     const target = Math.max(lowThreshold * 2, 10);
     setItems(pool.map((p) => buildDraftItem(p, target - (p.stock ?? 0))));
     setCreateOpen(true);
@@ -242,35 +243,34 @@ function POPage() {
   const addManual = () => {
     setItems((prev) => [
       ...prev,
-      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0" },
+      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0" },
     ]);
   };
 
-  const applyAiResultToPO = (r: AiVisionResult) => {
-    // Try to match existing product by barcode or name
-    const matched = products.find((p) =>
-      (r.barcode && p.barcode && p.barcode === r.barcode) ||
-      (r.name && p.name.toLowerCase() === r.name.toLowerCase()),
-    );
-    const totalQty = r.expiry_batches.reduce((s, b) => s + b.qty, 0);
-    const qty = totalQty > 0 ? totalQty : 1;
-    const cost = r.cost_price ?? matched?.price ?? r.recommended_price?.price ?? 0;
-    setItems((prev) => [
-      ...prev,
-      {
+  const applyInvoiceResult = (r: AiInvoiceResult) => {
+    if (r.supplier && !supplier.trim()) setSupplier(r.supplier);
+    if (r.invoice_no) {
+      const note = `Faktur ${r.invoice_no}${r.invoice_date ? ` (${r.invoice_date})` : ""}`;
+      setNotes((n) => n ? n : note);
+    }
+    const newItems: DraftItem[] = r.items.map((it) => {
+      let matched: Product | undefined;
+      if (it.matched_product_id) matched = products.find((p) => p.id === it.matched_product_id);
+      if (!matched && it.barcode) matched = products.find((p) => p.barcode === it.barcode);
+      if (!matched) matched = products.find((p) => p.name.toLowerCase() === it.name.toLowerCase());
+      return {
         product_id: matched?.id ?? null,
         product_code: matched?.code ?? "",
-        product_name: matched?.name ?? r.name ?? "",
-        qty: String(qty),
-        unit_cost: String(Math.round(cost)),
-      },
-    ]);
-    if (r.recommended_price?.price) {
-      toast.success(`Rekomendasi harga jual: Rp ${Math.round(r.recommended_price.price).toLocaleString("id-ID")} (margin ~${Math.round(r.recommended_price.margin_pct ?? 0)}%)`);
-    } else {
-      toast.success("Item ditambahkan dari AI");
-    }
+        product_name: matched?.name ?? it.name,
+        qty: String(Math.max(1, it.qty)),
+        unit_cost: String(Math.round(it.cost_price || 0)),
+        sell_price: String(Math.round(it.sell_price ?? matched?.price ?? 0)),
+      };
+    });
+    setItems((prev) => [...prev, ...newItems]);
+    toast.success(`${newItems.length} item dari struk ditambahkan`);
   };
+
 
 
 
