@@ -920,7 +920,7 @@ function KasirPage() {
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={searchRef}
-              placeholder="Cari nama atau scan kode barang... (Enter = pilih pertama)"
+              placeholder="Cari/scan kode barang... (Enter = pilih • *2 Enter = ubah jumlah jadi 2)"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleSearchKey}
