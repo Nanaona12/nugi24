@@ -19,6 +19,7 @@ import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedPoRouteImport } from './routes/_authenticated/po'
 import { Route as AuthenticatedPengaturanRouteImport } from './routes/_authenticated/pengaturan'
 import { Route as AuthenticatedPengambilanRouteImport } from './routes/_authenticated/pengambilan'
+import { Route as AuthenticatedPembukuanRouteImport } from './routes/_authenticated/pembukuan'
 import { Route as AuthenticatedPelangganRouteImport } from './routes/_authenticated/pelanggan'
 import { Route as AuthenticatedLanggananRouteImport } from './routes/_authenticated/langganan'
 import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authenticated/keuntungan'
@@ -79,6 +80,11 @@ const AuthenticatedPengambilanRoute =
     path: '/pengambilan',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedPembukuanRoute = AuthenticatedPembukuanRouteImport.update({
+  id: '/pembukuan',
+  path: '/pembukuan',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedPelangganRoute = AuthenticatedPelangganRouteImport.update({
   id: '/pelanggan',
   path: '/pelanggan',
@@ -138,6 +144,7 @@ export interface FileRoutesByFullPath {
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/langganan': typeof AuthenticatedLanggananRoute
   '/pelanggan': typeof AuthenticatedPelangganRoute
+  '/pembukuan': typeof AuthenticatedPembukuanRoute
   '/pengambilan': typeof AuthenticatedPengambilanRoute
   '/pengaturan': typeof AuthenticatedPengaturanRoute
   '/po': typeof AuthenticatedPoRoute
@@ -158,6 +165,7 @@ export interface FileRoutesByTo {
   '/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/langganan': typeof AuthenticatedLanggananRoute
   '/pelanggan': typeof AuthenticatedPelangganRoute
+  '/pembukuan': typeof AuthenticatedPembukuanRoute
   '/pengambilan': typeof AuthenticatedPengambilanRoute
   '/pengaturan': typeof AuthenticatedPengaturanRoute
   '/po': typeof AuthenticatedPoRoute
@@ -180,6 +188,7 @@ export interface FileRoutesById {
   '/_authenticated/keuntungan': typeof AuthenticatedKeuntunganRoute
   '/_authenticated/langganan': typeof AuthenticatedLanggananRoute
   '/_authenticated/pelanggan': typeof AuthenticatedPelangganRoute
+  '/_authenticated/pembukuan': typeof AuthenticatedPembukuanRoute
   '/_authenticated/pengambilan': typeof AuthenticatedPengambilanRoute
   '/_authenticated/pengaturan': typeof AuthenticatedPengaturanRoute
   '/_authenticated/po': typeof AuthenticatedPoRoute
@@ -202,6 +211,7 @@ export interface FileRouteTypes {
     | '/keuntungan'
     | '/langganan'
     | '/pelanggan'
+    | '/pembukuan'
     | '/pengambilan'
     | '/pengaturan'
     | '/po'
@@ -222,6 +232,7 @@ export interface FileRouteTypes {
     | '/keuntungan'
     | '/langganan'
     | '/pelanggan'
+    | '/pembukuan'
     | '/pengambilan'
     | '/pengaturan'
     | '/po'
@@ -243,6 +254,7 @@ export interface FileRouteTypes {
     | '/_authenticated/keuntungan'
     | '/_authenticated/langganan'
     | '/_authenticated/pelanggan'
+    | '/_authenticated/pembukuan'
     | '/_authenticated/pengambilan'
     | '/_authenticated/pengaturan'
     | '/_authenticated/po'
@@ -332,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPengambilanRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/pembukuan': {
+      id: '/_authenticated/pembukuan'
+      path: '/pembukuan'
+      fullPath: '/pembukuan'
+      preLoaderRoute: typeof AuthenticatedPembukuanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/pelanggan': {
       id: '/_authenticated/pelanggan'
       path: '/pelanggan'
@@ -407,6 +426,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedKeuntunganRoute: typeof AuthenticatedKeuntunganRoute
   AuthenticatedLanggananRoute: typeof AuthenticatedLanggananRoute
   AuthenticatedPelangganRoute: typeof AuthenticatedPelangganRoute
+  AuthenticatedPembukuanRoute: typeof AuthenticatedPembukuanRoute
   AuthenticatedPengambilanRoute: typeof AuthenticatedPengambilanRoute
   AuthenticatedPengaturanRoute: typeof AuthenticatedPengaturanRoute
   AuthenticatedPoRoute: typeof AuthenticatedPoRoute
@@ -424,6 +444,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedKeuntunganRoute: AuthenticatedKeuntunganRoute,
   AuthenticatedLanggananRoute: AuthenticatedLanggananRoute,
   AuthenticatedPelangganRoute: AuthenticatedPelangganRoute,
+  AuthenticatedPembukuanRoute: AuthenticatedPembukuanRoute,
   AuthenticatedPengambilanRoute: AuthenticatedPengambilanRoute,
   AuthenticatedPengaturanRoute: AuthenticatedPengaturanRoute,
   AuthenticatedPoRoute: AuthenticatedPoRoute,
