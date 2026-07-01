@@ -24,6 +24,7 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
   const [storeType, setStoreType] = useState<StoreType>("auto");
   const [preview, setPreview] = useState<AiInvoiceResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const analyze = useServerFn(analyzeInvoicePhoto);
 
   const reset = () => { setImages([]); setPreview(null); setAnalyzing(false); };
@@ -70,7 +71,12 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent className="max-w-3xl max-h-[92vh] overflow-y-auto">
+      <DialogContent
+        className="max-w-3xl max-h-[92vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ReceiptText className="h-5 w-5 text-primary" /> Scan Struk / Faktur Supplier
@@ -111,17 +117,14 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
               ))}
               {images.length < 4 && (
                 <div className="flex flex-col gap-1.5">
-                  <Button type="button" size="sm" variant="outline" disabled={analyzing} onClick={() => {
-                    const el = document.createElement("input");
-                    el.type = "file"; el.accept = "image/*"; el.setAttribute("capture", "environment");
-                    el.onchange = () => handleFile(el.files?.[0]); el.click();
-                  }}>
+                  <Button type="button" size="sm" variant="outline" disabled={analyzing} onClick={() => cameraRef.current?.click()}>
                     <Camera className="mr-1 h-3.5 w-3.5" /> Foto Struk
                   </Button>
                   <Button type="button" size="sm" variant="ghost" disabled={analyzing} onClick={() => fileRef.current?.click()}>
                     <Upload className="mr-1 h-3.5 w-3.5" /> Upload
                   </Button>
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFile(e.target.files?.[0])} />
+                  <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = ""; }} />
+                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = ""; }} />
                 </div>
               )}
             </div>
