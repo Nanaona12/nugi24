@@ -539,6 +539,28 @@ function KasirPage() {
     })();
   }, []);
 
+  // Global shortcut: tekan `*` di mana pun (di luar input) → fokus ke pencarian dan mulai dengan `*`
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "*") return;
+      const t = e.target as HTMLElement | null;
+      const tag = t?.tagName;
+      const isEditable =
+        tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t as any)?.isContentEditable;
+      if (isEditable) return;
+      e.preventDefault();
+      setQuery("*");
+      setTimeout(() => {
+        searchRef.current?.focus();
+        const el = searchRef.current;
+        if (el) el.setSelectionRange(el.value.length, el.value.length);
+      }, 0);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products.slice(0, 60);
