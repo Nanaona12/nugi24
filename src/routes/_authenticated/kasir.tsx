@@ -1758,6 +1758,97 @@ function KasirPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Simpan Draft */}
+        <Dialog open={saveDraftOpen} onOpenChange={setSaveDraftOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Simpan Keranjang sebagai Draft</DialogTitle>
+              <DialogDescription>
+                Tahan pesanan ini atas nama pelanggan. Bisa dilanjutkan lagi saat pelanggan datang untuk membayar.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label>Atas nama pelanggan *</Label>
+                <Input
+                  autoFocus
+                  value={draftCustomer}
+                  onChange={(e) => setDraftCustomer(e.target.value)}
+                  placeholder="Contoh: Bu Sari"
+                  onKeyDown={(e) => { if (e.key === "Enter") saveDraft(); }}
+                />
+              </div>
+              <div>
+                <Label>Catatan (opsional)</Label>
+                <Input
+                  value={draftNote}
+                  onChange={(e) => setDraftNote(e.target.value)}
+                  placeholder="Contoh: Ambil sore"
+                />
+              </div>
+              <div className="rounded-md border bg-muted/40 p-2 text-xs text-muted-foreground">
+                {cart.length} item • Total {formatRupiah(totals.total)}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSaveDraftOpen(false)}>Batal</Button>
+              <Button onClick={saveDraft}>Simpan Draft</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Daftar Draft */}
+        <Dialog open={draftListOpen} onOpenChange={setDraftListOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Draft Keranjang</DialogTitle>
+              <DialogDescription>
+                Lanjutkan pesanan yang ditahan, atau hapus jika pelanggan tidak jadi membeli.
+              </DialogDescription>
+            </DialogHeader>
+            {drafts.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted-foreground">Belum ada draft tersimpan.</div>
+            ) : (
+              <ScrollArea className="max-h-[60vh] pr-2">
+                <ul className="space-y-2">
+                  {drafts.map((d) => {
+                    const totalDraft = d.items.reduce((s, l) => {
+                      const c = computeLine(l, getUnits(l.product, unitsByProduct).length ? getUnits(l.product, unitsByProduct) : [l.baseUnit, ...(l.unit.name !== l.baseUnit.name ? [l.unit] : [])]);
+                      return s + c.total;
+                    }, 0);
+                    return (
+                      <li key={d.id} className="rounded-lg border p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="font-medium">{d.customer_name}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {new Date(d.saved_at).toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}
+                              {" • "}{d.items.length} item • {formatRupiah(totalDraft)}
+                            </div>
+                            {d.note && <div className="mt-1 text-xs italic text-muted-foreground">Catatan: {d.note}</div>}
+                            <div className="mt-2 text-xs text-muted-foreground line-clamp-2">
+                              {d.items.map((l) => `${l.product.name} ×${l.qty}`).join(", ")}
+                            </div>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <Button size="sm" onClick={() => resumeDraft(d)}>Lanjutkan</Button>
+                            <Button size="sm" variant="ghost" onClick={() => deleteDraft(d.id)}>
+                              <Trash2 className="mr-1 h-3 w-3" /> Hapus
+                            </Button>
+                          </div>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </ScrollArea>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setDraftListOpen(false)}>Tutup</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
