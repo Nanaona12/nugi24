@@ -24,6 +24,7 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
   const [storeType, setStoreType] = useState<StoreType>("auto");
   const [preview, setPreview] = useState<AiInvoiceResult | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
   const analyze = useServerFn(analyzeInvoicePhoto);
 
   const reset = () => { setImages([]); setPreview(null); setAnalyzing(false); };
