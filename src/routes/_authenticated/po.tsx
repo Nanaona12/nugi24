@@ -717,11 +717,11 @@ function POPage() {
                 )}
               </div>
               <div className="flex flex-col gap-2 sm:flex-row">
-                <Button type="button" variant="outline" size="sm" onClick={addManual} className="flex-1">
-                  <Plus className="mr-2 h-4 w-4" /> Item Manual
+                <Button type="button" variant="outline" size="default" onClick={addManual} className="flex-1">
+                  <Plus className="mr-2 h-5 w-5" /> Item Manual
                 </Button>
-                <Button type="button" size="sm" onClick={() => setAiOpen((v) => !v)} className="flex-1">
-                  <Sparkles className="mr-2 h-4 w-4" /> {aiOpen ? "Tutup Scan" : "Scan Struk/Faktur"}
+                <Button type="button" size="default" onClick={() => setAiOpen((v) => !v)} className="flex-1">
+                  <Sparkles className="mr-2 h-5 w-5" /> {aiOpen ? "Tutup Scan" : "Scan Struk/Faktur"}
                 </Button>
 
               </div>
