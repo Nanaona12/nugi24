@@ -653,6 +653,10 @@ function POPage() {
       <Dialog
         open={createOpen}
         onOpenChange={(open) => {
+          if (!open && aiOpen) {
+            setCreateOpen(true);
+            return;
+          }
           setCreateOpen(open);
           if (!open) setAiOpen(false);
         }}
