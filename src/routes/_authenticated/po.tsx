@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -116,6 +116,7 @@ function POPage() {
   const [saving, setSaving] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [receiveFor, setReceiveFor] = useState<PO | null>(null);
+  const poActionsRef = useRef<HTMLDivElement>(null);
 
 
   const load = async () => {
@@ -268,7 +269,13 @@ function POPage() {
       };
     });
     setItems((prev) => [...prev, ...newItems]);
+    setCreateOpen(true);
     toast.success(`${newItems.length} item dari struk ditambahkan`);
+    window.setTimeout(() => {
+      if (window.matchMedia("(max-width: 767px)").matches) {
+        poActionsRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    }, 300);
   };
 
 
@@ -636,8 +643,19 @@ function POPage() {
       </Card>
 
       {/* Create PO Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-4xl">
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (!open && aiOpen) return;
+          setCreateOpen(open);
+        }}
+      >
+        <DialogContent
+          className="max-h-[calc(100dvh-2rem)] max-w-4xl overflow-y-auto pb-4"
+          onInteractOutside={(e) => { if (aiOpen) e.preventDefault(); }}
+          onPointerDownOutside={(e) => { if (aiOpen) e.preventDefault(); }}
+          onFocusOutside={(e) => { if (aiOpen) e.preventDefault(); }}
+        >
           <DialogHeader>
             <DialogTitle>Buat Purchase Order</DialogTitle>
             <DialogDescription>
@@ -794,17 +812,19 @@ function POPage() {
             </div>
           </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
-              Batal
-            </Button>
-            <Button variant="secondary" onClick={() => saveDraft("draft")} disabled={saving}>
-              Simpan Draft
-            </Button>
-            <Button onClick={() => saveDraft("ordered")} disabled={saving}>
-              {saving ? "Menyimpan..." : "Buat & Pesan"}
-            </Button>
-          </DialogFooter>
+          <div ref={poActionsRef} className="sticky bottom-0 -mx-6 border-t bg-background/95 px-6 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
+                Batal
+              </Button>
+              <Button variant="secondary" onClick={() => saveDraft("draft")} disabled={saving}>
+                Simpan Draft
+              </Button>
+              <Button onClick={() => saveDraft("ordered")} disabled={saving}>
+                {saving ? "Menyimpan..." : "Buat & Pesan"}
+              </Button>
+            </DialogFooter>
+          </div>
         </DialogContent>
       </Dialog>
 
