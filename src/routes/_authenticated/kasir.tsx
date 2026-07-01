@@ -1288,7 +1288,9 @@ function KasirPage() {
               });
             }
             setModePicker(null);
+            setTimeout(() => searchRef.current?.focus(), 50);
           }}
+
         />
 
         {/* Payment dialog */}
