@@ -1290,7 +1290,7 @@ function KasirPage() {
                 </Button>
               </div>
             )}
-            <Button className="h-12 w-full text-base" disabled={cart.length === 0} onClick={() => setPayOpen(true)}>
+            <Button className="hidden h-12 w-full text-base lg:flex" disabled={cart.length === 0} onClick={() => setPayOpen(true)}>
               Bayar
             </Button>
           </div>
