@@ -269,6 +269,7 @@ function POPage() {
       };
     });
     setItems((prev) => [...prev, ...newItems]);
+    setCreateOpen(true);
     toast.success(`${newItems.length} item dari struk ditambahkan`);
     window.setTimeout(() => {
       if (window.matchMedia("(max-width: 767px)").matches) {
@@ -642,8 +643,19 @@ function POPage() {
       </Card>
 
       {/* Create PO Dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-h-[calc(100dvh-2rem)] max-w-4xl overflow-y-auto pb-4">
+      <Dialog
+        open={createOpen}
+        onOpenChange={(open) => {
+          if (!open && aiOpen) return;
+          setCreateOpen(open);
+        }}
+      >
+        <DialogContent
+          className="max-h-[calc(100dvh-2rem)] max-w-4xl overflow-y-auto pb-4"
+          onInteractOutside={(e) => { if (aiOpen) e.preventDefault(); }}
+          onPointerDownOutside={(e) => { if (aiOpen) e.preventDefault(); }}
+          onFocusOutside={(e) => { if (aiOpen) e.preventDefault(); }}
+        >
           <DialogHeader>
             <DialogTitle>Buat Purchase Order</DialogTitle>
             <DialogDescription>
