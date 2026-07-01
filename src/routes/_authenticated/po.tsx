@@ -117,7 +117,6 @@ function POPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [receiveFor, setReceiveFor] = useState<PO | null>(null);
   const poActionsRef = useRef<HTMLDivElement>(null);
-  const keepCreateOpenAfterAiRef = useRef(false);
 
 
   const load = async () => {
@@ -250,7 +249,6 @@ function POPage() {
   };
 
   const applyInvoiceResult = (r: AiInvoiceResult) => {
-    keepCreateOpenAfterAiRef.current = true;
     if (r.supplier && !supplier.trim()) setSupplier(r.supplier);
     if (r.invoice_no) {
       const note = `Faktur ${r.invoice_no}${r.invoice_date ? ` (${r.invoice_date})` : ""}`;
@@ -285,9 +283,6 @@ function POPage() {
         poActionsRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
       }
     }, 450);
-    window.setTimeout(() => {
-      keepCreateOpenAfterAiRef.current = false;
-    }, 1200);
   };
 
 
@@ -658,11 +653,8 @@ function POPage() {
       <Dialog
         open={createOpen}
         onOpenChange={(open) => {
-          if (!open && (aiOpen || keepCreateOpenAfterAiRef.current)) {
-            setCreateOpen(true);
-            return;
-          }
           setCreateOpen(open);
+          if (!open) setAiOpen(false);
         }}
       >
         <DialogContent
@@ -724,11 +716,18 @@ function POPage() {
                 <Button type="button" variant="outline" size="sm" onClick={addManual} className="flex-1">
                   <Plus className="mr-2 h-4 w-4" /> Item Manual
                 </Button>
-                <Button type="button" size="sm" onClick={() => setAiOpen(true)} className="flex-1">
-                  <Sparkles className="mr-2 h-4 w-4" /> Scan Struk/Faktur
+                <Button type="button" size="sm" onClick={() => setAiOpen((v) => !v)} className="flex-1">
+                  <Sparkles className="mr-2 h-4 w-4" /> {aiOpen ? "Tutup Scan" : "Scan Struk/Faktur"}
                 </Button>
 
               </div>
+              <AIInvoiceCapture
+                open={aiOpen}
+                inline
+                onClose={() => setAiOpen(false)}
+                onResult={applyInvoiceResult}
+                existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
+              />
             </div>
 
             {/* Items table */}
@@ -924,14 +923,6 @@ function POPage() {
           )}
         </DialogContent>
       </Dialog>
-
-      <AIInvoiceCapture
-        open={aiOpen}
-        onClose={() => setAiOpen(false)}
-        onResult={applyInvoiceResult}
-        existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
-      />
-
 
       <ReceivingDialog
         open={!!receiveFor}
