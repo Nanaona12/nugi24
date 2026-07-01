@@ -329,6 +329,74 @@ function KasirPage() {
   const [refundOpen, setRefundOpen] = useState(false);
   const [aiOrderOpen, setAiOrderOpen] = useState(false);
 
+  // --- Draft (cart yang ditahan / disimpan sementara) ---
+  type CartDraft = { id: string; customer_name: string; note?: string; items: CartLine[]; saved_at: string };
+  const [drafts, setDrafts] = useState<CartDraft[]>([]);
+  const [saveDraftOpen, setSaveDraftOpen] = useState(false);
+  const [draftListOpen, setDraftListOpen] = useState(false);
+  const [draftCustomer, setDraftCustomer] = useState("");
+  const [draftNote, setDraftNote] = useState("");
+  const draftKey = tenantId ? `dp.cart_drafts.${tenantId}` : null;
+  useEffect(() => {
+    if (!draftKey) return;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      setDrafts(raw ? (JSON.parse(raw) as CartDraft[]) : []);
+    } catch {
+      setDrafts([]);
+    }
+  }, [draftKey]);
+  const persistDrafts = (next: CartDraft[]) => {
+    setDrafts(next);
+    if (draftKey) {
+      try { localStorage.setItem(draftKey, JSON.stringify(next)); } catch { /* ignore */ }
+    }
+  };
+  const saveDraft = () => {
+    if (cart.length === 0) { toast.error("Keranjang kosong"); return; }
+    const name = draftCustomer.trim();
+    if (!name) { toast.error("Nama pelanggan wajib diisi"); return; }
+    const d: CartDraft = {
+      id: (crypto as any).randomUUID?.() ?? String(Date.now()),
+      customer_name: name,
+      note: draftNote.trim() || undefined,
+      items: cart,
+      saved_at: new Date().toISOString(),
+    };
+    persistDrafts([d, ...drafts]);
+    setCart([]);
+    setSaveDraftOpen(false);
+    setDraftCustomer("");
+    setDraftNote("");
+    toast.success(`Draft "${name}" disimpan`);
+  };
+  const resumeDraft = async (d: CartDraft) => {
+    if (cart.length > 0) {
+      const ok = window.confirm("Keranjang saat ini akan diganti dengan draft. Lanjutkan?");
+      if (!ok) return;
+    }
+    // Pastikan units untuk produk di draft ter-load
+    try {
+      const ids = Array.from(new Set(d.items.map((l) => l.product.id)));
+      const missing = ids.filter((id) => !unitsByProduct[id]);
+      if (missing.length > 0) {
+        const map = await loadUnitsForProducts(missing);
+        setUnitsByProduct((prev) => ({ ...prev, ...map }));
+      }
+    } catch { /* ignore */ }
+    setCart(d.items);
+    persistDrafts(drafts.filter((x) => x.id !== d.id));
+    setDraftListOpen(false);
+    toast.success(`Draft "${d.customer_name}" dilanjutkan`);
+  };
+  const deleteDraft = (id: string) => {
+    const d = drafts.find((x) => x.id === id);
+    if (!d) return;
+    if (!window.confirm(`Hapus draft "${d.customer_name}"?`)) return;
+    persistDrafts(drafts.filter((x) => x.id !== id));
+    toast.success("Draft dihapus");
+  };
+
   const handleCreateStaticQris = async (amountOverride?: number) => {
     const amt = amountOverride ?? totals.total;
     if (amt <= 0) {
