@@ -328,6 +328,7 @@ function KasirPage() {
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
   const [aiOrderOpen, setAiOrderOpen] = useState(false);
+  const cartActionsRef = useRef<HTMLDivElement>(null);
 
   // --- Draft (cart yang ditahan / disimpan sementara) ---
   type CartDraft = { id: string; customer_name: string; note?: string; items: CartLine[]; saved_at: string };
@@ -634,7 +635,14 @@ function KasirPage() {
       }
       return next;
     });
-    if (added > 0) toast.success(`${added} item dimasukkan ke keranjang`);
+    if (added > 0) {
+      toast.success(`${added} item dimasukkan ke keranjang`);
+      window.setTimeout(() => {
+        if (window.matchMedia("(max-width: 1023px)").matches) {
+          cartActionsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 250);
+    }
   };
 
 
@@ -1266,12 +1274,22 @@ function KasirPage() {
             )}
           </ScrollArea>
 
-          <div className="mt-4 space-y-2 border-t pt-4">
+          <div ref={cartActionsRef} className="mt-4 space-y-2 border-t pt-4">
             <Row label={`Item (${totals.items})`} value={formatRupiah(totals.total)} />
             <div className="flex items-center justify-between text-xl font-bold">
               <span>Total</span>
               <span className="text-primary">{formatRupiah(totals.total)}</span>
             </div>
+            {cart.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 lg:hidden">
+                <Button variant="outline" className="h-12 text-base" onClick={() => setSaveDraftOpen(true)}>
+                  Simpan Draft
+                </Button>
+                <Button className="h-12 text-base" onClick={() => setPayOpen(true)}>
+                  Bayar
+                </Button>
+              </div>
+            )}
             <Button className="h-12 w-full text-base" disabled={cart.length === 0} onClick={() => setPayOpen(true)}>
               Bayar
             </Button>
