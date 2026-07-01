@@ -16,9 +16,10 @@ type Props = {
   onClose: () => void;
   onResult: (r: AiInvoiceResult) => void;
   existingProducts?: { id: string; name: string; barcode?: string | null; code?: string }[];
+  inline?: boolean;
 };
 
-export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [] }: Props) {
+export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [], inline = false }: Props) {
   const [images, setImages] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [storeType, setStoreType] = useState<StoreType>("auto");
@@ -69,14 +70,18 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
     setPreview((p) => p ? { ...p, items: p.items.filter((_, idx) => idx !== i) } : p);
   };
 
-  return (
-    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
-      <DialogContent
-        className="max-w-3xl max-h-[92vh] overflow-y-auto"
-        onInteractOutside={(e) => e.preventDefault()}
-        onPointerDownOutside={(e) => e.preventDefault()}
-        onFocusOutside={(e) => e.preventDefault()}
-      >
+  const content = (
+    <>
+      {inline ? (
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <ReceiptText className="h-4 w-4 text-primary" /> Scan Struk / Faktur Supplier
+          </div>
+          <p className="text-xs text-muted-foreground">
+            AI akan baca supplier, daftar barang, harga modal & rekomendasi harga jual dari foto struk.
+          </p>
+        </div>
+      ) : (
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ReceiptText className="h-5 w-5 text-primary" /> Scan Struk / Faktur Supplier
@@ -85,10 +90,11 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
             AI akan baca supplier, daftar barang, harga modal & rekomendasi harga jual dari foto struk.
           </DialogDescription>
         </DialogHeader>
+      )}
 
-        {!preview && (
-          <>
-            <div className="rounded-md border bg-muted/30 p-2.5 space-y-1.5">
+      {!preview && (
+        <>
+          <div className="rounded-md border bg-muted/30 p-2.5 space-y-1.5">
               <div className="text-xs font-medium">Strategi harga jual</div>
               <div className="flex flex-wrap gap-1.5">
                 {([
@@ -103,9 +109,9 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
                   </button>
                 ))}
               </div>
-            </div>
+          </div>
 
-            <div className="grid gap-2 sm:grid-cols-4">
+          <div className="grid gap-2 sm:grid-cols-4">
               {images.map((src, i) => (
                 <div key={i} className="relative rounded border overflow-hidden">
                   <img src={src} className="h-28 w-full object-cover" alt="" />
@@ -127,12 +133,12 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
                   <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e) => { handleFile(e.target.files?.[0]); e.target.value = ""; }} />
                 </div>
               )}
-            </div>
-          </>
-        )}
+          </div>
+        </>
+      )}
 
-        {preview && (
-          <div className="space-y-3">
+      {preview && (
+        <div className="space-y-3">
             <div className="grid gap-2 sm:grid-cols-2">
               <div>
                 <Label className="text-xs">Supplier</Label>
@@ -172,22 +178,39 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
               </table>
             </div>
             {preview.total != null && <div className="text-right text-sm text-muted-foreground">Total struk: <b>{formatRupiah(preview.total)}</b></div>}
-          </div>
-        )}
+        </div>
+      )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose} disabled={analyzing}>Batal</Button>
-          {!preview ? (
-            <Button onClick={runAnalyze} disabled={analyzing || images.length === 0}>
-              {analyzing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Menganalisa...</> : <><Sparkles className="mr-2 h-4 w-4" /> Analisa Struk</>}
-            </Button>
-          ) : (
-            <>
-              <Button variant="ghost" onClick={() => setPreview(null)}>← Foto Ulang</Button>
-              <Button onClick={apply}>Pakai ({preview.items.length} item)</Button>
-            </>
-          )}
-        </DialogFooter>
+      <DialogFooter>
+        <Button variant="outline" onClick={handleClose} disabled={analyzing}>Batal</Button>
+        {!preview ? (
+          <Button onClick={runAnalyze} disabled={analyzing || images.length === 0}>
+            {analyzing ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Menganalisa...</> : <><Sparkles className="mr-2 h-4 w-4" /> Analisa Struk</>}
+          </Button>
+        ) : (
+          <>
+            <Button variant="ghost" onClick={() => setPreview(null)}>← Foto Ulang</Button>
+            <Button onClick={apply}>Pakai ({preview.items.length} item)</Button>
+          </>
+        )}
+      </DialogFooter>
+    </>
+  );
+
+  if (inline) {
+    if (!open) return null;
+    return <div className="space-y-3 rounded-lg border bg-card p-3 shadow-sm">{content}</div>;
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && handleClose()}>
+      <DialogContent
+        className="max-w-3xl max-h-[92vh] overflow-y-auto"
+        onInteractOutside={(e) => e.preventDefault()}
+        onPointerDownOutside={(e) => e.preventDefault()}
+        onFocusOutside={(e) => e.preventDefault()}
+      >
+        {content}
       </DialogContent>
     </Dialog>
   );
