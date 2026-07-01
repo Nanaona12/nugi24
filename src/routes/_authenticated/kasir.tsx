@@ -1122,13 +1122,28 @@ function KasirPage() {
 
         {/* Cart */}
         <Card className="flex flex-col p-4">
-          <div className="mb-3 flex items-center justify-between">
+          <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="text-lg font-semibold">Keranjang</h2>
-            {cart.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => setCart([])}>
-                <X className="mr-1 h-4 w-4" /> Kosongkan
+            <div className="flex items-center gap-1">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDraftListOpen(true)}
+                title="Daftar draft tersimpan"
+              >
+                Draft{drafts.length > 0 ? ` (${drafts.length})` : ""}
               </Button>
-            )}
+              {cart.length > 0 && (
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setSaveDraftOpen(true)}>
+                    Simpan Draft
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={() => setCart([])}>
+                    <X className="mr-1 h-4 w-4" /> Kosongkan
+                  </Button>
+                </>
+              )}
+            </div>
           </div>
           <ScrollArea className="h-[calc(100vh-440px)] pr-2">
             {cart.length === 0 ? (
