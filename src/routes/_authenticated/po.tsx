@@ -117,6 +117,7 @@ function POPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [receiveFor, setReceiveFor] = useState<PO | null>(null);
   const poActionsRef = useRef<HTMLDivElement>(null);
+  const keepCreateOpenAfterAiRef = useRef(false);
 
 
   const load = async () => {
@@ -249,6 +250,7 @@ function POPage() {
   };
 
   const applyInvoiceResult = (r: AiInvoiceResult) => {
+    keepCreateOpenAfterAiRef.current = true;
     if (r.supplier && !supplier.trim()) setSupplier(r.supplier);
     if (r.invoice_no) {
       const note = `Faktur ${r.invoice_no}${r.invoice_date ? ` (${r.invoice_date})` : ""}`;
@@ -272,10 +274,20 @@ function POPage() {
     setCreateOpen(true);
     toast.success(`${newItems.length} item dari struk ditambahkan`);
     window.setTimeout(() => {
+      setCreateOpen(true);
       if (window.matchMedia("(max-width: 767px)").matches) {
         poActionsRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
       }
-    }, 300);
+    }, 100);
+    window.setTimeout(() => {
+      setCreateOpen(true);
+      if (window.matchMedia("(max-width: 767px)").matches) {
+        poActionsRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+      }
+    }, 450);
+    window.setTimeout(() => {
+      keepCreateOpenAfterAiRef.current = false;
+    }, 1200);
   };
 
 
@@ -646,7 +658,10 @@ function POPage() {
       <Dialog
         open={createOpen}
         onOpenChange={(open) => {
-          if (!open && aiOpen) return;
+          if (!open && (aiOpen || keepCreateOpenAfterAiRef.current)) {
+            setCreateOpen(true);
+            return;
+          }
           setCreateOpen(open);
         }}
       >
