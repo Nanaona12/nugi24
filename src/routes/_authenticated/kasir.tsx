@@ -548,6 +548,8 @@ function KasirPage() {
       const isEditable =
         tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t as any)?.isContentEditable;
       if (isEditable) return;
+      // Jangan aktif saat ada dialog/modal terbuka (picker, pembayaran, dsb.)
+      if (document.querySelector('[role="dialog"][data-state="open"]')) return;
       e.preventDefault();
       setQuery("*");
       setTimeout(() => {
