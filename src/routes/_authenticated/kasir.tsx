@@ -1258,7 +1258,7 @@ function KasirPage() {
         <PickerDialog
           product={modePicker}
           unitsByProduct={unitsByProduct}
-          onClose={() => setModePicker(null)}
+          onClose={() => { setModePicker(null); setTimeout(() => searchRef.current?.focus(), 50); }}
           onAdd={(p, mode, unit, qtyPcs) => {
             if (mode === "eceran") {
               const units = getUnits(p, unitsByProduct);
