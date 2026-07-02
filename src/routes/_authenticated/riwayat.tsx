@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Receipt, Eye, Trash2 } from "lucide-react";
+import { Receipt, Eye, Trash2, Download, ImageIcon } from "lucide-react";
+import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
+
 
 
 export const Route = createFileRoute("/_authenticated/riwayat")({
