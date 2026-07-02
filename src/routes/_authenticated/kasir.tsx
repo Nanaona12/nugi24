@@ -647,6 +647,11 @@ function KasirPage() {
           }
         }
         const qtyAdd = mode === "grosiran" ? it.qty * unit.conversion : it.qty;
+        const usedBase = next.filter((x) => x.product.id === p.id).reduce((s, l) => s + l.qty, 0);
+        if (usedBase + qtyAdd > (p.stock || 0)) {
+          toast.error(`Stok ${p.name} tidak cukup, dilewati`);
+          continue;
+        }
         const idx = next.findIndex((x) => x.key === key);
         if (idx >= 0) next[idx] = { ...next[idx], qty: next[idx].qty + qtyAdd };
         else next.push({ key, product: p, mode, unit, baseUnit: base, qty: qtyAdd });
