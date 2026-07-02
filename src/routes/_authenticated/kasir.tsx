@@ -1151,7 +1151,8 @@ function KasirPage() {
                     <button
                       key={p.id}
                       onClick={() => onPickProduct(p)}
-                      className="group relative flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
+                      disabled={(p.stock || 0) <= 0}
+                      className="group relative flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {expBadge && (
                         <span
