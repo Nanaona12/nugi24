@@ -457,11 +457,19 @@ function KasirPage() {
     }
   };
 
+  const shiftClosedRef = useRef(false);
   const handleShiftClosed = async () => {
-    persistShift(null);
+    // Shift sudah ditutup di server. Jangan tutup dialog dulu supaya user
+    // masih bisa cetak struk / PDF A4. Cleanup dilakukan saat user klik Selesai.
+    shiftClosedRef.current = true;
+  };
+
+  const handleCloseDialogDismiss = async () => {
     setCloseOpen(false);
+    if (!shiftClosedRef.current) return;
+    shiftClosedRef.current = false;
+    persistShift(null);
     if (isCashierSession) {
-      // Auto-logout cashier session after closing
       try {
         localStorage.removeItem(CASHIER_KEY);
         localStorage.removeItem(SHIFT_KEY);
@@ -473,6 +481,7 @@ function KasirPage() {
       setLockOpen(true);
     }
   };
+
 
   // --- Expiry batch summary per product ---
   const [expiryByProduct, setExpiryByProduct] = useState<
@@ -1074,7 +1083,7 @@ function KasirPage() {
           open={closeOpen}
           shift={activeShift}
           storeName={storeName}
-          onClose={() => setCloseOpen(false)}
+          onClose={handleCloseDialogDismiss}
           onClosed={handleShiftClosed}
         />
       )}
