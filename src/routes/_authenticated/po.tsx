@@ -852,10 +852,10 @@ function POPage() {
                   <thead className="sticky top-0 bg-muted text-left">
                     <tr>
                       <th className="p-2 w-20">Kode</th>
-                      <th className="p-2 min-w-[180px]">Nama</th>
+                      <th className="p-2 min-w-[140px] w-[160px]">Nama</th>
                       <th className="p-2 w-16 text-right">Qty</th>
                       <th className="p-2 w-20">Satuan</th>
-                      <th className="p-2 w-14 text-right">Isi</th>
+                      <th className="p-2 w-20 text-right">Isi</th>
                       <th className="p-2 w-24 text-right">Modal/satuan</th>
                       <th className="p-2 w-24 text-right">Modal/pcs</th>
                       <th className="p-2 w-24 text-right">Jual/pcs</th>
@@ -892,7 +892,7 @@ function POPage() {
                             </td>
 
                             <td className="p-1">
-                              <Input type="number" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-9 text-sm text-right" />
+                              <Input type="number" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-9 w-full text-sm text-right" />
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-9 text-sm text-right" />
