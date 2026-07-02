@@ -873,7 +873,7 @@ function POPage() {
                   <tbody>
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={10} className="p-6 text-center text-muted-foreground">
+                        <td colSpan={11} className="p-6 text-center text-muted-foreground">
                           Belum ada item
                         </td>
                       </tr>
