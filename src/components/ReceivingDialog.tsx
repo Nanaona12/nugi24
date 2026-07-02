@@ -77,21 +77,24 @@ export function ReceivingDialog({
         }
         const newReceived = (it.qty_received || 0) + addQty;
         await supabase.from("purchase_order_items").update({ qty_received: newReceived }).eq("id", it.id);
-        // Increment stock
+        // Increment stock (multiply by unit_conversion so pembelian per slove/dus dijumlah ke stok pcs)
+        const conv = Math.max(1, Number(it.unit_conversion || 1));
+        const addStockBase = addQty * conv;
         if (it.product_id) {
           const { data: p } = await supabase.from("products").select("stock").eq("id", it.product_id).single();
-          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (p?.stock || 0) + addQty };
-          if (it.unit_cost && it.unit_cost > 0) upd.cost_price = it.unit_cost;
+          const perPcsCost = it.unit_cost && it.unit_cost > 0 ? Number(it.unit_cost) / conv : 0;
+          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (p?.stock || 0) + addStockBase };
+          if (perPcsCost > 0) upd.cost_price = perPcsCost;
           if (it.sell_price && it.sell_price > 0) upd.price = it.sell_price;
           await supabase.from("products").update(upd).eq("id", it.product_id);
 
-          // Batch if exp date set
+          // Batch if exp date set — batch qty juga dalam base unit (pcs)
           if (r.exp) {
             const { data: tid } = await (supabase as any).rpc("current_tenant_id");
             if (tid) {
               await (supabase as any).from("product_batches").insert({
                 product_id: it.product_id,
-                qty: addQty,
+                qty: addStockBase,
                 expiry_date: r.exp,
                 source: "po",
                 po_id: poId,
@@ -101,9 +104,10 @@ export function ReceivingDialog({
             }
           }
         }
-        totalNew += addQty;
+        totalNew += addStockBase;
         if (newReceived < it.qty) allReceived = false;
       }
+
       const status = allReceived ? "received" : "partial";
       await supabase.from("purchase_orders").update({
         received_status: status,
