@@ -847,7 +847,8 @@ function POPage() {
             {/* Items - Desktop table */}
             <div className="space-y-2 hidden md:block">
               <div className="max-h-80 overflow-auto rounded border">
-                <table className="w-full text-sm">
+                <table className="w-full min-w-[900px] text-sm">
+
                   <thead className="sticky top-0 bg-muted text-left">
                     <tr>
                       <th className="p-2 w-20">Kode</th>
