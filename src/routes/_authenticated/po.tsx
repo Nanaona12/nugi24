@@ -901,6 +901,24 @@ function POPage() {
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-9 text-sm text-right" />
+                              {conv > 1 && (
+                                <div className="mt-0.5 text-[10px] text-right text-muted-foreground">= {formatRupiah(parseNumber(it.unit_cost) / conv)}/pcs</div>
+                              )}
+                            </td>
+                            <td className="p-1">
+                              <Input
+                                type="number"
+                                value={((): string => {
+                                  const perPcs = parseNumber(it.unit_cost) / conv;
+                                  return perPcs > 0 ? String(Math.round(perPcs * 100) / 100) : "";
+                                })()}
+                                onChange={(e) => {
+                                  const perPcs = parseNumber(e.target.value);
+                                  updateItem(i, { unit_cost: String(Math.round(perPcs * conv * 100) / 100) });
+                                }}
+                                className="h-9 text-sm text-right"
+                                placeholder="—"
+                              />
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-9 text-sm text-right" placeholder="—" />
