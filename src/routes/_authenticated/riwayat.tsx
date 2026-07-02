@@ -28,6 +28,9 @@ type Tx = {
   change_amount: number;
   item_count: number;
   created_at: string;
+  payment_method?: string;
+  qris_amount?: number;
+  customer_phone?: string | null;
 };
 
 type TxItem = {
@@ -44,6 +47,10 @@ function RiwayatPage() {
   const [txs, setTxs] = useState<Tx[]>([]);
   const [selected, setSelected] = useState<Tx | null>(null);
   const [items, setItems] = useState<TxItem[]>([]);
+  const [storeName, setStoreName] = useState<string>("Toko");
+  const [receiptImg, setReceiptImg] = useState<string | null>(null);
+  const [buildingImg, setBuildingImg] = useState(false);
+
 
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [clearPassword, setClearPassword] = useState("");
