@@ -17,7 +17,11 @@ type POItem = {
   unit_cost: number;
   sell_price?: number | null;
   qty_received?: number | null;
+  unit_name?: string | null;
+  unit_conversion?: number | null;
 };
+
+
 
 
 export function ReceivingDialog({
