@@ -850,17 +850,17 @@ function POPage() {
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted text-left">
                     <tr>
-                      <th className="p-2">Kode</th>
-                      <th className="p-2">Nama</th>
-                      <th className="p-2 w-14 text-right">Qty</th>
-                      <th className="p-2 w-24">Satuan</th>
-                      <th className="p-2 w-16 text-right">Isi</th>
+                      <th className="p-2 w-20">Kode</th>
+                      <th className="p-2 min-w-[180px]">Nama</th>
+                      <th className="p-2 w-16 text-right">Qty</th>
+                      <th className="p-2 w-20">Satuan</th>
+                      <th className="p-2 w-14 text-right">Isi</th>
                       <th className="p-2 w-24 text-right">Modal/satuan</th>
                       <th className="p-2 w-24 text-right">Modal/pcs</th>
                       <th className="p-2 w-24 text-right">Jual/pcs</th>
-                      <th className="p-2 w-20 text-right">Stok +</th>
+                      <th className="p-2 w-16 text-right">Stok +</th>
                       <th className="p-2 w-24 text-right">Subtotal</th>
-                      <th className="p-2"></th>
+                      <th className="p-2 w-10"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -876,19 +876,20 @@ function POPage() {
                         const conv = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
                         const stockAdd = (parseInt(it.qty || "0", 10) || 0) * conv;
                         return (
-                          <tr key={i} className="border-t">
+                          <tr key={i} className="border-t align-top">
                             <td className="p-1">
-                              <Input value={it.product_code} onChange={(e) => updateItem(i, { product_code: e.target.value })} className="h-9 text-sm" disabled={!!it.product_id} />
+                              <Input value={it.product_code} onChange={(e) => updateItem(i, { product_code: e.target.value })} className="h-9 w-full text-xs px-2" disabled={!!it.product_id} title={it.product_code} />
                             </td>
                             <td className="p-1">
-                              <Input value={it.product_name} onChange={(e) => updateItem(i, { product_name: e.target.value })} className="h-9 text-sm" disabled={!!it.product_id} />
+                              <Input value={it.product_name} onChange={(e) => updateItem(i, { product_name: e.target.value })} className="h-9 w-full text-sm px-2" disabled={!!it.product_id} title={it.product_name} />
                             </td>
                             <td className="p-1">
-                              <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 text-sm text-right" />
+                              <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 w-full text-sm text-right px-2" />
                             </td>
                             <td className="p-1">
-                              <Input value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 text-sm" placeholder="pcs" />
+                              <Input value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 w-full text-sm px-2" placeholder="pcs" />
                             </td>
+
                             <td className="p-1">
                               <Input type="number" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-9 text-sm text-right" />
                             </td>
