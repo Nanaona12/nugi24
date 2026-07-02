@@ -202,6 +202,8 @@ function POPage() {
         qty: "1",
         unit_cost: String(p.cost_price || p.price),
         sell_price: String(p.price),
+        unit_name: "pcs",
+        unit_conversion: "1",
       },
     ]);
   };
@@ -213,7 +215,10 @@ function POPage() {
     qty: String(Math.max(1, suggestedQty)),
     unit_cost: String(p.cost_price || p.price),
     sell_price: String(p.price),
+    unit_name: "pcs",
+    unit_conversion: "1",
   });
+
 
   const openCreateForLowStock = (mode: "out" | "low") => {
     const pool = mode === "out"
