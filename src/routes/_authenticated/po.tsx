@@ -892,7 +892,7 @@ function POPage() {
                             </td>
 
                             <td className="p-1">
-                              <Input type="number" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-9 text-sm text-right" />
+                              <Input type="number" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-9 w-full text-sm text-right" />
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-9 text-sm text-right" />
