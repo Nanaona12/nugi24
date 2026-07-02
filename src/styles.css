@@ -232,5 +232,139 @@
   &:hover { transform: scale(1.03); }
 }
 
+/* ============================================================
+   Fallback warna untuk browser lama tanpa dukungan oklch()
+   (Safari iOS < 15.4, Chrome Android < 111, dsb)
+   ============================================================ */
+@supports not (color: oklch(0 0 0)) {
+  :root {
+    --background: #f6f8fb;
+    --foreground: #1e2947;
+    --card: #ffffff;
+    --card-foreground: #1e2947;
+    --popover: #ffffff;
+    --popover-foreground: #1e2947;
+    --primary: #3b82f6;
+    --primary-foreground: #ffffff;
+    --primary-glow: #60a5fa;
+    --secondary: #e6eefc;
+    --secondary-foreground: #253258;
+    --muted: #eaf0f9;
+    --muted-foreground: #64748b;
+    --accent: #dbe7fb;
+    --accent-foreground: #253258;
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+    --success: #16a34a;
+    --success-foreground: #ffffff;
+    --border: #d8e1ee;
+    --input: #dbe4f0;
+    --ring: #3b82f6;
+    --sidebar: #eef3fa;
+    --sidebar-foreground: #253258;
+    --sidebar-primary: #3b82f6;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #dbe7fb;
+    --sidebar-accent-foreground: #253258;
+    --sidebar-border: #d5deec;
+    --sidebar-ring: #3b82f6;
+    --gradient-primary: linear-gradient(135deg, #3b82f6, #60a5fa);
+    --gradient-surface: linear-gradient(180deg, #ffffff, #eaf0f9);
+    --shadow-elegant: 0 10px 30px -12px rgba(59, 130, 246, 0.28);
+    --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.05), 0 4px 12px -4px rgba(15, 23, 42, 0.08);
+  }
+  .dark {
+    --background: #131a2a;
+    --foreground: #eef2f9;
+    --card: #1c2437;
+    --card-foreground: #eef2f9;
+    --popover: #1c2437;
+    --popover-foreground: #eef2f9;
+    --primary: #60a5fa;
+    --primary-foreground: #0f172a;
+    --primary-glow: #93c5fd;
+    --secondary: #232c42;
+    --secondary-foreground: #eef2f9;
+    --muted: #232c42;
+    --muted-foreground: #a3aec4;
+    --accent: #2a3654;
+    --accent-foreground: #eef2f9;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --success: #22c55e;
+    --success-foreground: #ffffff;
+    --border: rgba(255, 255, 255, 0.1);
+    --input: rgba(255, 255, 255, 0.14);
+    --ring: #60a5fa;
+    --sidebar: #1a2235;
+    --sidebar-foreground: #e6ecf7;
+    --sidebar-primary: #60a5fa;
+    --sidebar-primary-foreground: #0f172a;
+    --sidebar-accent: #232c42;
+    --sidebar-accent-foreground: #eef2f9;
+    --sidebar-border: rgba(255, 255, 255, 0.1);
+    --sidebar-ring: #60a5fa;
+  }
+  /* color-mix juga tidak tersedia — nonaktifkan latar radial */
+  body { background-image: none !important; }
+}
+
+/* ============================================================
+   Mode ringan otomatis untuk HP low-end / prefers-reduced-motion
+   Aktif via class .reduce-fx pada <html> (di-set di __root.tsx)
+   ============================================================ */
+html.reduce-fx body {
+  background-image: none !important;
+  background-attachment: scroll !important;
+}
+html.reduce-fx * {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+html.reduce-fx .animate-blob,
+html.reduce-fx .animate-float-slow,
+html.reduce-fx .animate-shimmer-bar,
+html.reduce-fx .animate-fade-in {
+  animation: none !important;
+}
+html.reduce-fx [class*="blur-3xl"],
+html.reduce-fx [class*="blur-2xl"] {
+  filter: blur(24px) !important;
+  opacity: 0.5 !important;
+}
+html.reduce-fx .glass,
+html.reduce-fx .glass-strong {
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+}
+html.reduce-fx .nav-float,
+html.reduce-fx .nav-float-light {
+  background: var(--color-card) !important;
+  border: 1px solid var(--color-border) !important;
+  box-shadow: var(--shadow-soft) !important;
+}
+html.reduce-fx *,
+html.reduce-fx *::before,
+html.reduce-fx *::after {
+  transition-duration: 120ms !important;
+  transition-delay: 0ms !important;
+  animation-delay: 0ms !important;
+}
+html.reduce-fx .hover-scale:hover,
+html.reduce-fx [class*="hover:-translate-y"]:hover {
+  transform: none !important;
+}
+
+/* Blob dekoratif hero: sembunyikan di layar sangat kecil */
+@media (max-width: 380px) {
+  .animate-blob { display: none !important; }
+}
+
+/* Base font sedikit lebih kecil di layar mungil supaya heading tidak overflow */
+@media (max-width: 360px) {
+  html { font-size: 14px; }
+}
+
+
 
 
