@@ -833,9 +833,12 @@ function POPage() {
                     <tr>
                       <th className="p-2">Kode</th>
                       <th className="p-2">Nama</th>
-                      <th className="p-2 w-16 text-right">Qty</th>
-                      <th className="p-2 w-24 text-right">Modal</th>
-                      <th className="p-2 w-24 text-right">Jual</th>
+                      <th className="p-2 w-14 text-right">Qty</th>
+                      <th className="p-2 w-24">Satuan</th>
+                      <th className="p-2 w-16 text-right">Isi</th>
+                      <th className="p-2 w-24 text-right">Modal/satuan</th>
+                      <th className="p-2 w-24 text-right">Jual/pcs</th>
+                      <th className="p-2 w-20 text-right">Stok +</th>
                       <th className="p-2 w-24 text-right">Subtotal</th>
                       <th className="p-2"></th>
                     </tr>
@@ -843,13 +846,15 @@ function POPage() {
                   <tbody>
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                        <td colSpan={10} className="p-6 text-center text-muted-foreground">
                           Belum ada item
                         </td>
                       </tr>
                     ) : (
                       items.map((it, i) => {
                         const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
+                        const conv = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+                        const stockAdd = (parseInt(it.qty || "0", 10) || 0) * conv;
                         return (
                           <tr key={i} className="border-t">
                             <td className="p-1">
@@ -862,11 +867,18 @@ function POPage() {
                               <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 text-sm text-right" />
                             </td>
                             <td className="p-1">
+                              <Input value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 text-sm" placeholder="pcs" />
+                            </td>
+                            <td className="p-1">
+                              <Input type="number" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-9 text-sm text-right" />
+                            </td>
+                            <td className="p-1">
                               <Input type="number" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-9 text-sm text-right" />
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-9 text-sm text-right" placeholder="—" />
                             </td>
+                            <td className="p-1 text-right text-xs text-primary font-semibold">{stockAdd}</td>
                             <td className="p-1 text-right font-medium">{formatRupiah(sub)}</td>
                             <td className="p-1 text-center">
                               <Button size="icon" variant="ghost" onClick={() => removeItem(i)} className="h-8 w-8 text-destructive">
@@ -878,6 +890,7 @@ function POPage() {
                       })
                     )}
                   </tbody>
+
                 </table>
               </div>
             </div>
