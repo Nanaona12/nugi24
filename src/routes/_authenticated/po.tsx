@@ -699,17 +699,17 @@ function POPage() {
               </div>
               <div className="max-h-64 overflow-auto rounded border">
                 {filteredProducts.length === 0 ? (
-                  <div className="p-4 text-center text-xs text-muted-foreground">Tidak ada produk</div>
+                  <div className="p-4 text-center text-sm text-muted-foreground">Tidak ada produk</div>
                 ) : (
                   filteredProducts.map((p) => (
                     <button
                       type="button"
                       key={p.id}
                       onClick={() => addProduct(p)}
-                      className="block w-full border-b p-2 text-left text-xs hover:bg-muted last:border-b-0"
+                      className="block w-full border-b p-3 text-left text-sm hover:bg-muted last:border-b-0"
                     >
-                      <div className="font-medium">{p.name}</div>
-                      <div className="text-muted-foreground">
+                      <div className="font-semibold">{p.name}</div>
+                      <div className="text-xs text-muted-foreground mt-0.5">
                         {p.code}{p.barcode ? ` • ${p.barcode}` : ""} • Stok {p.stock} • {formatRupiah(p.price)}
                       </div>
                     </button>
