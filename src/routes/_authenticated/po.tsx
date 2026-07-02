@@ -863,6 +863,7 @@ function POPage() {
                       <th className="p-2 w-24">Satuan</th>
                       <th className="p-2 w-16 text-right">Isi</th>
                       <th className="p-2 w-24 text-right">Modal/satuan</th>
+                      <th className="p-2 w-24 text-right">Modal/pcs</th>
                       <th className="p-2 w-24 text-right">Jual/pcs</th>
                       <th className="p-2 w-20 text-right">Stok +</th>
                       <th className="p-2 w-24 text-right">Subtotal</th>
