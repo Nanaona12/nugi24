@@ -586,7 +586,23 @@ function KasirPage() {
     return { total, items };
   }, [cart, unitsByProduct]);
 
+  const currentBaseQty = (pid: string, currentCart: CartLine[] = cart) =>
+    currentCart.filter((l) => l.product.id === pid).reduce((s, l) => s + l.qty, 0);
+
+  const canAddBase = (p: Product, addBase: number, currentCart: CartLine[] = cart) => {
+    const used = currentBaseQty(p.id, currentCart);
+    return used + addBase <= (p.stock || 0);
+  };
+
   const onPickProduct = (p: Product) => {
+    if ((p.stock || 0) <= 0) {
+      toast.error(`Stok ${p.name} kosong, tidak bisa ditambahkan ke keranjang`);
+      return;
+    }
+    if (currentBaseQty(p.id) >= (p.stock || 0)) {
+      toast.error(`Stok ${p.name} sudah habis di keranjang (maks ${p.stock})`);
+      return;
+    }
     setModePicker(p);
   };
 
@@ -594,6 +610,10 @@ function KasirPage() {
     const units = getUnits(p, unitsByProduct);
     const base = units.find((u) => u.is_base) || units[0];
     const key = `${p.id}:eceran`;
+    if (!canAddBase(p, 1)) {
+      toast.error(`Stok ${p.name} tidak cukup (sisa ${Math.max(0, (p.stock || 0) - currentBaseQty(p.id))})`);
+      return;
+    }
     setCart((c) => {
       const idx = c.findIndex((x) => x.key === key);
       if (idx >= 0) {
