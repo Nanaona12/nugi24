@@ -187,16 +187,22 @@ function HeroDashboardPreview() {
 
   useEffect(() => {
     let mounted = true;
-    getSummary()
-      .then((data) => {
+    (async () => {
+      try {
+        const { supabase } = await import("@/integrations/supabase/client");
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          if (mounted) setLoading(false);
+          return;
+        }
+        const data = await getSummary();
         if (mounted && data) setSummary(data);
-      })
-      .catch(() => {
+      } catch {
         if (mounted) setSummary({ todayTotal: 0, totalAllTime: 0, byCategory: [] });
-      })
-      .finally(() => {
+      } finally {
         if (mounted) setLoading(false);
-      });
+      }
+    })();
     return () => {
       mounted = false;
     };
