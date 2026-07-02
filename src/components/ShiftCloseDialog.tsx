@@ -366,7 +366,11 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
               <Button variant="outline" onClick={printSlip}>
                 <Printer className="mr-2 h-4 w-4" /> Cetak Struk
               </Button>
+              <Button variant="outline" onClick={printPdfA4}>
+                <FileText className="mr-2 h-4 w-4" /> Cetak PDF (A4)
+              </Button>
               <Button onClick={onClose}>Selesai</Button>
+
             </>
           )}
         </DialogFooter>
