@@ -147,6 +147,115 @@ ${notes.trim() ? `<div class="note"><b>Catatan:</b> ${notes.replace(/</g, "&lt;"
     w.document.close();
   };
 
+  const printPdfA4 = () => {
+    if (!summary || !closed) return;
+    const w = window.open("", "_blank", "width=900,height=1000");
+    if (!w) { toast.error("Pop-up diblokir browser"); return; }
+    const sign = closed.difference === 0 ? "Pas (0)" : closed.difference > 0 ? `Lebih ${formatRupiah(closed.difference)}` : `Kurang ${formatRupiah(Math.abs(closed.difference))}`;
+    const diffColor = closed.difference === 0 ? "#111" : closed.difference > 0 ? "#15803d" : "#b91c1c";
+    const openedAt = new Date(summary.shift.opened_at).toLocaleString("id-ID");
+    const closedAt = new Date().toLocaleString("id-ID");
+    const expensesRows = summary.expenses.length
+      ? summary.expenses.map((e, i) => `<tr>
+          <td>${i + 1}</td>
+          <td>${(e.label || "").replace(/</g, "&lt;")}</td>
+          <td>${new Date(e.created_at).toLocaleString("id-ID")}</td>
+          <td class="r">${formatRupiah(Number(e.amount))}</td>
+        </tr>`).join("")
+      : `<tr><td colspan="4" class="c muted">Tidak ada pengeluaran shift</td></tr>`;
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Laporan Closing Shift - ${summary.cashier_name}</title>
+<style>
+  @page { size: A4; margin: 16mm; }
+  * { box-sizing: border-box; }
+  body { font-family: ui-sans-serif, system-ui, Arial, sans-serif; color:#111; margin:0; padding: 24px; }
+  .head { display:flex; justify-content:space-between; align-items:flex-start; border-bottom:2px solid #111; padding-bottom:10px; margin-bottom:16px; }
+  .head h1 { margin:0 0 4px; font-size: 20px; }
+  .head .sub { font-size: 12px; color:#555; }
+  .head .rt { text-align:right; font-size: 12px; color:#333; }
+  h2 { font-size: 13px; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: .05em; color:#333; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; font-size: 13px; }
+  .grid .row { display:flex; justify-content:space-between; padding: 2px 0; }
+  .grid .row.b { font-weight: 700; }
+  table { width:100%; border-collapse: collapse; font-size: 12px; margin-top: 4px; }
+  th, td { border:1px solid #ccc; padding: 6px 8px; text-align:left; }
+  th { background:#f3f4f6; }
+  td.r, th.r { text-align:right; }
+  td.c { text-align:center; }
+  .muted { color:#666; }
+  .totalbox { margin-top: 14px; border:2px solid #111; padding: 12px; display:grid; grid-template-columns: 1fr 1fr; gap: 4px 24px; font-size: 14px; }
+  .totalbox .row { display:flex; justify-content:space-between; }
+  .totalbox .big { font-size: 18px; font-weight: 800; }
+  .sign { display:flex; justify-content:space-between; margin-top: 40px; font-size: 12px; }
+  .sign .box { width: 40%; text-align:center; }
+  .sign .line { margin-top: 60px; border-top: 1px solid #333; padding-top: 4px; }
+  .notes { margin-top: 12px; padding: 10px; border:1px dashed #999; font-size: 12px; white-space: pre-wrap; }
+  .foot { margin-top: 24px; text-align:center; font-size: 11px; color:#777; }
+  @media print { body { padding: 0; } .noprint { display:none; } }
+  .toolbar { position:fixed; top:8px; right:8px; }
+  .toolbar button { padding:6px 12px; font-size:12px; cursor:pointer; }
+</style></head><body>
+<div class="toolbar noprint"><button onclick="window.print()">Cetak / Simpan PDF</button></div>
+<div class="head">
+  <div>
+    <h1>${storeName || "Toko"}</h1>
+    <div class="sub">Laporan Closing Shift Kasir</div>
+  </div>
+  <div class="rt">
+    <div><b>Dicetak:</b> ${new Date().toLocaleString("id-ID")}</div>
+    <div>Shift ID: ${String(shift.shift_id).slice(0, 8).toUpperCase()}</div>
+  </div>
+</div>
+
+<h2>Informasi Shift</h2>
+<div class="grid">
+  <div class="row"><span>Kasir</span><span>${summary.cashier_name}</span></div>
+  <div class="row"><span>Total Transaksi</span><span>${closed.total_transactions}</span></div>
+  <div class="row"><span>Waktu Buka</span><span>${openedAt}</span></div>
+  <div class="row"><span>Waktu Tutup</span><span>${closedAt}</span></div>
+</div>
+
+<h2>Ringkasan Penjualan</h2>
+<div class="grid">
+  <div class="row"><span>Penjualan Tunai</span><span>${formatRupiah(closed.total_cash)}</span></div>
+  <div class="row"><span>Penjualan QRIS</span><span>${formatRupiah(closed.total_qris)}</span></div>
+  ${closed.total_other ? `<div class="row"><span>Penjualan Lainnya</span><span>${formatRupiah(closed.total_other)}</span></div>` : ""}
+  <div class="row b"><span>Total Penjualan</span><span>${formatRupiah(closed.total_sales)}</span></div>
+</div>
+
+<h2>Rincian Pengeluaran Shift</h2>
+<table>
+  <thead><tr><th style="width:32px">#</th><th>Keterangan</th><th style="width:180px">Waktu</th><th class="r" style="width:140px">Nominal</th></tr></thead>
+  <tbody>${expensesRows}</tbody>
+  <tfoot><tr><th colspan="3" class="r">Total Pengeluaran</th><th class="r">${formatRupiah(closed.total_expenses)}</th></tr></tfoot>
+</table>
+
+<div class="totalbox">
+  <div class="row"><span>Saldo Awal Kas</span><span>${formatRupiah(closed.opening_cash)}</span></div>
+  <div class="row"><span>Penjualan Tunai</span><span>+ ${formatRupiah(closed.total_cash)}</span></div>
+  <div class="row"><span>Pengeluaran Shift</span><span>- ${formatRupiah(closed.total_expenses)}</span></div>
+  <div class="row b"><span>Kas Seharusnya</span><span>${formatRupiah(closed.expected_cash)}</span></div>
+  <div class="row"><span>Fisik Kas</span><span>${formatRupiah(closed.actual_cash)}</span></div>
+  <div class="row big" style="grid-column: 1 / -1; border-top:1px solid #111; margin-top:6px; padding-top:6px;">
+    <span>SELISIH</span><span style="color:${diffColor}">${sign}</span>
+  </div>
+</div>
+
+${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt;")}</div>` : ""}
+
+<div class="sign">
+  <div class="box"><div class="line">Kasir<br/>(${summary.cashier_name})</div></div>
+  <div class="box"><div class="line">Diperiksa / Diserahkan Kepada</div></div>
+</div>
+
+<div class="foot">Dokumen ini dihasilkan otomatis dari sistem kasir ${storeName || ""}.</div>
+<script>window.onload = () => { setTimeout(() => window.print(), 300); };</script>
+</body></html>`;
+    w.document.write(html);
+    w.document.close();
+  };
+
+
   const cashExpected = summary ? summary.totals.expected_cash : 0;
   const actual = parseNumber(actualCash);
   const diff = actual - cashExpected;
