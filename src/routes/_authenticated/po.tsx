@@ -713,7 +713,7 @@ function POPage() {
             </div>
           </div>
 
-          <div className="mt-3 grid gap-4 md:grid-cols-[260px_1fr]">
+          <div className="mt-3 grid gap-4 md:grid-cols-[240px_1fr]">
             {/* Product picker */}
             <div className="space-y-2">
               <div className="relative">
@@ -751,16 +751,9 @@ function POPage() {
                 <Button type="button" size="default" onClick={() => setAiOpen((v) => !v)} className="flex-1">
                   <Sparkles className="mr-2 h-5 w-5" /> {aiOpen ? "Tutup Scan" : "Scan Struk/Faktur"}
                 </Button>
-
               </div>
-              <AIInvoiceCapture
-                open={aiOpen}
-                inline
-                onClose={() => setAiOpen(false)}
-                onResult={applyInvoiceResult}
-                existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
-              />
             </div>
+
 
             {/* Items - Mobile cards */}
             <div className="space-y-2 md:hidden">
