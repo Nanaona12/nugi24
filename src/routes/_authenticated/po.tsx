@@ -792,18 +792,33 @@ function POPage() {
                           <Input type="number" inputMode="decimal" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-10 text-sm text-right" />
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Modal</div>
+                          <div className="text-xs text-muted-foreground mb-1">Satuan</div>
+                          <Input value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-10 text-sm" placeholder="pcs/slove/dus" />
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Isi (pcs)</div>
+                          <Input type="number" inputMode="numeric" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-10 text-sm text-right" />
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Modal/satuan</div>
                           <Input type="number" inputMode="decimal" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-10 text-sm text-right" />
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Jual</div>
+                          <div className="text-xs text-muted-foreground mb-1">Jual/pcs</div>
                           <Input type="number" inputMode="decimal" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-10 text-sm text-right" placeholder="—" />
+                        </div>
+                        <div className="flex flex-col justify-end">
+                          <div className="text-xs text-muted-foreground mb-1">Stok masuk</div>
+                          <div className="h-10 flex items-center justify-end text-sm font-semibold text-primary">
+                            {(parseInt(it.qty || "0", 10) || 0) * (Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1))} pcs
+                          </div>
                         </div>
                       </div>
                       <div className="flex justify-between border-t pt-2 text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
                         <span className="font-semibold">{formatRupiah(sub)}</span>
                       </div>
+
                     </div>
                   );
                 })
