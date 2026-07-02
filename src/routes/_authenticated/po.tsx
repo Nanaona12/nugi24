@@ -254,7 +254,7 @@ function POPage() {
   const addManual = () => {
     setItems((prev) => [
       ...prev,
-      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0" },
+      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0", unit_name: "pcs", unit_conversion: "1" },
     ]);
   };
 
