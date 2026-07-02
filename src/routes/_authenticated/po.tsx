@@ -349,6 +349,8 @@ function POPage() {
       const qty = parseInt(it.qty || "0", 10) || 0;
       const unit_cost = parseNumber(it.unit_cost);
       const sell_price = parseNumber(it.sell_price);
+      const unit_conversion = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+      const unit_name = (it.unit_name || "pcs").trim() || "pcs";
       const prod = it.product_id ? products.find((p) => p.id === it.product_id) : null;
       return {
         po_id: po.id,
@@ -360,8 +362,11 @@ function POPage() {
         unit_cost,
         sell_price: sell_price > 0 ? sell_price : null,
         subtotal: qty * unit_cost,
+        unit_name,
+        unit_conversion,
       };
     });
+
 
 
     const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
