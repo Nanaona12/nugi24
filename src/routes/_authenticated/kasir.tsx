@@ -1304,6 +1304,11 @@ function KasirPage() {
           unitsByProduct={unitsByProduct}
           onClose={() => { setModePicker(null); setTimeout(() => searchRef.current?.focus(), 50); }}
           onAdd={(p, mode, unit, qtyPcs) => {
+            if (!canAddBase(p, qtyPcs)) {
+              const sisa = Math.max(0, (p.stock || 0) - currentBaseQty(p.id));
+              toast.error(`Stok ${p.name} tidak cukup (sisa ${sisa} ${(getUnits(p, unitsByProduct).find(u=>u.is_base)?.name)||"pcs"}, diminta ${qtyPcs})`);
+              return;
+            }
             if (mode === "eceran") {
               const units = getUnits(p, unitsByProduct);
               const base = units.find((u) => u.is_base) || units[0];
