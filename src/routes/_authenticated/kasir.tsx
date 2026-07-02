@@ -586,7 +586,23 @@ function KasirPage() {
     return { total, items };
   }, [cart, unitsByProduct]);
 
+  const currentBaseQty = (pid: string, currentCart: CartLine[] = cart) =>
+    currentCart.filter((l) => l.product.id === pid).reduce((s, l) => s + l.qty, 0);
+
+  const canAddBase = (p: Product, addBase: number, currentCart: CartLine[] = cart) => {
+    const used = currentBaseQty(p.id, currentCart);
+    return used + addBase <= (p.stock || 0);
+  };
+
   const onPickProduct = (p: Product) => {
+    if ((p.stock || 0) <= 0) {
+      toast.error(`Stok ${p.name} kosong, tidak bisa ditambahkan ke keranjang`);
+      return;
+    }
+    if (currentBaseQty(p.id) >= (p.stock || 0)) {
+      toast.error(`Stok ${p.name} sudah habis di keranjang (maks ${p.stock})`);
+      return;
+    }
     setModePicker(p);
   };
 
@@ -594,6 +610,10 @@ function KasirPage() {
     const units = getUnits(p, unitsByProduct);
     const base = units.find((u) => u.is_base) || units[0];
     const key = `${p.id}:eceran`;
+    if (!canAddBase(p, 1)) {
+      toast.error(`Stok ${p.name} tidak cukup (sisa ${Math.max(0, (p.stock || 0) - currentBaseQty(p.id))})`);
+      return;
+    }
     setCart((c) => {
       const idx = c.findIndex((x) => x.key === key);
       if (idx >= 0) {
@@ -627,6 +647,11 @@ function KasirPage() {
           }
         }
         const qtyAdd = mode === "grosiran" ? it.qty * unit.conversion : it.qty;
+        const usedBase = next.filter((x) => x.product.id === p.id).reduce((s, l) => s + l.qty, 0);
+        if (usedBase + qtyAdd > (p.stock || 0)) {
+          toast.error(`Stok ${p.name} tidak cukup, dilewati`);
+          continue;
+        }
         const idx = next.findIndex((x) => x.key === key);
         if (idx >= 0) next[idx] = { ...next[idx], qty: next[idx].qty + qtyAdd };
         else next.push({ key, product: p, mode, unit, baseUnit: base, qty: qtyAdd });
@@ -641,7 +666,19 @@ function KasirPage() {
 
   const setQty = (key: string, qty: number) => {
     if (qty <= 0) return setCart((c) => c.filter((l) => l.key !== key));
-    setCart((c) => c.map((l) => (l.key === key ? { ...l, qty } : l)));
+    setCart((c) => {
+      const line = c.find((l) => l.key === key);
+      if (line) {
+        const otherBase = c.filter((l) => l.product.id === line.product.id && l.key !== key).reduce((s, l) => s + l.qty, 0);
+        const stock = line.product.stock || 0;
+        if (otherBase + qty > stock) {
+          const maxAllowed = Math.max(0, stock - otherBase);
+          toast.error(`Stok ${line.product.name} tidak cukup (maks ${maxAllowed})`);
+          return c.map((l) => (l.key === key ? { ...l, qty: maxAllowed || l.qty } : l));
+        }
+      }
+      return c.map((l) => (l.key === key ? { ...l, qty } : l));
+    });
   };
 
   const setDisplayQty = (line: CartLine, displayQty: number) => {
@@ -1114,7 +1151,8 @@ function KasirPage() {
                     <button
                       key={p.id}
                       onClick={() => onPickProduct(p)}
-                      className="group relative flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md"
+                      disabled={(p.stock || 0) <= 0}
+                      className="group relative flex flex-col items-start rounded-lg border bg-card p-3 text-left transition hover:border-primary hover:shadow-md disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {expBadge && (
                         <span
@@ -1131,8 +1169,8 @@ function KasirPage() {
                           {formatRupiah(ecer)}
                           <span className="text-[10px] text-muted-foreground">/{base.name}</span>
                         </div>
-                        <Badge variant="secondary" className="text-[10px]">
-                          stok {p.stock}
+                        <Badge variant={(p.stock || 0) <= 0 ? "destructive" : "secondary"} className="text-[10px]">
+                          {(p.stock || 0) <= 0 ? "Habis" : `stok ${p.stock}`}
                         </Badge>
                       </div>
                       {grosirCount > 0 && <div className="mt-1 text-[10px] text-success">tersedia grosir</div>}
@@ -1284,6 +1322,11 @@ function KasirPage() {
           unitsByProduct={unitsByProduct}
           onClose={() => { setModePicker(null); setTimeout(() => searchRef.current?.focus(), 50); }}
           onAdd={(p, mode, unit, qtyPcs) => {
+            if (!canAddBase(p, qtyPcs)) {
+              const sisa = Math.max(0, (p.stock || 0) - currentBaseQty(p.id));
+              toast.error(`Stok ${p.name} tidak cukup (sisa ${sisa} ${(getUnits(p, unitsByProduct).find(u=>u.is_base)?.name)||"pcs"}, diminta ${qtyPcs})`);
+              return;
+            }
             if (mode === "eceran") {
               const units = getUnits(p, unitsByProduct);
               const base = units.find((u) => u.is_base) || units[0];
