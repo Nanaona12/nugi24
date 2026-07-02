@@ -103,7 +103,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const themeScript = `(function(){try{var t=localStorage.getItem('dp.theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}if(t==='dark'){document.documentElement.classList.add('dark');}}catch(e){}})();`;
+  const themeScript = `(function(){try{var d=document.documentElement;var t=localStorage.getItem('dp.theme');if(!t){t=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}if(t==='dark'){d.classList.add('dark');}var lite=false;try{var mem=navigator.deviceMemory;var cpu=navigator.hardwareConcurrency;var sw=window.screen&&window.screen.width;var rm=window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches;var noOklch=!(window.CSS&&CSS.supports&&CSS.supports('color','oklch(0 0 0)'));if(rm||noOklch||(mem&&mem<=2)||(cpu&&cpu<=4)||(sw&&sw<=360)){lite=true;}}catch(e2){}if(lite){d.classList.add('reduce-fx');}}catch(e){}})();`;
   return (
     <html lang="en">
       <head>
