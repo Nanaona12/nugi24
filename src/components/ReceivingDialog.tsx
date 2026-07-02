@@ -17,7 +17,11 @@ type POItem = {
   unit_cost: number;
   sell_price?: number | null;
   qty_received?: number | null;
+  unit_name?: string | null;
+  unit_conversion?: number | null;
 };
+
+
 
 
 export function ReceivingDialog({
@@ -40,8 +44,9 @@ export function ReceivingDialog({
       setLoading(true);
       const { data, error } = await supabase
         .from("purchase_order_items")
-        .select("id,product_id,product_code,product_name,qty,unit_cost,sell_price,qty_received")
+        .select("id,product_id,product_code,product_name,qty,unit_cost,sell_price,qty_received,unit_name,unit_conversion")
         .eq("po_id", poId);
+
 
       setLoading(false);
       if (error) { toast.error(error.message); return; }
@@ -72,21 +77,24 @@ export function ReceivingDialog({
         }
         const newReceived = (it.qty_received || 0) + addQty;
         await supabase.from("purchase_order_items").update({ qty_received: newReceived }).eq("id", it.id);
-        // Increment stock
+        // Increment stock (multiply by unit_conversion so pembelian per slove/dus dijumlah ke stok pcs)
+        const conv = Math.max(1, Number(it.unit_conversion || 1));
+        const addStockBase = addQty * conv;
         if (it.product_id) {
           const { data: p } = await supabase.from("products").select("stock").eq("id", it.product_id).single();
-          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (p?.stock || 0) + addQty };
-          if (it.unit_cost && it.unit_cost > 0) upd.cost_price = it.unit_cost;
+          const perPcsCost = it.unit_cost && it.unit_cost > 0 ? Number(it.unit_cost) / conv : 0;
+          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (p?.stock || 0) + addStockBase };
+          if (perPcsCost > 0) upd.cost_price = perPcsCost;
           if (it.sell_price && it.sell_price > 0) upd.price = it.sell_price;
           await supabase.from("products").update(upd).eq("id", it.product_id);
 
-          // Batch if exp date set
+          // Batch if exp date set — batch qty juga dalam base unit (pcs)
           if (r.exp) {
             const { data: tid } = await (supabase as any).rpc("current_tenant_id");
             if (tid) {
               await (supabase as any).from("product_batches").insert({
                 product_id: it.product_id,
-                qty: addQty,
+                qty: addStockBase,
                 expiry_date: r.exp,
                 source: "po",
                 po_id: poId,
@@ -96,9 +104,10 @@ export function ReceivingDialog({
             }
           }
         }
-        totalNew += addQty;
+        totalNew += addStockBase;
         if (newReceived < it.qty) allReceived = false;
       }
+
       const status = allReceived ? "received" : "partial";
       await supabase.from("purchase_orders").update({
         received_status: status,
@@ -137,13 +146,19 @@ export function ReceivingDialog({
               <tbody>
                 {items.map((it) => {
                   const already = it.qty_received || 0;
+                  const conv = Math.max(1, Number(it.unit_conversion || 1));
+                  const unitName = it.unit_name || "pcs";
+                  const inputQty = parseInt(recv[it.id]?.qty || "0", 10) || 0;
                   return (
                     <tr key={it.id} className="border-t">
                       <td className="p-2">
                         <div className="font-medium">{it.product_name}</div>
-                        <div className="text-xs text-muted-foreground">{it.product_code} • {formatRupiah(Number(it.unit_cost))}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {it.product_code} • {formatRupiah(Number(it.unit_cost))}/{unitName}
+                          {conv > 1 && <span className="ml-1 text-primary">(1 {unitName} = {conv} pcs)</span>}
+                        </div>
                       </td>
-                      <td className="p-2 text-right text-xs">{it.qty} / <span className="text-primary">{already}</span></td>
+                      <td className="p-2 text-right text-xs">{it.qty} / <span className="text-primary">{already}</span> {unitName}</td>
                       <td className="p-2">
                         <Input
                           inputMode="numeric"
@@ -151,7 +166,11 @@ export function ReceivingDialog({
                           onChange={(e) => setRecv({ ...recv, [it.id]: { ...recv[it.id], qty: e.target.value.replace(/\D/g, "") } })}
                           className="h-8 text-center"
                         />
+                        {conv > 1 && inputQty > 0 && (
+                          <div className="mt-1 text-[10px] text-center text-primary font-semibold">= {inputQty * conv} pcs</div>
+                        )}
                       </td>
+
                       <td className="p-2">
                         <Input
                           type="date"

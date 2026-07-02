@@ -77,6 +77,8 @@ type POItem = {
   qty: number;
   unit_cost: number;
   subtotal: number;
+  unit_name?: string | null;
+  unit_conversion?: number | null;
 };
 
 type DraftItem = {
@@ -86,7 +88,10 @@ type DraftItem = {
   qty: string;
   unit_cost: string;
   sell_price: string;
+  unit_name: string;      // "pcs" | "slove" | "dus" | ...
+  unit_conversion: string; // berapa pcs per 1 satuan (default 1)
 };
+
 
 
 const STATUS_LABEL: Record<string, string> = {
@@ -197,6 +202,8 @@ function POPage() {
         qty: "1",
         unit_cost: String(p.cost_price || p.price),
         sell_price: String(p.price),
+        unit_name: "pcs",
+        unit_conversion: "1",
       },
     ]);
   };
@@ -208,7 +215,10 @@ function POPage() {
     qty: String(Math.max(1, suggestedQty)),
     unit_cost: String(p.cost_price || p.price),
     sell_price: String(p.price),
+    unit_name: "pcs",
+    unit_conversion: "1",
   });
+
 
   const openCreateForLowStock = (mode: "out" | "low") => {
     const pool = mode === "out"
@@ -244,7 +254,7 @@ function POPage() {
   const addManual = () => {
     setItems((prev) => [
       ...prev,
-      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0" },
+      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0", unit_name: "pcs", unit_conversion: "1" },
     ]);
   };
 
@@ -266,6 +276,9 @@ function POPage() {
         qty: String(Math.max(1, it.qty)),
         unit_cost: String(Math.round(it.cost_price || 0)),
         sell_price: String(Math.round(it.sell_price ?? matched?.price ?? 0)),
+        unit_name: "pcs",
+        unit_conversion: "1",
+
       };
     });
     setItems((prev) => [...prev, ...newItems]);
@@ -336,6 +349,8 @@ function POPage() {
       const qty = parseInt(it.qty || "0", 10) || 0;
       const unit_cost = parseNumber(it.unit_cost);
       const sell_price = parseNumber(it.sell_price);
+      const unit_conversion = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+      const unit_name = (it.unit_name || "pcs").trim() || "pcs";
       const prod = it.product_id ? products.find((p) => p.id === it.product_id) : null;
       return {
         po_id: po.id,
@@ -347,8 +362,11 @@ function POPage() {
         unit_cost,
         sell_price: sell_price > 0 ? sell_price : null,
         subtotal: qty * unit_cost,
+        unit_name,
+        unit_conversion,
       };
     });
+
 
 
     const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
@@ -381,9 +399,9 @@ function POPage() {
     if (status === "received") {
       const { data: poItems } = await supabase
         .from("purchase_order_items")
-        .select("product_id, qty, unit_cost, sell_price")
+        .select("product_id, qty, unit_cost, sell_price, unit_conversion")
         .eq("po_id", po.id);
-      for (const it of (poItems as { product_id: string | null; qty: number; unit_cost: number | null; sell_price: number | null }[]) || []) {
+      for (const it of (poItems as { product_id: string | null; qty: number; unit_cost: number | null; sell_price: number | null; unit_conversion: number | null }[]) || []) {
         if (!it.product_id) continue;
         const { data: prod } = await supabase
           .from("products")
@@ -391,13 +409,17 @@ function POPage() {
           .eq("id", it.product_id)
           .single();
         if (prod) {
-          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (prod.stock || 0) + it.qty };
-          if (it.unit_cost && it.unit_cost > 0) upd.cost_price = it.unit_cost;
+          const conv = Math.max(1, Number(it.unit_conversion || 1));
+          const addStock = (it.qty || 0) * conv;
+          const perPcsCost = it.unit_cost && it.unit_cost > 0 ? Number(it.unit_cost) / conv : 0;
+          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (prod.stock || 0) + addStock };
+          if (perPcsCost > 0) upd.cost_price = perPcsCost;
           if (it.sell_price && it.sell_price > 0) upd.price = it.sell_price;
           await supabase.from("products").update(upd).eq("id", it.product_id);
         }
 
       }
+
       toast.success("PO diterima — stok & harga diperbarui");
 
     } else {
@@ -421,14 +443,20 @@ function POPage() {
     if (!w) return;
     const rows = lines
       .map(
-        (it) => `
+        (it) => {
+          const conv = Math.max(1, Number(it.unit_conversion || 1));
+          const unitName = it.unit_name || "pcs";
+          const qtyLabel = conv > 1 ? `${it.qty} ${unitName} × ${conv} = ${it.qty * conv} pcs` : `${it.qty} ${unitName}`;
+          return `
         <tr>
           <td>${it.product_code}</td>
           <td>${it.product_name}</td>
-          <td style="text-align:right">${it.qty}</td>
+          <td style="text-align:right">${qtyLabel}</td>
           <td style="text-align:right">${formatRupiah(Number(it.unit_cost))}</td>
           <td style="text-align:right">${formatRupiah(Number(it.subtotal))}</td>
-        </tr>`,
+        </tr>`;
+        },
+
       )
       .join("");
     w.document.write(`
@@ -770,18 +798,33 @@ function POPage() {
                           <Input type="number" inputMode="decimal" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-10 text-sm text-right" />
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Modal</div>
+                          <div className="text-xs text-muted-foreground mb-1">Satuan</div>
+                          <Input value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-10 text-sm" placeholder="pcs/slove/dus" />
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Isi (pcs)</div>
+                          <Input type="number" inputMode="numeric" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-10 text-sm text-right" />
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Modal/satuan</div>
                           <Input type="number" inputMode="decimal" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-10 text-sm text-right" />
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Jual</div>
+                          <div className="text-xs text-muted-foreground mb-1">Jual/pcs</div>
                           <Input type="number" inputMode="decimal" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-10 text-sm text-right" placeholder="—" />
+                        </div>
+                        <div className="flex flex-col justify-end">
+                          <div className="text-xs text-muted-foreground mb-1">Stok masuk</div>
+                          <div className="h-10 flex items-center justify-end text-sm font-semibold text-primary">
+                            {(parseInt(it.qty || "0", 10) || 0) * (Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1))} pcs
+                          </div>
                         </div>
                       </div>
                       <div className="flex justify-between border-t pt-2 text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
                         <span className="font-semibold">{formatRupiah(sub)}</span>
                       </div>
+
                     </div>
                   );
                 })
@@ -796,9 +839,12 @@ function POPage() {
                     <tr>
                       <th className="p-2">Kode</th>
                       <th className="p-2">Nama</th>
-                      <th className="p-2 w-16 text-right">Qty</th>
-                      <th className="p-2 w-24 text-right">Modal</th>
-                      <th className="p-2 w-24 text-right">Jual</th>
+                      <th className="p-2 w-14 text-right">Qty</th>
+                      <th className="p-2 w-24">Satuan</th>
+                      <th className="p-2 w-16 text-right">Isi</th>
+                      <th className="p-2 w-24 text-right">Modal/satuan</th>
+                      <th className="p-2 w-24 text-right">Jual/pcs</th>
+                      <th className="p-2 w-20 text-right">Stok +</th>
                       <th className="p-2 w-24 text-right">Subtotal</th>
                       <th className="p-2"></th>
                     </tr>
@@ -806,13 +852,15 @@ function POPage() {
                   <tbody>
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={7} className="p-6 text-center text-muted-foreground">
+                        <td colSpan={10} className="p-6 text-center text-muted-foreground">
                           Belum ada item
                         </td>
                       </tr>
                     ) : (
                       items.map((it, i) => {
                         const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
+                        const conv = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+                        const stockAdd = (parseInt(it.qty || "0", 10) || 0) * conv;
                         return (
                           <tr key={i} className="border-t">
                             <td className="p-1">
@@ -825,11 +873,18 @@ function POPage() {
                               <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 text-sm text-right" />
                             </td>
                             <td className="p-1">
+                              <Input value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 text-sm" placeholder="pcs" />
+                            </td>
+                            <td className="p-1">
+                              <Input type="number" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-9 text-sm text-right" />
+                            </td>
+                            <td className="p-1">
                               <Input type="number" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-9 text-sm text-right" />
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-9 text-sm text-right" placeholder="—" />
                             </td>
+                            <td className="p-1 text-right text-xs text-primary font-semibold">{stockAdd}</td>
                             <td className="p-1 text-right font-medium">{formatRupiah(sub)}</td>
                             <td className="p-1 text-center">
                               <Button size="icon" variant="ghost" onClick={() => removeItem(i)} className="h-8 w-8 text-destructive">
@@ -841,6 +896,7 @@ function POPage() {
                       })
                     )}
                   </tbody>
+
                 </table>
               </div>
             </div>

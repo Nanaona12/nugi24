@@ -704,7 +704,9 @@ export type Database = {
           sell_price: number | null
           subtotal: number
           tenant_id: string
+          unit_conversion: number
           unit_cost: number
+          unit_name: string | null
         }
         Insert: {
           id?: string
@@ -718,7 +720,9 @@ export type Database = {
           sell_price?: number | null
           subtotal?: number
           tenant_id?: string
+          unit_conversion?: number
           unit_cost?: number
+          unit_name?: string | null
         }
         Update: {
           id?: string
@@ -732,7 +736,9 @@ export type Database = {
           sell_price?: number | null
           subtotal?: number
           tenant_id?: string
+          unit_conversion?: number
           unit_cost?: number
+          unit_name?: string | null
         }
         Relationships: [
           {
