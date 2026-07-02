@@ -253,8 +253,8 @@ function RiwayatPage() {
         </div>
       </Card>
 
-      <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
-        <DialogContent>
+      <Dialog open={!!selected} onOpenChange={(o) => { if (!o) { setSelected(null); setReceiptImg(null); } }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detail Transaksi #{selected?.id.slice(0, 8)}</DialogTitle>
           </DialogHeader>
@@ -282,10 +282,40 @@ function RiwayatPage() {
                 <Row label="Dibayar" value={formatRupiah(Number(selected.paid))} />
                 <Row label="Kembali" value={formatRupiah(Number(selected.change_amount))} />
               </div>
+
+              <div className="space-y-2 border-t pt-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => buildReceiptImage(selected, items)}
+                    disabled={buildingImg || items.length === 0}
+                  >
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    {receiptImg ? "Buat Ulang Gambar Struk" : "Lihat Gambar Struk"}
+                  </Button>
+                  {receiptImg && (
+                    <Button size="sm" variant="secondary" onClick={() => downloadReceipt(selected)}>
+                      <Download className="mr-2 h-4 w-4" /> Unduh PNG
+                    </Button>
+                  )}
+                </div>
+                {receiptImg && (
+                  <div className="rounded border bg-muted/30 p-2">
+                    <img
+                      src={receiptImg}
+                      alt={`Struk #${selected.id.slice(0, 8)}`}
+                      className="mx-auto max-h-[60vh] w-auto rounded bg-white shadow"
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+
 
       <AlertDialog open={confirmClearOpen} onOpenChange={(o) => { setConfirmClearOpen(o); if (!o) setClearPassword(""); }}>
         <AlertDialogContent>
