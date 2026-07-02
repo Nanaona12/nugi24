@@ -71,13 +71,67 @@ function RiwayatPage() {
     else setTxs((data || []) as Tx[]);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+    (async () => {
+      const { data } = await supabase.rpc("current_tenant_info");
+      const row = Array.isArray(data) ? data[0] : data;
+      if (row?.name) setStoreName(row.name as string);
+    })();
+  }, []);
 
   const openDetail = async (tx: Tx) => {
     setSelected(tx);
+    setReceiptImg(null);
     const { data } = await supabase.from("transaction_items").select("*").eq("transaction_id", tx.id);
     setItems((data || []) as TxItem[]);
   };
+
+  const buildReceiptImage = async (tx: Tx, its: TxItem[]) => {
+    setBuildingImg(true);
+    try {
+      const paymentMethod = (tx.payment_method || "cash").toLowerCase();
+      const qrisPart = Number(tx.qris_amount || 0);
+      const cashPart = Math.max(0, Number(tx.paid || 0) - qrisPart);
+      const imgItems: ReceiptItem[] = its.map((it) => ({
+        name: it.product_name,
+        qty: Number(it.qty),
+        unit: "",
+        isWholesale: !!it.is_wholesale,
+        detail: `${it.qty} × ${formatRupiah(Number(it.unit_price))}`,
+        subtotal: Number(it.subtotal),
+      }));
+      const { dataUrl } = renderReceiptPng({
+        storeName: storeName || "Toko",
+        storeNote: "Terima kasih atas kunjungan Anda",
+        txId: tx.id,
+        at: new Date(tx.created_at),
+        items: imgItems,
+        total: Number(tx.total),
+        paid: Number(tx.paid),
+        change: Number(tx.change_amount),
+        paymentMethod,
+        cashPart,
+        qrisPart,
+        customerName: null,
+        customerPhone: tx.customer_phone || null,
+      });
+      setReceiptImg(dataUrl);
+    } catch (e: any) {
+      toast.error("Gagal membuat gambar struk");
+    } finally {
+      setBuildingImg(false);
+    }
+  };
+
+  const downloadReceipt = (tx: Tx) => {
+    if (!receiptImg) return;
+    const a = document.createElement("a");
+    a.href = receiptImg;
+    a.download = `struk-${tx.id.slice(0, 8)}.png`;
+    a.click();
+  };
+
 
   const askDelete = (tx: Tx, e?: React.MouseEvent) => {
     e?.stopPropagation();
