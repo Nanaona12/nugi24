@@ -239,7 +239,7 @@ function ProdukPage() {
   const openDuplicate = (p: Product) => {
     // Duplikat: salin harga/kategori/satuan/kode dari produk sumber, kosongkan barcode/stok, beri nama sementara
     setForm({
-      code: p.code,
+      code: "",
       barcode: "",
       name: `${p.name} (salin)`,
       category: p.category || "",
