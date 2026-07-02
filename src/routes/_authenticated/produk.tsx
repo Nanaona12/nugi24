@@ -239,7 +239,7 @@ function ProdukPage() {
   const openDuplicate = (p: Product) => {
     // Duplikat: salin harga/kategori/satuan/kode dari produk sumber, kosongkan barcode/stok, beri nama sementara
     setForm({
-      code: p.code,
+      code: "",
       barcode: "",
       name: `${p.name} (salin)`,
       category: p.category || "",
@@ -863,7 +863,18 @@ function ProdukPage() {
 
       {/* Edit Dialog */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-2xl max-h-[90vh] overflow-y-auto"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              const tag = (e.target as HTMLElement).tagName;
+              if (tag === "TEXTAREA") return;
+              if ((e.target as HTMLElement).getAttribute("role") === "combobox") return;
+              e.preventDefault();
+              saveForm();
+            }
+          }}
+        >
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit Produk" : "Tambah Produk"}</DialogTitle>
             <DialogDescription>
