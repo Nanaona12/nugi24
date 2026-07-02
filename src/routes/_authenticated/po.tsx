@@ -77,6 +77,8 @@ type POItem = {
   qty: number;
   unit_cost: number;
   subtotal: number;
+  unit_name?: string | null;
+  unit_conversion?: number | null;
 };
 
 type DraftItem = {
@@ -86,7 +88,10 @@ type DraftItem = {
   qty: string;
   unit_cost: string;
   sell_price: string;
+  unit_name: string;      // "pcs" | "slove" | "dus" | ...
+  unit_conversion: string; // berapa pcs per 1 satuan (default 1)
 };
+
 
 
 const STATUS_LABEL: Record<string, string> = {
