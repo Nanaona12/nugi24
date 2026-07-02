@@ -866,6 +866,11 @@ function ProdukPage() {
         <DialogContent
           className="max-w-2xl max-h-[90vh] overflow-y-auto"
           onKeyDown={(e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              saveForm();
+              return;
+            }
             if (e.key === "Enter" && !e.shiftKey) {
               const tag = (e.target as HTMLElement).tagName;
               if (tag === "TEXTAREA") return;
@@ -874,6 +879,7 @@ function ProdukPage() {
               saveForm();
             }
           }}
+
         >
           <DialogHeader>
             <DialogTitle>{form.id ? "Edit Produk" : "Tambah Produk"}</DialogTitle>
