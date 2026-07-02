@@ -276,6 +276,9 @@ function POPage() {
         qty: String(Math.max(1, it.qty)),
         unit_cost: String(Math.round(it.cost_price || 0)),
         sell_price: String(Math.round(it.sell_price ?? matched?.price ?? 0)),
+        unit_name: "pcs",
+        unit_conversion: "1",
+
       };
     });
     setItems((prev) => [...prev, ...newItems]);
