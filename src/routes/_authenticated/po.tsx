@@ -933,13 +933,23 @@ function POPage() {
               </div>
             </div>
 
+            <div className="md:col-span-2">
+              <AIInvoiceCapture
+                open={aiOpen}
+                inline
+                onClose={() => setAiOpen(false)}
+                onResult={applyInvoiceResult}
+                existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
+              />
+            </div>
 
-            <div className="flex justify-between border-t pt-2 text-sm">
+            <div className="md:col-span-2 flex justify-between border-t pt-2 text-sm">
               <span className="text-muted-foreground">{itemCount} item</span>
               <span className="text-base font-semibold text-primary">{formatRupiah(total)}</span>
             </div>
 
           </div>
+
 
           <div ref={poActionsRef} className="sticky bottom-0 -mx-6 border-t bg-background/95 px-6 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
             <DialogFooter className="gap-2">
