@@ -661,7 +661,19 @@ function KasirPage() {
 
   const setQty = (key: string, qty: number) => {
     if (qty <= 0) return setCart((c) => c.filter((l) => l.key !== key));
-    setCart((c) => c.map((l) => (l.key === key ? { ...l, qty } : l)));
+    setCart((c) => {
+      const line = c.find((l) => l.key === key);
+      if (line) {
+        const otherBase = c.filter((l) => l.product.id === line.product.id && l.key !== key).reduce((s, l) => s + l.qty, 0);
+        const stock = line.product.stock || 0;
+        if (otherBase + qty > stock) {
+          const maxAllowed = Math.max(0, stock - otherBase);
+          toast.error(`Stok ${line.product.name} tidak cukup (maks ${maxAllowed})`);
+          return c.map((l) => (l.key === key ? { ...l, qty: maxAllowed || l.qty } : l));
+        }
+      }
+      return c.map((l) => (l.key === key ? { ...l, qty } : l));
+    });
   };
 
   const setDisplayQty = (line: CartLine, displayQty: number) => {
