@@ -841,8 +841,10 @@ function POPage() {
                       })
                     )}
                   </tbody>
+                </table>
               </div>
             </div>
+
 
             <div className="flex justify-between border-t pt-2 text-sm">
               <span className="text-muted-foreground">{itemCount} item</span>
