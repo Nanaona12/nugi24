@@ -146,13 +146,19 @@ export function ReceivingDialog({
               <tbody>
                 {items.map((it) => {
                   const already = it.qty_received || 0;
+                  const conv = Math.max(1, Number(it.unit_conversion || 1));
+                  const unitName = it.unit_name || "pcs";
+                  const inputQty = parseInt(recv[it.id]?.qty || "0", 10) || 0;
                   return (
                     <tr key={it.id} className="border-t">
                       <td className="p-2">
                         <div className="font-medium">{it.product_name}</div>
-                        <div className="text-xs text-muted-foreground">{it.product_code} • {formatRupiah(Number(it.unit_cost))}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {it.product_code} • {formatRupiah(Number(it.unit_cost))}/{unitName}
+                          {conv > 1 && <span className="ml-1 text-primary">(1 {unitName} = {conv} pcs)</span>}
+                        </div>
                       </td>
-                      <td className="p-2 text-right text-xs">{it.qty} / <span className="text-primary">{already}</span></td>
+                      <td className="p-2 text-right text-xs">{it.qty} / <span className="text-primary">{already}</span> {unitName}</td>
                       <td className="p-2">
                         <Input
                           inputMode="numeric"
@@ -160,7 +166,11 @@ export function ReceivingDialog({
                           onChange={(e) => setRecv({ ...recv, [it.id]: { ...recv[it.id], qty: e.target.value.replace(/\D/g, "") } })}
                           className="h-8 text-center"
                         />
+                        {conv > 1 && inputQty > 0 && (
+                          <div className="mt-1 text-[10px] text-center text-primary font-semibold">= {inputQty * conv} pcs</div>
+                        )}
                       </td>
+
                       <td className="p-2">
                         <Input
                           type="date"
