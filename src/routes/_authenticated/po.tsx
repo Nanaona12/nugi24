@@ -443,14 +443,20 @@ function POPage() {
     if (!w) return;
     const rows = lines
       .map(
-        (it) => `
+        (it) => {
+          const conv = Math.max(1, Number(it.unit_conversion || 1));
+          const unitName = it.unit_name || "pcs";
+          const qtyLabel = conv > 1 ? `${it.qty} ${unitName} × ${conv} = ${it.qty * conv} pcs` : `${it.qty} ${unitName}`;
+          return `
         <tr>
           <td>${it.product_code}</td>
           <td>${it.product_name}</td>
-          <td style="text-align:right">${it.qty}</td>
+          <td style="text-align:right">${qtyLabel}</td>
           <td style="text-align:right">${formatRupiah(Number(it.unit_cost))}</td>
           <td style="text-align:right">${formatRupiah(Number(it.subtotal))}</td>
-        </tr>`,
+        </tr>`;
+        },
+
       )
       .join("");
     w.document.write(`
