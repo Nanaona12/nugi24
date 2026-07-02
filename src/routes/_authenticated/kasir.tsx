@@ -1083,7 +1083,7 @@ function KasirPage() {
           open={closeOpen}
           shift={activeShift}
           storeName={storeName}
-          onClose={() => setCloseOpen(false)}
+          onClose={handleCloseDialogDismiss}
           onClosed={handleShiftClosed}
         />
       )}
