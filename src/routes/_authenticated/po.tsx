@@ -734,10 +734,64 @@ function POPage() {
               />
             </div>
 
-            {/* Items table */}
-            <div className="space-y-2">
+            {/* Items - Mobile cards */}
+            <div className="space-y-2 md:hidden">
+              {items.length === 0 ? (
+                <div className="rounded border p-6 text-center text-sm text-muted-foreground">Belum ada item</div>
+              ) : (
+                items.map((it, i) => {
+                  const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
+                  return (
+                    <div key={i} className="rounded-lg border bg-card p-3 space-y-2 shadow-sm">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0 space-y-1.5">
+                          <Input
+                            value={it.product_name}
+                            onChange={(e) => updateItem(i, { product_name: e.target.value })}
+                            className="h-10 text-sm font-semibold"
+                            placeholder="Nama barang"
+                            disabled={!!it.product_id}
+                          />
+                          <Input
+                            value={it.product_code}
+                            onChange={(e) => updateItem(i, { product_code: e.target.value })}
+                            className="h-9 text-sm"
+                            placeholder="Kode"
+                            disabled={!!it.product_id}
+                          />
+                        </div>
+                        <Button size="icon" variant="ghost" onClick={() => removeItem(i)} className="h-9 w-9 text-destructive shrink-0">
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Qty</div>
+                          <Input type="number" inputMode="decimal" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-10 text-sm text-right" />
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Modal</div>
+                          <Input type="number" inputMode="decimal" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-10 text-sm text-right" />
+                        </div>
+                        <div>
+                          <div className="text-xs text-muted-foreground mb-1">Jual</div>
+                          <Input type="number" inputMode="decimal" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-10 text-sm text-right" placeholder="—" />
+                        </div>
+                      </div>
+                      <div className="flex justify-between border-t pt-2 text-sm">
+                        <span className="text-muted-foreground">Subtotal</span>
+                        <span className="font-semibold">{formatRupiah(sub)}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Items - Desktop table */}
+            <div className="space-y-2 hidden md:block">
               <div className="max-h-80 overflow-auto rounded border">
-                <table className="w-full text-xs">
+                <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted text-left">
                     <tr>
                       <th className="p-2">Kode</th>
@@ -748,7 +802,6 @@ function POPage() {
                       <th className="p-2 w-24 text-right">Subtotal</th>
                       <th className="p-2"></th>
                     </tr>
-
                   </thead>
                   <tbody>
                     {items.length === 0 ? (
@@ -758,61 +811,28 @@ function POPage() {
                         </td>
                       </tr>
                     ) : (
-
                       items.map((it, i) => {
                         const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
                         return (
                           <tr key={i} className="border-t">
                             <td className="p-1">
-                              <Input
-                                value={it.product_code}
-                                onChange={(e) => updateItem(i, { product_code: e.target.value })}
-                                className="h-8 text-xs"
-                                disabled={!!it.product_id}
-                              />
+                              <Input value={it.product_code} onChange={(e) => updateItem(i, { product_code: e.target.value })} className="h-9 text-sm" disabled={!!it.product_id} />
                             </td>
                             <td className="p-1">
-                              <Input
-                                value={it.product_name}
-                                onChange={(e) => updateItem(i, { product_name: e.target.value })}
-                                className="h-8 text-xs"
-                                disabled={!!it.product_id}
-                              />
+                              <Input value={it.product_name} onChange={(e) => updateItem(i, { product_name: e.target.value })} className="h-9 text-sm" disabled={!!it.product_id} />
                             </td>
                             <td className="p-1">
-                              <Input
-                                type="number"
-                                value={it.qty}
-                                onChange={(e) => updateItem(i, { qty: e.target.value })}
-                                className="h-8 text-xs text-right"
-                              />
+                              <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 text-sm text-right" />
                             </td>
                             <td className="p-1">
-                              <Input
-                                type="number"
-                                value={it.unit_cost}
-                                onChange={(e) => updateItem(i, { unit_cost: e.target.value })}
-                                className="h-8 text-xs text-right"
-                              />
+                              <Input type="number" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-9 text-sm text-right" />
                             </td>
                             <td className="p-1">
-                              <Input
-                                type="number"
-                                value={it.sell_price}
-                                onChange={(e) => updateItem(i, { sell_price: e.target.value })}
-                                className="h-8 text-xs text-right"
-                                placeholder="—"
-                              />
+                              <Input type="number" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-9 text-sm text-right" placeholder="—" />
                             </td>
                             <td className="p-1 text-right font-medium">{formatRupiah(sub)}</td>
-
                             <td className="p-1 text-center">
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                onClick={() => removeItem(i)}
-                                className="h-7 w-7 text-destructive"
-                              >
+                              <Button size="icon" variant="ghost" onClick={() => removeItem(i)} className="h-8 w-8 text-destructive">
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </td>
