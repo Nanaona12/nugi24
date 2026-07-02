@@ -1169,8 +1169,8 @@ function KasirPage() {
                           {formatRupiah(ecer)}
                           <span className="text-[10px] text-muted-foreground">/{base.name}</span>
                         </div>
-                        <Badge variant="secondary" className="text-[10px]">
-                          stok {p.stock}
+                        <Badge variant={(p.stock || 0) <= 0 ? "destructive" : "secondary"} className="text-[10px]">
+                          {(p.stock || 0) <= 0 ? "Habis" : `stok ${p.stock}`}
                         </Badge>
                       </div>
                       {grosirCount > 0 && <div className="mt-1 text-[10px] text-success">tersedia grosir</div>}
