@@ -10,12 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Home, Plus, Trash2, Wallet, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Home, Plus, Trash2, Wallet, AlertCircle, CheckCircle2, Clock, Search, X } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/pengambilan")({
   component: PengambilanPage,
@@ -189,16 +186,11 @@ function PengambilanPage() {
               <div className="grid gap-3">
                 <div className="grid gap-1">
                   <Label className="text-xs">Produk</Label>
-                  <Select value={productId} onValueChange={setProductId}>
-                    <SelectTrigger><SelectValue placeholder="Pilih produk..." /></SelectTrigger>
-                    <SelectContent>
-                      {products.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name} <span className="text-muted-foreground">({p.code} • stok {p.stock})</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ProductSearchInput
+                    products={products}
+                    selected={selectedProduct}
+                    onSelect={(p: Product | null) => setProductId(p?.id ?? "")}
+                  />
                   {selectedProduct && (
                     <div className="text-[11px] text-muted-foreground">
                       Harga jual {formatRupiah(selectedProduct.price)} • Modal {formatRupiah(selectedProduct.cost_price)} • Sisa stok {selectedProduct.stock}
@@ -344,5 +336,72 @@ function SummaryCard({ icon, label, value, accent }: { icon: React.ReactNode; la
       <div className="flex items-center gap-2 text-xs uppercase text-muted-foreground">{icon}{label}</div>
       <div className={`mt-2 text-2xl font-bold ${accent ? "text-destructive" : ""}`}>{value}</div>
     </Card>
+  );
+}
+
+function ProductSearchInput({
+  products,
+  selected,
+  onSelect,
+}: {
+  products: Product[];
+  selected: Product | null;
+  onSelect: (p: Product | null) => void;
+}) {
+  const [query, setQuery] = useState("");
+  const [open, setOpen] = useState(false);
+  const filtered = useMemo(() => {
+    if (!query.trim()) return products.slice(0, 50);
+    const s = query.toLowerCase();
+    return products
+      .filter((p) => p.name.toLowerCase().includes(s) || p.code.toLowerCase().includes(s))
+      .slice(0, 50);
+  }, [products, query]);
+
+  return (
+    <div className="relative">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          value={selected ? `${selected.name} (${selected.code})` : query}
+          onChange={(e) => {
+            if (selected) onSelect(null);
+            setQuery(e.target.value);
+            setOpen(true);
+          }}
+          onFocus={() => setOpen(true)}
+          placeholder="Cari nama atau kode produk..."
+          className="pl-9 pr-8"
+        />
+        {selected && (
+          <button
+            type="button"
+            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+            onClick={() => { setQuery(""); onSelect(null); }}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+      {open && (
+        <div className="absolute z-50 mt-1 max-h-60 w-full overflow-auto rounded-md border bg-popover p-1 shadow-md">
+          {filtered.length === 0 ? (
+            <div className="px-3 py-2 text-sm text-muted-foreground">Tidak ada produk</div>
+          ) : (
+            filtered.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                className="w-full rounded-sm px-3 py-2 text-left text-sm hover:bg-accent hover:text-accent-foreground"
+                onClick={() => { onSelect(p); setQuery(""); setOpen(false); }}
+              >
+                <div className="font-medium">{p.name}</div>
+                <div className="text-xs text-muted-foreground">{p.code} • stok {p.stock} • {formatRupiah(p.price)}</div>
+              </button>
+            ))
+          )}
+        </div>
+      )}
+    </div>
   );
 }
