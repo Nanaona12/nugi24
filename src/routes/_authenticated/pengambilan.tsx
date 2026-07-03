@@ -189,7 +189,7 @@ function PengambilanPage() {
                   <ProductSearchInput
                     products={products}
                     selected={selectedProduct}
-                    onSelect={(p) => setProductId(p.id)}
+                    onSelect={(p: Product | null) => setProductId(p?.id ?? "")}
                   />
                   {selectedProduct && (
                     <div className="text-[11px] text-muted-foreground">
