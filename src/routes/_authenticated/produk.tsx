@@ -910,7 +910,19 @@ function ProdukPage() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Kode (otomatis jika kosong)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="Biarkan kosong → BRG0001" />
-            <FormField label="Barcode (opsional)" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan / ketik barcode produk" />
+            <div className="grid gap-1.5">
+              <Label className="text-sm">Barcode (opsional)</Label>
+              <textarea
+                className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                value={form.barcode}
+                onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+                placeholder="Scan / ketik. Pisahkan koma jika lebih dari 1 (mis. barcode dus & pcs)"
+                rows={2}
+              />
+              <div className="text-[11px] text-muted-foreground">
+                Bisa isi lebih dari 1 barcode, pisahkan dengan koma / spasi / baris baru.
+              </div>
+            </div>
             <FormField label="Nama *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
             <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
