@@ -369,6 +369,21 @@ export const closeShift = createServerFn({ method: "POST" })
       .eq("id", data.shift_id)
       .eq("tenant_id", tenantId);
     if (error) throw new Error(error.message);
+
+    // Auto-catat setoran kasir ke pembukuan: uang kasir dikurangi kas modal
+    const setoran = Math.max(0, actual_cash - opening_cash);
+    if (setoran > 0) {
+      const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
+      await context.supabase.from("bookkeeping_entries").insert({
+        tenant_id: tenantId,
+        entry_date: new Date().toISOString(),
+        kind: "in",
+        description: `Setoran kasir (closing shift ${shortId})`,
+        ref: data.shift_id,
+        amount: setoran,
+      } as any);
+    }
+
     return { ok: true, totals: { opening_cash, total_sales, total_cash, total_qris, total_other, total_transactions, total_expenses, expected_cash, actual_cash, difference } };
   });
 
