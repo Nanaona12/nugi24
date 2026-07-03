@@ -1088,7 +1088,7 @@ function KasirPage() {
         />
       )}
 
-      <RefundDialog open={refundOpen} onOpenChange={setRefundOpen} onDone={loadProducts} />
+      <RefundDialog open={refundOpen} onOpenChange={setRefundOpen} onDone={loadProducts} cashierId={activeCashier?.id ?? activeShift?.cashier_id ?? null} />
 
       <AIOrderDialog
         open={aiOrderOpen}
