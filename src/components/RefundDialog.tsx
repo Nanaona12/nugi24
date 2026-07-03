@@ -10,14 +10,14 @@ import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import { Loader2, Search, Undo2 } from "lucide-react";
 
-type Tx = { id: string; total: number; created_at: string; item_count: number };
+type Tx = { id: string; total: number; created_at: string; item_count: number; tenant_id: string };
 type TxItem = {
   id: string; product_id: string | null; product_code: string; product_name: string;
   qty: number; unit_price: number; subtotal: number; unit_conversion: number | null;
   unit_name: string | null;
 };
 
-export function RefundDialog({ open, onOpenChange, onDone }: { open: boolean; onOpenChange: (o: boolean) => void; onDone?: () => void }) {
+export function RefundDialog({ open, onOpenChange, onDone, cashierId }: { open: boolean; onOpenChange: (o: boolean) => void; onDone?: () => void; cashierId?: string | null }) {
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [tx, setTx] = useState<Tx | null>(null);
@@ -70,17 +70,18 @@ export function RefundDialog({ open, onOpenChange, onDone }: { open: boolean; on
     if (chosen.length === 0) { toast.error("Pilih barang yang akan direfund"); return; }
     setSaving(true);
     try {
-      const { data: u } = await supabase.auth.getUser();
-      const cashierId = u.user?.id;
-      if (!cashierId) throw new Error("Sesi tidak ditemukan");
+      if (!cashierId) throw new Error("Pilih kasir aktif terlebih dahulu");
+      if (!tx.tenant_id) throw new Error("Tenant transaksi tidak ditemukan");
       const itemCount = chosen.reduce((s, it) => s + (refundQty[it.id] || 0), 0);
       const { data: rf, error } = await supabase.from("refunds").insert({
+        tenant_id: tx.tenant_id,
         transaction_id: tx.id, cashier_id: cashierId, reason: reason || null, total, item_count: itemCount,
       }).select("id").single();
       if (error) throw error;
       const rows = chosen.map((it) => {
         const q = refundQty[it.id] || 0;
         return {
+          tenant_id: tx.tenant_id,
           refund_id: rf!.id,
           product_id: it.product_id,
           product_code: it.product_code,
