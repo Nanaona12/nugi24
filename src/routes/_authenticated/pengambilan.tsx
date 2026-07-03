@@ -11,9 +11,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Search, X } from "lucide-react";
 import { formatRupiah } from "@/lib/format";
-import { Home, Plus, Trash2, Wallet, AlertCircle, CheckCircle2, Clock } from "lucide-react";
+import { Home, Plus, Trash2, Wallet, AlertCircle, CheckCircle2, Clock, Search, X } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/pengambilan")({
   component: PengambilanPage,
