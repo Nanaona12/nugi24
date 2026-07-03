@@ -365,6 +365,7 @@ function ProductSearchInput({
         <Input
           value={selected ? `${selected.name} (${selected.code})` : query}
           onChange={(e) => {
+            if (selected) onSelect(null);
             setQuery(e.target.value);
             setOpen(true);
           }}
