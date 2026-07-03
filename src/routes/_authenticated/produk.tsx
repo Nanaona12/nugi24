@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { formatRupiah, parseNumber } from "@/lib/format";
+import { formatRupiah, parseNumber, parseBarcodes, barcodeMatches, barcodeIncludes } from "@/lib/format";
 import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash, Package, X as XIcon, Copy, Sparkles } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { AIPhotoCapture } from "@/components/AIPhotoCapture";
@@ -119,7 +119,7 @@ function ProdukPage() {
     const q = query.trim().toLowerCase();
     if (!q) return true;
     return p.code.toLowerCase().includes(q)
-      || (p.barcode || "").toLowerCase().includes(q)
+      || barcodeIncludes(p.barcode, q)
       || p.name.toLowerCase().includes(q)
       || (p.category || "").toLowerCase().includes(q);
   });
@@ -390,7 +390,7 @@ function ProdukPage() {
     setScanMode(null);
     if (!mode) return;
     const findByBarcodeOrCode = (s: string) =>
-      products.find((p) => (p.barcode || "") === s) || products.find((p) => p.code === s);
+      products.find((p) => barcodeMatches(p.barcode, s)) || products.find((p) => p.code === s);
     if (mode === "search") {
       setQuery(scanned);
       const found = findByBarcodeOrCode(scanned);
@@ -401,7 +401,17 @@ function ProdukPage() {
     // add mode
     const existing = findByBarcodeOrCode(scanned);
     if (existing) {
-      toast.info("Produk sudah ada, membuka edit");
+      // Jika barcode belum tercatat pada produk (mis. barcode dus vs pcs), tambahkan
+      const list = parseBarcodes(existing.barcode);
+      if (!list.some((b) => b.toLowerCase() === scanned.toLowerCase())) {
+        const merged = [...list, scanned].join(", ");
+        const { error } = await supabase.from("products").update({ barcode: merged }).eq("id", existing.id);
+        if (!error) toast.success(`Barcode ${scanned} ditambahkan ke ${existing.name}`);
+        else toast.error(error.message);
+        await load();
+      } else {
+        toast.info("Produk sudah ada, membuka edit");
+      }
       openEdit(existing);
     } else {
       setForm({ ...emptyForm, barcode: scanned });
@@ -900,7 +910,19 @@ function ProdukPage() {
 
           <div className="grid gap-3 sm:grid-cols-2">
             <FormField label="Kode (otomatis jika kosong)" value={form.code} onChange={(v) => setForm({ ...form, code: v })} placeholder="Biarkan kosong → BRG0001" />
-            <FormField label="Barcode (opsional)" value={form.barcode} onChange={(v) => setForm({ ...form, barcode: v })} placeholder="Scan / ketik barcode produk" />
+            <div className="grid gap-1.5">
+              <Label className="text-sm">Barcode (opsional)</Label>
+              <textarea
+                className="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                value={form.barcode}
+                onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+                placeholder="Scan / ketik. Pisahkan koma jika lebih dari 1 (mis. barcode dus & pcs)"
+                rows={2}
+              />
+              <div className="text-[11px] text-muted-foreground">
+                Bisa isi lebih dari 1 barcode, pisahkan dengan koma / spasi / baris baru.
+              </div>
+            </div>
             <FormField label="Nama *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
             <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
             <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />

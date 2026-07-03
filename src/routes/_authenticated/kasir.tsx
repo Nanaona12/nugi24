@@ -17,7 +17,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { formatRupiah } from "@/lib/format";
+import { formatRupiah, barcodeIncludes, barcodeMatches } from "@/lib/format";
 import {
   Plus,
   Minus,
@@ -579,7 +579,7 @@ function KasirPage() {
       .filter(
         (p) =>
           p.code.toLowerCase().includes(q) ||
-          (p.barcode || "").toLowerCase().includes(q) ||
+          barcodeIncludes(p.barcode, q) ||
           p.name.toLowerCase().includes(q),
       )
       .slice(0, 60);
@@ -730,7 +730,7 @@ function KasirPage() {
     const q = raw.toLowerCase();
     // Exact match by barcode/code → buka dialog pilih satuan. Else: pakai hasil pertama.
     const exact =
-      products.find((p) => (p.barcode || "").toLowerCase() === q) || products.find((p) => p.code.toLowerCase() === q);
+      products.find((p) => barcodeMatches(p.barcode, raw)) || products.find((p) => p.code.toLowerCase() === q);
     setModePicker(exact || filtered[0]);
     setQuery("");
   };
