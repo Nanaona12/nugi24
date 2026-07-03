@@ -189,16 +189,11 @@ function PengambilanPage() {
               <div className="grid gap-3">
                 <div className="grid gap-1">
                   <Label className="text-xs">Produk</Label>
-                  <Select value={productId} onValueChange={setProductId}>
-                    <SelectTrigger><SelectValue placeholder="Pilih produk..." /></SelectTrigger>
-                    <SelectContent>
-                      {products.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name} <span className="text-muted-foreground">({p.code} • stok {p.stock})</span>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <ProductSearchInput
+                    products={products}
+                    selected={selectedProduct}
+                    onSelect={(p) => setProductId(p.id)}
+                  />
                   {selectedProduct && (
                     <div className="text-[11px] text-muted-foreground">
                       Harga jual {formatRupiah(selectedProduct.price)} • Modal {formatRupiah(selectedProduct.cost_price)} • Sisa stok {selectedProduct.stock}
