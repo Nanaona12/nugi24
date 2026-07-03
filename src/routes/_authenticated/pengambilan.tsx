@@ -346,7 +346,7 @@ function ProductSearchInput({
 }: {
   products: Product[];
   selected: Product | null;
-  onSelect: (p: Product) => void;
+  onSelect: (p: Product | null) => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
