@@ -12,8 +12,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Receipt, Eye, Trash2, Download, ImageIcon } from "lucide-react";
+import { Receipt, Eye, Trash2, Download, ImageIcon, Printer } from "lucide-react";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
+import { printReceipt } from "@/lib/printer";
+import { loadPrinterSettings } from "@/lib/printer-settings";
 
 
 
@@ -299,6 +301,46 @@ function RiwayatPage() {
                       <Download className="mr-2 h-4 w-4" /> Unduh PNG
                     </Button>
                   )}
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      try {
+                        const tx = selected;
+                        const paymentMethod = (tx.payment_method || "cash").toLowerCase();
+                        const qrisPart = Number(tx.qris_amount || 0);
+                        const cashPart = Math.max(0, Number(tx.paid || 0) - qrisPart);
+                        await printReceipt({
+                          storeName: storeName || "Toko",
+                          storeNote: "Terima kasih atas kunjungan Anda",
+                          txId: tx.id,
+                          at: new Date(tx.created_at),
+                          items: items.map((it) => ({
+                            name: it.product_name,
+                            qty: Number(it.qty),
+                            unit: "",
+                            isWholesale: !!it.is_wholesale,
+                            detail: `${it.qty} × ${formatRupiah(Number(it.unit_price))}`,
+                            subtotal: Number(it.subtotal),
+                          })),
+                          total: Number(tx.total),
+                          paid: Number(tx.paid),
+                          change: Number(tx.change_amount),
+                          paymentMethod,
+                          cashPart,
+                          qrisPart,
+                          customerName: null,
+                          customerPhone: tx.customer_phone || null,
+                        }, loadPrinterSettings());
+                        toast.success("Struk dikirim ke printer");
+                      } catch (e: any) {
+                        toast.error(e?.message || "Gagal cetak");
+                      }
+                    }}
+                    disabled={items.length === 0}
+                  >
+                    <Printer className="mr-2 h-4 w-4" /> Cetak Struk
+                  </Button>
                 </div>
                 {receiptImg && (
                   <div className="rounded border bg-muted/30 p-2">

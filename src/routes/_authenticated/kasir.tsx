@@ -45,6 +45,9 @@ import {
 import { useServerFn } from "@tanstack/react-start";
 import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
+import { printReceipt } from "@/lib/printer";
+import { loadPrinterSettings } from "@/lib/printer-settings";
+import { Printer } from "lucide-react";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
@@ -278,6 +281,7 @@ function KasirPage() {
   const sendWaImgFn = useServerFn(sendFonnteWaImage);
   const sendWaUrlFn = useServerFn(sendFonnteWaUrl);
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
+  const [lastReceiptData, setLastReceiptData] = useState<Parameters<typeof renderReceiptPng>[0] | null>(null);
   const [storeName, setStoreName] = useState<string>("Toko");
   const [staticQrisPayload, setStaticQrisPayload] = useState<string | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
@@ -916,7 +920,7 @@ function KasirPage() {
           subtotal: c.total,
         };
       });
-      const { dataUrl } = renderReceiptPng({
+      const receiptDataForPrint = {
         storeName: storeName || "Toko",
         storeNote: "Terima kasih atas kunjungan Anda",
         txId: tx.id,
@@ -930,8 +934,19 @@ function KasirPage() {
         qrisPart: receipt.qrisPart,
         customerName: receipt.customerName,
         customerPhone: receipt.customerPhone,
-      });
+      };
+      const { dataUrl } = renderReceiptPng(receiptDataForPrint);
       setReceiptImg(dataUrl);
+      setLastReceiptData(receiptDataForPrint);
+      // Auto-print bila diaktifkan di Pengaturan
+      try {
+        const ps = loadPrinterSettings();
+        if (ps.autoPrint) {
+          printReceipt(receiptDataForPrint, ps).catch((e) => {
+            toast.error("Auto-print gagal: " + (e?.message || "unknown"));
+          });
+        }
+      } catch {}
       if (sendWa && phoneClean) {
         const caption = buildReceiptCaption(receipt);
         await sendReceiptImageWa(
@@ -1696,6 +1711,22 @@ function KasirPage() {
                       }}
                     >
                       ⬇️ Unduh
+                    </Button>
+                  )}
+                  {lastReceiptData && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await printReceipt(lastReceiptData, loadPrinterSettings());
+                          toast.success("Struk dikirim ke printer");
+                        } catch (e: any) {
+                          toast.error(e?.message || "Gagal cetak");
+                        }
+                      }}
+                    >
+                      <Printer className="mr-2 h-4 w-4" /> Cetak Struk
                     </Button>
                   )}
                   {lastReceipt.customerPhone && receiptImg && (

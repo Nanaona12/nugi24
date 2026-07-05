@@ -1,54 +1,62 @@
-## Kenapa tampilan jelek di HP jadul
 
-Setelah cek kode, ada 3 penyebab utama:
+# Rencana: Cetak Struk Fisik ke Printer
 
-1. **Efek berat berlapis** — `blur-3xl` (blob raksasa), `backdrop-blur-md`, `animate-blob`, `glass/glass-strong`, `hover:-translate-y-1` di banyak card. Semua ini memaksa GPU render layer besar tiap frame. Di HP RAM ≤ 2GB, ini bikin scroll patah-patah dan animasi ngadat.
-2. **Warna `oklch()`** — dipakai di semua token warna (`--background`, `--primary`, dll). Browser lama (Safari iOS < 15.4, Chrome Android < 111) tidak support → warna jadi transparan/hitam/putih polos, tampilan hancur.
-3. **Landing page padat animasi** — 20+ elemen `animate-fade-in` dengan `animationDelay` bertingkat, blob mengambang, shimmer bar, floating card. Berat di HW low-end.
+Menambah dukungan **print fisik** untuk struk transaksi dari halaman kasir dan riwayat, dengan 3 metode: Browser Print, Bluetooth Thermal (ESC/POS), USB Thermal (ESC/POS). Mendukung kertas **58mm dan 80mm**, dan pengaturan **auto-print** setelah transaksi selesai.
 
-## Yang akan diperbaiki
+## Yang akan dibangun
 
-### 1. Deteksi & mode ringan otomatis
-Tambah class `reduce-fx` di `<html>` ketika:
-- `prefers-reduced-motion: reduce`
-- `deviceMemory ≤ 2` GB atau `hardwareConcurrency ≤ 4`
-- Layar ≤ 360px
+### 1. Pengaturan printer (di halaman Pengaturan)
+Bagian baru "Printer Struk":
+- **Metode default**: Browser / Bluetooth / USB / Tanya setiap kali
+- **Ukuran kertas**: 58mm atau 80mm
+- **Auto-print setelah transaksi**: on/off
+- **Nama header/footer struk** (opsional, pakai yang sudah ada dari tenant)
+- Tombol "Uji Cetak" untuk tes tanpa harus transaksi
+- Tombol "Pasangkan printer Bluetooth" / "Pasangkan printer USB" (menyimpan device id di localStorage supaya tidak perlu pilih ulang tiap kali)
 
-Ditulis di `src/start.ts` / inline script `__root.tsx` supaya jalan sebelum paint (tidak flicker).
+Semua pengaturan disimpan di `localStorage` per perangkat (bukan di database) karena tiap kasir bisa punya printer beda.
 
-### 2. CSS fallback di `src/styles.css`
-- Tambah fallback `rgb()`/`hsl()` untuk semua token warna via `@supports not (color: oklch(0 0 0))` — supaya HP lama tetap punya warna yang benar.
-- Kelas `.reduce-fx`:
-  - Nonaktifkan `backdrop-filter` (`bg-background/80` diganti solid)
-  - Kecilkan `blur-3xl` → `blur-xl`, atau hilangkan blob di hero
-  - Matikan `animate-blob`, `animate-float-slow`, `animate-shimmer-bar`
-  - `hover:-translate-y-1`, `transition-all duration-300` → `duration-150` / dimatikan
-  - `glass`/`glass-strong` → background solid semi-transparan tanpa blur
+### 2. Metode cetak
 
-### 3. Landing page (`src/routes/index.tsx`)
-- Bungkus 3 blob hero dengan `hidden sm:block` supaya mobile tidak render sama sekali.
-- Ganti `blur-3xl` jadi `blur-2xl` di mobile, tetap `blur-3xl` di `md:`.
-- Hilangkan `animationDelay` bertingkat pada mobile (semua animasi selesai serentak, tidak antre).
-- `animate-fade-in` diganti kelas `motion-safe:animate-fade-in` supaya `prefers-reduced-motion` hormat.
+**a. Browser Print (universal)**
+- Render struk ke halaman HTML tersembunyi dengan CSS `@page` ukuran 58mm/80mm dan style monospace.
+- Panggil `window.print()`. Bekerja untuk printer thermal (via driver) maupun printer biasa. Kompatibel semua device.
 
-### 4. Layout auth (`route.tsx`)
-- Header: `backdrop-blur-md` diberi kondisi lewat `.reduce-fx` (solid di HP lemot).
+**b. Bluetooth Thermal (Web Bluetooth API)**
+- Buat encoder ESC/POS ringan (tanpa library Node) untuk: init, teks kiri/tengah/kanan, bold, size normal/besar, feed, cut, garis putus-putus.
+- Kirim byte via GATT characteristic ke printer (service `000018f0-0000-1000-8000-00805f9b34fb`).
+- Simpan device untuk auto-reconnect. Deteksi platform: sembunyikan opsi ini di iOS/Safari dengan pesan penjelasan.
 
-### 5. Ukuran font & tap target mobile kecil
-- Tambah breakpoint `xs` (≤ 360px) di `styles.css` — kecilkan padding sidebar/kartu supaya konten tidak terpotong di layar 320px.
-- Base font 15px → 14px di layar sangat kecil supaya heading tidak overflow.
+**c. USB Thermal (Web USB API)**
+- Encoder ESC/POS sama seperti Bluetooth.
+- `navigator.usb.requestDevice()` dengan filter class printer (0x07), lalu `transferOut` ke endpoint bulk.
+- Simpan `vendorId`/`productId`. Deteksi Chromium: sembunyikan di browser lain.
 
-### 6. Perf umum
-- Tambah `content-visibility: auto` di section landing yang jauh di bawah fold — hemat render awal.
-- Tambah `<meta name="theme-color">` sesuai tema supaya address bar seragam.
+### 3. Integrasi ke alur transaksi
+- **Kasir (setelah bayar sukses)**: jika auto-print ON, cetak otomatis pakai metode default. Tambah juga tombol "Cetak Struk" di dialog sukses (samping tombol WhatsApp / Unduh PNG yang sudah ada).
+- **Riwayat**: tombol "Cetak Struk" di dialog detail transaksi (samping "Unduh PNG").
 
-## Yang TIDAK diubah
-- Struktur halaman, komponen, routing, fitur — hanya penampilan & performa.
-- Tampilan di HP/laptop modern tetap sama persis (efek glass, blur, animasi tetap jalan).
+### 4. Fitur pendukung
+- Toast bila printer belum dipasangkan / gagal konek, dengan tombol shortcut ke Pengaturan.
+- Fallback graceful: jika Bluetooth/USB gagal, tawarkan Browser Print.
+- Struk berisi data yang sudah ada di `receipt-image.ts`: nama toko, no tx, waktu, item + qty × harga, total, bayar (cash/qris/split), kembali, pelanggan (bila ada), footer terima kasih.
 
-## Catatan teknis
-- Fallback warna generate manual dari nilai `oklch` yang ada (perkiraan RGB dekat), disimpan di blok `@supports not`.
-- Deteksi HP lemot pakai script kecil (~500 byte) di `__root.tsx` head, inline supaya no-FOUC.
-- Semua perubahan reversible via toggling class `.reduce-fx`.
+## Rincian teknis
 
-Setelah plan disetujui, saya implementasi langsung.
+**File baru**
+- `src/lib/printer-settings.ts` — load/save preferensi printer di localStorage, tipe `PrinterSettings`.
+- `src/lib/escpos.ts` — encoder ESC/POS murni (Uint8Array builder): `init`, `text`, `align`, `bold`, `size`, `feed`, `cut`, `line58`, `line80`.
+- `src/lib/printer.ts` — orkestrator: `printReceipt(data, settings)` yang memilih transport (browser/bt/usb), plus helper `pairBluetooth()`, `pairUsb()`, `printBrowser(data,width)`.
+- `src/components/PrinterSettingsCard.tsx` — UI pengaturan printer + tombol pasangkan & uji cetak.
+
+**File diedit**
+- `src/routes/_authenticated/pengaturan.tsx` — mount `PrinterSettingsCard`.
+- `src/routes/_authenticated/kasir.tsx` — panggil `printReceipt` setelah transaksi sukses (jika auto-print), tombol "Cetak Struk" di dialog sukses.
+- `src/routes/_authenticated/riwayat.tsx` — tombol "Cetak Struk" di dialog detail (dari data `Tx` + `TxItem[]` yang sudah dipakai untuk PNG).
+
+**Data yang dikirim ke printer** mengikuti `ReceiptData` yang sudah ada di `src/lib/receipt-image.ts`, tapi diformat monospace 32 kolom (58mm) / 48 kolom (80mm).
+
+**Catatan kompatibilitas**
+- Web Bluetooth & Web USB hanya jalan di Chrome/Edge (Android + desktop), butuh HTTPS. Di iOS/Safari otomatis hanya tampil opsi Browser Print.
+- Semua kode berjalan di browser saja, tidak butuh perubahan backend / migrasi database.
+

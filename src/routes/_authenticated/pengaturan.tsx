@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { User, KeyRound, Store, ArrowLeft, Mail, ShieldQuestion, RefreshCcw, Copy, Check, QrCode, Upload, Trash2 } from "lucide-react";
+import { PrinterSettingsCard } from "@/components/PrinterSettingsCard";
 
 
 export const Route = createFileRoute("/_authenticated/pengaturan")({
@@ -109,6 +110,8 @@ function PengaturanPage() {
       <CashierCodeCard />
 
       <StaticQrisCard />
+
+      <PrinterSettingsCard />
 
 
 
