@@ -1454,7 +1454,7 @@ function KasirPage() {
                       value={paid}
                       onChange={(e) => setPaid(e.target.value.replace(/[^\d]/g, ""))}
                       onKeyDown={(e) => {
-                        if (e.key === "Enter" && !submitting && !(paymentMethod === "qris" && (!qris || qris.status !== "paid"))) {
+                        if (e.key === "Enter" && !submitting) {
                           e.preventDefault();
                           checkout();
                         }
