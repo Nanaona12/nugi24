@@ -1713,6 +1713,22 @@ function KasirPage() {
                       ⬇️ Unduh
                     </Button>
                   )}
+                  {lastReceiptData && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={async () => {
+                        try {
+                          await printReceipt(lastReceiptData, loadPrinterSettings());
+                          toast.success("Struk dikirim ke printer");
+                        } catch (e: any) {
+                          toast.error(e?.message || "Gagal cetak");
+                        }
+                      }}
+                    >
+                      <Printer className="mr-2 h-4 w-4" /> Cetak Struk
+                    </Button>
+                  )}
                   {lastReceipt.customerPhone && receiptImg && (
                     <Button
                       className="flex-1"
