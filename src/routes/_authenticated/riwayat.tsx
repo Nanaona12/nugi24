@@ -12,8 +12,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Receipt, Eye, Trash2, Download, ImageIcon } from "lucide-react";
+import { Receipt, Eye, Trash2, Download, ImageIcon, Printer } from "lucide-react";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
+import { printReceipt } from "@/lib/printer";
+import { loadPrinterSettings } from "@/lib/printer-settings";
 
 
 
