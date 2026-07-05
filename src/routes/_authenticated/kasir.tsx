@@ -1453,6 +1453,12 @@ function KasirPage() {
                       inputMode="numeric"
                       value={paid}
                       onChange={(e) => setPaid(e.target.value.replace(/[^\d]/g, ""))}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !submitting && !(paymentMethod === "qris" && (!qris || qris.status !== "paid"))) {
+                          e.preventDefault();
+                          checkout();
+                        }
+                      }}
                       placeholder="0"
                       className="mt-1 h-12 text-2xl"
                     />
@@ -1491,6 +1497,9 @@ function KasirPage() {
                               inputMode="numeric"
                               value={splitCash}
                               onChange={(e) => setSplitCash(e.target.value.replace(/[^\d]/g, ""))}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !submitting) { e.preventDefault(); checkout(); }
+                              }}
                               placeholder="0"
                               className="mt-1 h-11"
                             />
@@ -1501,6 +1510,9 @@ function KasirPage() {
                               inputMode="numeric"
                               value={splitQris}
                               onChange={(e) => setSplitQris(e.target.value.replace(/[^\d]/g, ""))}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" && !submitting) { e.preventDefault(); checkout(); }
+                              }}
                               placeholder="0"
                               className="mt-1 h-11"
                               disabled={!!qris}
