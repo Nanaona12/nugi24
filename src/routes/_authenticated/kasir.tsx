@@ -919,7 +919,7 @@ function KasirPage() {
           subtotal: c.total,
         };
       });
-      const { dataUrl } = renderReceiptPng({
+      const receiptDataForPrint = {
         storeName: storeName || "Toko",
         storeNote: "Terima kasih atas kunjungan Anda",
         txId: tx.id,
@@ -933,8 +933,19 @@ function KasirPage() {
         qrisPart: receipt.qrisPart,
         customerName: receipt.customerName,
         customerPhone: receipt.customerPhone,
-      });
+      };
+      const { dataUrl } = renderReceiptPng(receiptDataForPrint);
       setReceiptImg(dataUrl);
+      setLastReceiptData(receiptDataForPrint);
+      // Auto-print bila diaktifkan di Pengaturan
+      try {
+        const ps = loadPrinterSettings();
+        if (ps.autoPrint) {
+          printReceipt(receiptDataForPrint, ps).catch((e) => {
+            toast.error("Auto-print gagal: " + (e?.message || "unknown"));
+          });
+        }
+      } catch {}
       if (sendWa && phoneClean) {
         const caption = buildReceiptCaption(receipt);
         await sendReceiptImageWa(
