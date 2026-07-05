@@ -281,6 +281,7 @@ function KasirPage() {
   const sendWaImgFn = useServerFn(sendFonnteWaImage);
   const sendWaUrlFn = useServerFn(sendFonnteWaUrl);
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
+  const [lastReceiptData, setLastReceiptData] = useState<Parameters<typeof renderReceiptPng>[0] | null>(null);
   const [storeName, setStoreName] = useState<string>("Toko");
   const [staticQrisPayload, setStaticQrisPayload] = useState<string | null>(null);
   const [tenantId, setTenantId] = useState<string | null>(null);
