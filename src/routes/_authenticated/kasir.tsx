@@ -45,6 +45,9 @@ import {
 import { useServerFn } from "@tanstack/react-start";
 import { sendFonnteWaImage, sendFonnteWaUrl } from "@/lib/fonnte.functions";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
+import { printReceipt } from "@/lib/printer";
+import { loadPrinterSettings } from "@/lib/printer-settings";
+import { Printer } from "lucide-react";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
