@@ -1300,9 +1300,11 @@ function KasirPage() {
                             <Minus className="h-3 w-3" />
                           </Button>
                           <Input
+                            id={`qty-input-${l.key}`}
                             className="h-7 w-14 text-center"
                             type="number"
                             value={displayQty}
+                            onFocus={(e) => e.currentTarget.select()}
                             onChange={(e) => setDisplayQty(l, parseInt(e.target.value || "0", 10))}
                           />
                           <Button
