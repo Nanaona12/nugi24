@@ -1312,6 +1312,13 @@ function KasirPage() {
                             value={displayQty}
                             onFocus={(e) => e.currentTarget.select()}
                             onChange={(e) => setDisplayQty(l, parseInt(e.target.value || "0", 10))}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                setQuery("");
+                                setTimeout(() => searchRef.current?.focus(), 0);
+                              }
+                            }}
                           />
                           <Button
                             size="icon"
