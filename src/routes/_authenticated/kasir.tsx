@@ -564,6 +564,16 @@ function KasirPage() {
       // Jangan aktif saat ada dialog/modal terbuka (picker, pembayaran, dsb.)
       if (document.querySelector('[role="dialog"][data-state="open"]')) return;
       e.preventDefault();
+      // Jika keranjang berisi, fokus ke input jumlah baris terakhir (shortcut setelah scan barang)
+      if (cart.length > 0) {
+        const last = cart[cart.length - 1];
+        setTimeout(() => {
+          const el = document.getElementById(`qty-input-${last.key}`) as HTMLInputElement | null;
+          if (el) { el.focus(); el.select(); }
+        }, 0);
+        return;
+      }
+      // Fallback: keranjang kosong → pakai search "*N" shortcut
       setQuery("*");
       setTimeout(() => {
         searchRef.current?.focus();
@@ -573,7 +583,7 @@ function KasirPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [cart]);
 
 
   const filtered = useMemo(() => {
