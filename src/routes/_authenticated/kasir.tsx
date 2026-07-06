@@ -555,25 +555,31 @@ function KasirPage() {
   // Global shortcut: tekan `*` di mana pun (di luar input) → fokus ke pencarian dan mulai dengan `*`
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== "*") return;
+      // Terima "*" dari tombol utama maupun numpad (Shift+8, NumpadMultiply)
+      const isStar = e.key === "*" || e.code === "NumpadMultiply";
+      if (!isStar) return;
       const t = e.target as HTMLElement | null;
       const tag = t?.tagName;
       const isEditable =
         tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || (t as any)?.isContentEditable;
-      if (isEditable) return;
       // Jangan aktif saat ada dialog/modal terbuka (picker, pembayaran, dsb.)
       if (document.querySelector('[role="dialog"][data-state="open"]')) return;
-      e.preventDefault();
-      // Jika keranjang berisi, fokus ke input jumlah baris terakhir (shortcut setelah scan barang)
+      // Jika keranjang berisi → shortcut fokus ke jumlah baris terakhir.
+      // Kecuali user sedang mengetik di input jumlah itu sendiri.
       if (cart.length > 0) {
         const last = cart[cart.length - 1];
+        const qtyId = `qty-input-${last.key}`;
+        if (isEditable && t?.id === qtyId) return;
+        e.preventDefault();
         setTimeout(() => {
-          const el = document.getElementById(`qty-input-${last.key}`) as HTMLInputElement | null;
+          const el = document.getElementById(qtyId) as HTMLInputElement | null;
           if (el) { el.focus(); el.select(); }
         }, 0);
         return;
       }
-      // Fallback: keranjang kosong → pakai search "*N" shortcut
+      // Keranjang kosong: hanya aktif bila fokus tidak di input lain
+      if (isEditable) return;
+      e.preventDefault();
       setQuery("*");
       setTimeout(() => {
         searchRef.current?.focus();
