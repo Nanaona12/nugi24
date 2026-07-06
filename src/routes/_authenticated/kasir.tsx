@@ -564,6 +564,16 @@ function KasirPage() {
       // Jangan aktif saat ada dialog/modal terbuka (picker, pembayaran, dsb.)
       if (document.querySelector('[role="dialog"][data-state="open"]')) return;
       e.preventDefault();
+      // Jika keranjang berisi, fokus ke input jumlah baris terakhir (shortcut setelah scan barang)
+      if (cart.length > 0) {
+        const last = cart[cart.length - 1];
+        setTimeout(() => {
+          const el = document.getElementById(`qty-input-${last.key}`) as HTMLInputElement | null;
+          if (el) { el.focus(); el.select(); }
+        }, 0);
+        return;
+      }
+      // Fallback: keranjang kosong → pakai search "*N" shortcut
       setQuery("*");
       setTimeout(() => {
         searchRef.current?.focus();
@@ -573,7 +583,7 @@ function KasirPage() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, []);
+  }, [cart]);
 
 
   const filtered = useMemo(() => {
@@ -1290,9 +1300,11 @@ function KasirPage() {
                             <Minus className="h-3 w-3" />
                           </Button>
                           <Input
+                            id={`qty-input-${l.key}`}
                             className="h-7 w-14 text-center"
                             type="number"
                             value={displayQty}
+                            onFocus={(e) => e.currentTarget.select()}
                             onChange={(e) => setDisplayQty(l, parseInt(e.target.value || "0", 10))}
                           />
                           <Button
