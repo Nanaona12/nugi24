@@ -260,3 +260,38 @@ function ShowcaseDetail() {
     </div>
   );
 }
+
+function StoreMap({ lat, lng, name, address }: { lat: number; lng: number; name: string; address: string | null }) {
+  const delta = 0.008;
+  const bbox = `${lng - delta}%2C${lat - delta}%2C${lng + delta}%2C${lat + delta}`;
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${bbox}&layer=mapnik&marker=${lat}%2C${lng}`;
+  const gmaps = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  const osm = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`;
+  return (
+    <div className="mt-5 overflow-hidden rounded-xl border bg-background">
+      <div className="flex items-center justify-between gap-2 border-b bg-muted/40 px-3 py-2">
+        <div className="flex min-w-0 items-center gap-2 text-xs">
+          <MapPin className="h-3.5 w-3.5 text-primary" />
+          <span className="truncate font-medium">Lokasi {name}</span>
+        </div>
+        <div className="flex shrink-0 gap-1.5">
+          <a href={osm} target="_blank" rel="noreferrer">
+            <Button size="sm" variant="outline" className="h-7 text-[11px]">Peta</Button>
+          </a>
+          <a href={gmaps} target="_blank" rel="noreferrer">
+            <Button size="sm" className="h-7 text-[11px]"><Navigation className="mr-1 h-3 w-3" />Rute</Button>
+          </a>
+        </div>
+      </div>
+      <iframe
+        title={`Peta ${name}`}
+        src={src}
+        loading="lazy"
+        className="block h-56 w-full sm:h-64"
+        style={{ border: 0 }}
+      />
+      {address && <div className="border-t px-3 py-2 text-[11px] text-muted-foreground">{address}</div>}
+    </div>
+  );
+}
+
