@@ -337,4 +337,102 @@ function StaticQrisCard() {
   );
 }
 
+function ShowcaseCard() {
+  const qc = useQueryClient();
+  const getBilling = useServerFn(getMyBilling);
+  const updateTenant = useServerFn(updateMyTenant);
+  const { data } = useQuery({ queryKey: ["billing"], queryFn: () => getBilling() });
+  const tenant = (data as any)?.tenant as { name: string; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null } | null;
+
+  const [enabled, setEnabled] = useState(false);
+  const [slug, setSlug] = useState("");
+  const [description, setDescription] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!tenant) return;
+    setEnabled(!!tenant.showcase_enabled);
+    setSlug(tenant.slug ?? "");
+    setDescription(tenant.showcase_description ?? "");
+  }, [tenant?.slug, tenant?.showcase_enabled, tenant?.showcase_description]);
+
+  if (!tenant) return null;
+
+  const url = slug ? `${typeof window !== "undefined" ? window.location.origin : ""}/showcase/${slug}` : "";
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await updateTenant({ data: {
+        name: tenant.name,
+        showcase_enabled: enabled,
+        slug: slug || null,
+        showcase_description: description || null,
+      } });
+      toast.success("Galeri tersimpan");
+      qc.invalidateQueries({ queryKey: ["billing"] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally { setSaving(false); }
+  };
+
+  const doCopy = async () => {
+    if (!url) return;
+    try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch {}
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Globe className="h-5 w-5" />Galeri Toko Publik</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Aktifkan agar pelanggan bisa melihat daftar produk, stok, dan harga per satuan lewat link publik. Harga modal tidak ditampilkan.
+        </p>
+        <div className="flex items-center justify-between rounded-md border p-3">
+          <div>
+            <div className="text-sm font-medium">Aktifkan galeri publik</div>
+            <div className="text-[11px] text-muted-foreground">Bisa diakses siapa saja tanpa login.</div>
+          </div>
+          <Switch checked={enabled} onCheckedChange={setEnabled} />
+        </div>
+        <div>
+          <Label>URL Toko (slug)</Label>
+          <div className="flex gap-2">
+            <div className="flex flex-1 items-center overflow-hidden rounded-md border">
+              <span className="border-r bg-muted px-2 py-2 text-xs text-muted-foreground">/showcase/</span>
+              <Input value={slug} onChange={(e) => setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, "-"))}
+                placeholder="nama-toko-anda" className="border-0 focus-visible:ring-0" />
+            </div>
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">Huruf kecil, angka, dan tanda "-" saja.</div>
+        </div>
+        <div>
+          <Label>Deskripsi singkat (opsional)</Label>
+          <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)}
+            placeholder="Toko kelontong murah di Jl. Merdeka, buka 07:00–22:00" />
+        </div>
+        {enabled && url && (
+          <div className="rounded-md border bg-primary/5 p-3">
+            <div className="text-[11px] text-muted-foreground">Link galeri toko Anda:</div>
+            <div className="mt-1 flex items-center gap-2">
+              <div className="flex-1 truncate font-mono text-xs">{url}</div>
+              <Button variant="outline" size="icon" onClick={doCopy} title="Salin">
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+              </Button>
+              <a href={url} target="_blank" rel="noreferrer">
+                <Button variant="outline" size="icon" title="Buka"><ExternalLink className="h-4 w-4" /></Button>
+              </a>
+            </div>
+          </div>
+        )}
+        <Button onClick={save} disabled={saving}>{saving ? "Menyimpan..." : "Simpan Galeri"}</Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 
