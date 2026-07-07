@@ -935,6 +935,11 @@ function ProdukPage() {
             <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
           </div>
 
+          <ProductImageField
+            value={form.image_url}
+            onChange={(url) => setForm((f) => ({ ...f, image_url: url }))}
+          />
+
           {aiHint && (
             <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
               <div className="flex items-center gap-1.5 font-semibold text-foreground"><Sparkles className="h-3.5 w-3.5 text-primary" /> Rekomendasi Harga AI</div>
