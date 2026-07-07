@@ -1286,4 +1286,63 @@ function parseUnitsString(s: string): ProductUnit[] {
   return units;
 }
 
+function ProductImageField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const upload = async (file: File) => {
+    setUploading(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u.user?.id;
+      if (!uid) throw new Error("Belum login");
+      const { data: tenant } = await supabase.from("tenants").select("id").eq("owner_user_id", uid).maybeSingle();
+      if (!tenant) throw new Error("Toko tidak ditemukan");
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${(tenant as any).id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("product-photos").upload(path, file, { upsert: false, contentType: file.type });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from("product-photos").getPublicUrl(path);
+      onChange(pub.publicUrl);
+      toast.success("Foto diunggah");
+    } catch (e: any) {
+      toast.error("Gagal upload: " + e.message);
+    } finally { setUploading(false); }
+  };
+
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold">Foto Produk</div>
+          <div className="text-[11px] text-muted-foreground">Ditampilkan di galeri publik toko.</div>
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }}
+        />
+        <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={uploading}>
+            <Upload className="mr-1 h-3.5 w-3.5" />{uploading ? "Mengunggah..." : (value ? "Ganti" : "Upload")}
+          </Button>
+          {value && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => onChange("")}>
+              <XIcon className="mr-1 h-3.5 w-3.5" />Hapus
+            </Button>
+          )}
+        </div>
+      </div>
+      {value && (
+        <div className="flex justify-center">
+          <img src={value} alt="Foto produk" className="max-h-40 rounded-md border object-contain" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+
 
