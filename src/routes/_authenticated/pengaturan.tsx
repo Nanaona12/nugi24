@@ -15,7 +15,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { User, KeyRound, Store, ArrowLeft, Mail, ShieldQuestion, RefreshCcw, Copy, Check, QrCode, Upload, Trash2, Globe, ExternalLink } from "lucide-react";
+import { User, KeyRound, Store, ArrowLeft, Mail, ShieldQuestion, RefreshCcw, Copy, Check, QrCode, Upload, Trash2, Globe, ExternalLink, MapPin, Navigation, Loader2 } from "lucide-react";
 import { PrinterSettingsCard } from "@/components/PrinterSettingsCard";
 import { Switch } from "@/components/ui/switch";
 
@@ -342,11 +342,14 @@ function ShowcaseCard() {
   const getBilling = useServerFn(getMyBilling);
   const updateTenant = useServerFn(updateMyTenant);
   const { data } = useQuery({ queryKey: ["billing"], queryFn: () => getBilling() });
-  const tenant = (data as any)?.tenant as { name: string; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null } | null;
+  const tenant = (data as any)?.tenant as { name: string; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null; latitude?: number | null; longitude?: number | null } | null;
 
   const [enabled, setEnabled] = useState(false);
   const [slug, setSlug] = useState("");
   const [description, setDescription] = useState("");
+  const [lat, setLat] = useState<string>("");
+  const [lng, setLng] = useState<string>("");
+  const [gpsBusy, setGpsBusy] = useState(false);
   const [saving, setSaving] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -355,20 +358,45 @@ function ShowcaseCard() {
     setEnabled(!!tenant.showcase_enabled);
     setSlug(tenant.slug ?? "");
     setDescription(tenant.showcase_description ?? "");
-  }, [tenant?.slug, tenant?.showcase_enabled, tenant?.showcase_description]);
+    setLat(tenant.latitude != null ? String(tenant.latitude) : "");
+    setLng(tenant.longitude != null ? String(tenant.longitude) : "");
+  }, [tenant?.slug, tenant?.showcase_enabled, tenant?.showcase_description, tenant?.latitude, tenant?.longitude]);
 
   if (!tenant) return null;
 
   const url = slug ? `${typeof window !== "undefined" ? window.location.origin : ""}/showcase/${slug}` : "";
 
+  const detectLocation = () => {
+    if (!("geolocation" in navigator)) { toast.error("Perangkat tidak mendukung GPS"); return; }
+    setGpsBusy(true);
+    navigator.geolocation.getCurrentPosition(
+      (p) => {
+        setLat(p.coords.latitude.toFixed(6));
+        setLng(p.coords.longitude.toFixed(6));
+        setGpsBusy(false);
+        toast.success("Lokasi terdeteksi");
+      },
+      (err) => { setGpsBusy(false); toast.error(err.message || "Gagal mengambil lokasi"); },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+    );
+  };
+
+  const clearLocation = () => { setLat(""); setLng(""); };
+
   const save = async () => {
     setSaving(true);
     try {
+      const latNum = lat.trim() === "" ? null : Number(lat);
+      const lngNum = lng.trim() === "" ? null : Number(lng);
+      if (latNum != null && (Number.isNaN(latNum) || latNum < -90 || latNum > 90)) throw new Error("Latitude tidak valid");
+      if (lngNum != null && (Number.isNaN(lngNum) || lngNum < -180 || lngNum > 180)) throw new Error("Longitude tidak valid");
       await updateTenant({ data: {
         name: tenant.name,
         showcase_enabled: enabled,
         slug: slug || null,
         showcase_description: description || null,
+        latitude: latNum,
+        longitude: lngNum,
       } });
       toast.success("Galeri tersimpan");
       qc.invalidateQueries({ queryKey: ["billing"] });
@@ -413,6 +441,42 @@ function ShowcaseCard() {
           <Label>Deskripsi singkat (opsional)</Label>
           <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)}
             placeholder="Toko kelontong murah di Jl. Merdeka, buka 07:00–22:00" />
+        </div>
+        <div className="rounded-md border p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-1.5 text-sm font-medium"><MapPin className="h-4 w-4 text-primary" />Lokasi Toko (GPS)</div>
+              <div className="text-[11px] text-muted-foreground">Muncul di galeri sebagai peta & jarak ke pelanggan.</div>
+            </div>
+            <div className="flex shrink-0 gap-1.5">
+              <Button type="button" size="sm" variant="outline" onClick={detectLocation} disabled={gpsBusy}>
+                {gpsBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Navigation className="mr-1 h-3.5 w-3.5" />}
+                {gpsBusy ? "Mendeteksi…" : "Ambil GPS"}
+              </Button>
+              {(lat || lng) && (
+                <Button type="button" size="sm" variant="ghost" onClick={clearLocation}>Hapus</Button>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px]">Latitude</Label>
+              <Input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="-6.200000" inputMode="decimal" />
+            </div>
+            <div>
+              <Label className="text-[11px]">Longitude</Label>
+              <Input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="106.816666" inputMode="decimal" />
+            </div>
+          </div>
+          {lat && lng && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng)) && (
+            <a
+              href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`}
+              target="_blank" rel="noreferrer"
+              className="mt-2 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" />Lihat di peta
+            </a>
+          )}
         </div>
         {enabled && url && (
           <div className="rounded-md border bg-primary/5 p-3">
