@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PLANS, priceFor, daysFor, type PlanId, type BillingPeriod } from "@/lib/plans";
 
-type BillingTenant = { id: string; name: string; phone: string | null; address: string | null };
+type BillingTenant = { id: string; name: string; phone: string | null; address: string | null; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null };
 
 async function getUserRoles(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.from("user_roles").select("role").eq("user_id", ctx.userId);
@@ -133,7 +133,7 @@ export const getMyBilling = createServerFn({ method: "GET" })
 
 export const updateMyTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { name: string; phone?: string; address?: string; static_qris_payload?: string | null }) => d)
+  .inputValidator((d: { name: string; phone?: string; address?: string; static_qris_payload?: string | null; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null }) => d)
   .handler(async ({ data, context }) => {
     const patch: any = {
       name: data.name,
@@ -143,11 +143,20 @@ export const updateMyTenant = createServerFn({ method: "POST" })
     if (data.static_qris_payload !== undefined) {
       patch.static_qris_payload = data.static_qris_payload || null;
     }
+    if (data.showcase_enabled !== undefined) patch.showcase_enabled = data.showcase_enabled;
+    if (data.showcase_description !== undefined) patch.showcase_description = data.showcase_description || null;
+    if (data.slug !== undefined) {
+      const raw = (data.slug ?? "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+      patch.slug = raw || null;
+    }
     const { error } = await context.supabase
       .from("tenants")
       .update(patch)
       .eq("owner_user_id", context.userId);
-    if (error) throw new Error(error.message);
+    if (error) {
+      if ((error as any).code === "23505") throw new Error("URL toko sudah dipakai, coba yang lain");
+      throw new Error(error.message);
+    }
     return { ok: true };
   });
 
