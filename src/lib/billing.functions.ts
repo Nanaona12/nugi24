@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { PLANS, priceFor, daysFor, type PlanId, type BillingPeriod } from "@/lib/plans";
 
-type BillingTenant = { id: string; name: string; phone: string | null; address: string | null; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null };
+type BillingTenant = { id: string; name: string; phone: string | null; address: string | null; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null; latitude?: number | null; longitude?: number | null };
 
 async function getUserRoles(ctx: { supabase: any; userId: string }) {
   const { data } = await ctx.supabase.from("user_roles").select("role").eq("user_id", ctx.userId);
@@ -20,7 +20,7 @@ async function resolveBillingTenant(
   // 1) Normal owner lookup with user's own session (RLS-friendly path).
   const { data: ownerTenant } = await ctx.supabase
     .from("tenants")
-    .select("id, name, phone, address, slug, showcase_enabled, showcase_description")
+    .select("id, name, phone, address, slug, showcase_enabled, showcase_description, latitude, longitude")
     .eq("owner_user_id", ctx.userId)
     .maybeSingle();
   if (ownerTenant) return { tenant: ownerTenant as BillingTenant, isSuperAdmin };
@@ -133,7 +133,7 @@ export const getMyBilling = createServerFn({ method: "GET" })
 
 export const updateMyTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { name: string; phone?: string; address?: string; static_qris_payload?: string | null; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null }) => d)
+  .inputValidator((d: { name: string; phone?: string; address?: string; static_qris_payload?: string | null; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null; latitude?: number | null; longitude?: number | null }) => d)
   .handler(async ({ data, context }) => {
     const patch: any = {
       name: data.name,
@@ -145,6 +145,8 @@ export const updateMyTenant = createServerFn({ method: "POST" })
     }
     if (data.showcase_enabled !== undefined) patch.showcase_enabled = data.showcase_enabled;
     if (data.showcase_description !== undefined) patch.showcase_description = data.showcase_description || null;
+    if (data.latitude !== undefined) patch.latitude = data.latitude;
+    if (data.longitude !== undefined) patch.longitude = data.longitude;
     if (data.slug !== undefined) {
       const raw = (data.slug ?? "").toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       patch.slug = raw || null;
