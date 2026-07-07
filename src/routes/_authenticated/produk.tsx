@@ -233,6 +233,7 @@ function ProdukPage() {
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: String(p.stock),
+      image_url: p.image_url || "",
     });
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
@@ -251,6 +252,7 @@ function ProdukPage() {
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: "0",
+      image_url: "",
     });
     // Salin satuan & harga tier dari produk sumber
     setFormUnits(defaultUnitsFor(p));
