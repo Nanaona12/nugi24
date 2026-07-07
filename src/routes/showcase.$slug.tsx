@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatRupiah } from "@/lib/format";
-import { ArrowLeft, Search, Package, MessageCircle, MapPin, Phone, Store, Filter } from "lucide-react";
+import { ArrowLeft, Search, Package, MessageCircle, MapPin, Phone, Store, Filter, Navigation } from "lucide-react";
 
 export const Route = createFileRoute("/showcase/$slug")({
   head: ({ params }) => ({
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/showcase/$slug")({
   ),
 });
 
-type Tenant = { id: string; name: string; slug: string; phone: string | null; address: string | null; showcase_description: string | null };
+type Tenant = { id: string; name: string; slug: string; phone: string | null; address: string | null; showcase_description: string | null; latitude: number | null; longitude: number | null };
 type Product = { id: string; name: string; category: string | null; price: number; stock: number; image_url: string | null; code: string };
 type Unit = { id: string; product_id: string; name: string; conversion: number; sort_order: number; is_base: boolean };
 type Tier = { id: string; product_unit_id: string; min_qty: number; price: number };
@@ -49,7 +49,7 @@ function ShowcaseDetail() {
       setLoading(true);
       const { data: t } = await (supabase as any)
         .from("tenants")
-        .select("id, name, slug, phone, address, showcase_description")
+        .select("id, name, slug, phone, address, showcase_description, latitude, longitude")
         .eq("slug", slug)
         .eq("showcase_enabled", true)
         .maybeSingle();
