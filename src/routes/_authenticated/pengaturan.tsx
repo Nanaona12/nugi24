@@ -442,6 +442,42 @@ function ShowcaseCard() {
           <Textarea rows={2} value={description} onChange={(e) => setDescription(e.target.value)}
             placeholder="Toko kelontong murah di Jl. Merdeka, buka 07:00–22:00" />
         </div>
+        <div className="rounded-md border p-3">
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div>
+              <div className="flex items-center gap-1.5 text-sm font-medium"><MapPin className="h-4 w-4 text-primary" />Lokasi Toko (GPS)</div>
+              <div className="text-[11px] text-muted-foreground">Muncul di galeri sebagai peta & jarak ke pelanggan.</div>
+            </div>
+            <div className="flex shrink-0 gap-1.5">
+              <Button type="button" size="sm" variant="outline" onClick={detectLocation} disabled={gpsBusy}>
+                {gpsBusy ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Navigation className="mr-1 h-3.5 w-3.5" />}
+                {gpsBusy ? "Mendeteksi…" : "Ambil GPS"}
+              </Button>
+              {(lat || lng) && (
+                <Button type="button" size="sm" variant="ghost" onClick={clearLocation}>Hapus</Button>
+              )}
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <Label className="text-[11px]">Latitude</Label>
+              <Input value={lat} onChange={(e) => setLat(e.target.value)} placeholder="-6.200000" inputMode="decimal" />
+            </div>
+            <div>
+              <Label className="text-[11px]">Longitude</Label>
+              <Input value={lng} onChange={(e) => setLng(e.target.value)} placeholder="106.816666" inputMode="decimal" />
+            </div>
+          </div>
+          {lat && lng && !Number.isNaN(Number(lat)) && !Number.isNaN(Number(lng)) && (
+            <a
+              href={`https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=17/${lat}/${lng}`}
+              target="_blank" rel="noreferrer"
+              className="mt-2 inline-flex items-center gap-1 text-[11px] text-primary hover:underline"
+            >
+              <ExternalLink className="h-3 w-3" />Lihat di peta
+            </a>
+          )}
+        </div>
         {enabled && url && (
           <div className="rounded-md border bg-primary/5 p-3">
             <div className="text-[11px] text-muted-foreground">Link galeri toko Anda:</div>
