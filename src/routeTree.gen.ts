@@ -9,10 +9,12 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ShowcaseRouteImport } from './routes/showcase'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ShowcaseSlugRouteImport } from './routes/showcase.$slug'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated/produk'
@@ -30,6 +32,11 @@ import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiPublicMidtransWebhookRouteImport } from './routes/api/public/midtrans-webhook'
 
+const ShowcaseRoute = ShowcaseRouteImport.update({
+  id: '/showcase',
+  path: '/showcase',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -48,6 +55,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const ShowcaseSlugRoute = ShowcaseSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => ShowcaseRoute,
 } as any)
 const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
   id: '/shift',
@@ -136,6 +148,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/showcase': typeof ShowcaseRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
@@ -151,12 +164,14 @@ export interface FileRoutesByFullPath {
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/shift': typeof AuthenticatedShiftRoute
+  '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/showcase': typeof ShowcaseRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
@@ -172,6 +187,7 @@ export interface FileRoutesByTo {
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/shift': typeof AuthenticatedShiftRoute
+  '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
 export interface FileRoutesById {
@@ -180,6 +196,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/showcase': typeof ShowcaseRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/_authenticated/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
@@ -195,6 +212,7 @@ export interface FileRoutesById {
   '/_authenticated/produk': typeof AuthenticatedProdukRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
+  '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
 export interface FileRouteTypes {
@@ -203,6 +221,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/showcase'
     | '/admin'
     | '/cek-koneksi'
     | '/kadaluarsa'
@@ -218,12 +237,14 @@ export interface FileRouteTypes {
     | '/produk'
     | '/riwayat'
     | '/shift'
+    | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/showcase'
     | '/admin'
     | '/cek-koneksi'
     | '/kadaluarsa'
@@ -239,6 +260,7 @@ export interface FileRouteTypes {
     | '/produk'
     | '/riwayat'
     | '/shift'
+    | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
   id:
     | '__root__'
@@ -246,6 +268,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/showcase'
     | '/_authenticated/admin'
     | '/_authenticated/cek-koneksi'
     | '/_authenticated/kadaluarsa'
@@ -261,6 +284,7 @@ export interface FileRouteTypes {
     | '/_authenticated/produk'
     | '/_authenticated/riwayat'
     | '/_authenticated/shift'
+    | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
   fileRoutesById: FileRoutesById
 }
@@ -269,11 +293,19 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ShowcaseRoute: typeof ShowcaseRouteWithChildren
   ApiPublicMidtransWebhookRoute: typeof ApiPublicMidtransWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/showcase': {
+      id: '/showcase'
+      path: '/showcase'
+      fullPath: '/showcase'
+      preLoaderRoute: typeof ShowcaseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -301,6 +333,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/showcase/$slug': {
+      id: '/showcase/$slug'
+      path: '/$slug'
+      fullPath: '/showcase/$slug'
+      preLoaderRoute: typeof ShowcaseSlugRouteImport
+      parentRoute: typeof ShowcaseRoute
     }
     '/_authenticated/shift': {
       id: '/_authenticated/shift'
@@ -456,11 +495,24 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
+interface ShowcaseRouteChildren {
+  ShowcaseSlugRoute: typeof ShowcaseSlugRoute
+}
+
+const ShowcaseRouteChildren: ShowcaseRouteChildren = {
+  ShowcaseSlugRoute: ShowcaseSlugRoute,
+}
+
+const ShowcaseRouteWithChildren = ShowcaseRoute._addFileChildren(
+  ShowcaseRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ShowcaseRoute: ShowcaseRouteWithChildren,
   ApiPublicMidtransWebhookRoute: ApiPublicMidtransWebhookRoute,
 }
 export const routeTree = rootRouteImport

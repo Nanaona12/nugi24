@@ -32,6 +32,7 @@ type Product = {
   wholesale_price: number | null;
   wholesale_min_qty: number | null;
   stock: number;
+  image_url?: string | null;
 };
 
 type ProductForm = {
@@ -45,6 +46,7 @@ type ProductForm = {
   wholesale_price: string;
   wholesale_min_qty: string;
   stock: string;
+  image_url: string;
 };
 
 const emptyForm: ProductForm = {
@@ -57,6 +59,7 @@ const emptyForm: ProductForm = {
   wholesale_price: "",
   wholesale_min_qty: "",
   stock: "0",
+  image_url: "",
 };
 
 
@@ -230,6 +233,7 @@ function ProdukPage() {
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: String(p.stock),
+      image_url: p.image_url || "",
     });
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
@@ -248,6 +252,7 @@ function ProdukPage() {
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: "0",
+      image_url: "",
     });
     // Salin satuan & harga tier dari produk sumber
     setFormUnits(defaultUnitsFor(p));
@@ -281,6 +286,7 @@ function ProdukPage() {
       wholesale_price: form.wholesale_price ? parseNumber(form.wholesale_price) : null,
       wholesale_min_qty: form.wholesale_min_qty ? parseInt(form.wholesale_min_qty, 10) : null,
       stock: parseInt(form.stock || "0", 10),
+      image_url: form.image_url.trim() || null,
     };
     // Validasi satuan
     const cleanUnits = formUnits
@@ -929,6 +935,11 @@ function ProdukPage() {
             <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
           </div>
 
+          <ProductImageField
+            value={form.image_url}
+            onChange={(url) => setForm((f) => ({ ...f, image_url: url }))}
+          />
+
           {aiHint && (
             <div className="rounded-md border border-primary/30 bg-primary/5 p-3 text-xs space-y-1">
               <div className="flex items-center gap-1.5 font-semibold text-foreground"><Sparkles className="h-3.5 w-3.5 text-primary" /> Rekomendasi Harga AI</div>
@@ -1274,5 +1285,64 @@ function parseUnitsString(s: string): ProductUnit[] {
   units[baseIdx >= 0 ? baseIdx : 0].is_base = true;
   return units;
 }
+
+function ProductImageField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const upload = async (file: File) => {
+    setUploading(true);
+    try {
+      const { data: u } = await supabase.auth.getUser();
+      const uid = u.user?.id;
+      if (!uid) throw new Error("Belum login");
+      const { data: tenant } = await supabase.from("tenants").select("id").eq("owner_user_id", uid).maybeSingle();
+      if (!tenant) throw new Error("Toko tidak ditemukan");
+      const ext = (file.name.split(".").pop() || "jpg").toLowerCase();
+      const path = `${(tenant as any).id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error } = await supabase.storage.from("product-photos").upload(path, file, { upsert: false, contentType: file.type });
+      if (error) throw error;
+      const { data: pub } = supabase.storage.from("product-photos").getPublicUrl(path);
+      onChange(pub.publicUrl);
+      toast.success("Foto diunggah");
+    } catch (e: any) {
+      toast.error("Gagal upload: " + e.message);
+    } finally { setUploading(false); }
+  };
+
+  return (
+    <div className="space-y-2 rounded-md border p-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <div className="text-sm font-semibold">Foto Produk</div>
+          <div className="text-[11px] text-muted-foreground">Ditampilkan di galeri publik toko.</div>
+        </div>
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }}
+        />
+        <div className="flex gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={uploading}>
+            <Upload className="mr-1 h-3.5 w-3.5" />{uploading ? "Mengunggah..." : (value ? "Ganti" : "Upload")}
+          </Button>
+          {value && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => onChange("")}>
+              <XIcon className="mr-1 h-3.5 w-3.5" />Hapus
+            </Button>
+          )}
+        </div>
+      </div>
+      {value && (
+        <div className="flex justify-center">
+          <img src={value} alt="Foto produk" className="max-h-40 rounded-md border object-contain" />
+        </div>
+      )}
+    </div>
+  );
+}
+
 
 

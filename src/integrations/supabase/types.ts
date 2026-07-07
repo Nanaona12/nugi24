@@ -643,6 +643,7 @@ export type Database = {
           cost_price: number
           created_at: string
           id: string
+          image_url: string | null
           name: string
           price: number
           stock: number
@@ -658,6 +659,7 @@ export type Database = {
           cost_price?: number
           created_at?: string
           id?: string
+          image_url?: string | null
           name: string
           price?: number
           stock?: number
@@ -673,6 +675,7 @@ export type Database = {
           cost_price?: number
           created_at?: string
           id?: string
+          image_url?: string | null
           name?: string
           price?: number
           stock?: number
@@ -1045,6 +1048,9 @@ export type Database = {
           name: string
           owner_user_id: string
           phone: string | null
+          showcase_description: string | null
+          showcase_enabled: boolean
+          slug: string | null
           static_qris_payload: string | null
           updated_at: string
         }
@@ -1058,6 +1064,9 @@ export type Database = {
           name: string
           owner_user_id: string
           phone?: string | null
+          showcase_description?: string | null
+          showcase_enabled?: boolean
+          slug?: string | null
           static_qris_payload?: string | null
           updated_at?: string
         }
@@ -1071,6 +1080,9 @@ export type Database = {
           name?: string
           owner_user_id?: string
           phone?: string | null
+          showcase_description?: string | null
+          showcase_enabled?: boolean
+          slug?: string | null
           static_qris_payload?: string | null
           updated_at?: string
         }
@@ -1266,6 +1278,7 @@ export type Database = {
       }
       is_cashier_session: { Args: never; Returns: boolean }
       next_product_code: { Args: never; Returns: string }
+      slugify: { Args: { input: string }; Returns: string }
       tenant_qris_month_usage: { Args: { _tenant: string }; Returns: number }
     }
     Enums: {
