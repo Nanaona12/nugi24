@@ -1045,6 +1045,8 @@ export type Database = {
           cashier_code: string | null
           created_at: string
           id: string
+          latitude: number | null
+          longitude: number | null
           name: string
           owner_user_id: string
           phone: string | null
@@ -1061,6 +1063,8 @@ export type Database = {
           cashier_code?: string | null
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name: string
           owner_user_id: string
           phone?: string | null
@@ -1077,6 +1081,8 @@ export type Database = {
           cashier_code?: string | null
           created_at?: string
           id?: string
+          latitude?: number | null
+          longitude?: number | null
           name?: string
           owner_user_id?: string
           phone?: string | null
