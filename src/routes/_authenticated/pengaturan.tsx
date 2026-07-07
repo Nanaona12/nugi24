@@ -110,9 +110,12 @@ function PengaturanPage() {
 
       <CashierCodeCard />
 
+      <ShowcaseCard />
+
       <StaticQrisCard />
 
       <PrinterSettingsCard />
+
 
 
 
