@@ -143,6 +143,10 @@ function ShowcaseDetail() {
               </a>
             )}
           </div>
+
+          {(tenant.latitude != null && tenant.longitude != null) && (
+            <StoreMap lat={tenant.latitude} lng={tenant.longitude} name={tenant.name} address={tenant.address} />
+          )}
         </div>
       </div>
 
