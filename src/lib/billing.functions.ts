@@ -20,7 +20,7 @@ async function resolveBillingTenant(
   // 1) Normal owner lookup with user's own session (RLS-friendly path).
   const { data: ownerTenant } = await ctx.supabase
     .from("tenants")
-    .select("id, name, phone, address")
+    .select("id, name, phone, address, slug, showcase_enabled, showcase_description")
     .eq("owner_user_id", ctx.userId)
     .maybeSingle();
   if (ownerTenant) return { tenant: ownerTenant as BillingTenant, isSuperAdmin };
