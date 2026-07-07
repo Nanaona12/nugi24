@@ -286,6 +286,7 @@ function ProdukPage() {
       wholesale_price: form.wholesale_price ? parseNumber(form.wholesale_price) : null,
       wholesale_min_qty: form.wholesale_min_qty ? parseInt(form.wholesale_min_qty, 10) : null,
       stock: parseInt(form.stock || "0", 10),
+      image_url: form.image_url.trim() || null,
     };
     // Validasi satuan
     const cleanUnits = formUnits
