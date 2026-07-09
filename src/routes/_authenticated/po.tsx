@@ -1051,20 +1051,47 @@ function POPage() {
                 </div>
               )}
               <ul className="divide-y rounded border">
-                {detailItems.map((it) => (
-                  <li key={it.id} className="flex justify-between gap-2 p-2">
-                    <div>
-                      <div className="font-medium">{it.product_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {it.product_code} • {it.qty} × {formatRupiah(Number(it.unit_cost))}
+                {detailItems.map((it) => {
+                  const conv = Math.max(1, Number(it.unit_conversion || 1));
+                  const cost = Number(it.unit_cost || 0);
+                  const sell = Number(it.sell_price || 0);
+                  const profit = sell > 0 && cost > 0 ? (sell - cost / conv) * it.qty * conv : 0;
+                  return (
+                    <li key={it.id} className="flex justify-between gap-2 p-2">
+                      <div>
+                        <div className="font-medium">{it.product_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {it.product_code} • {it.qty} {it.unit_name || "pcs"} × {formatRupiah(cost)}
+                          {conv > 1 && <span className="ml-1 text-primary">= {it.qty * conv} pcs</span>}
+                        </div>
+                        {profit > 0 && (
+                          <div className="text-[11px] text-emerald-600 font-semibold">
+                            Untung: {formatRupiah(profit)}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="font-semibold">{formatRupiah(Number(it.subtotal))}</div>
-                  </li>
-                ))}
+                      <div className="font-semibold">{formatRupiah(Number(it.subtotal))}</div>
+                    </li>
+                  );
+                })}
               </ul>
+              {(() => {
+                const totalProfit = detailItems.reduce((s, it) => {
+                  const conv = Math.max(1, Number(it.unit_conversion || 1));
+                  const cost = Number(it.unit_cost || 0);
+                  const sell = Number(it.sell_price || 0);
+                  if (!cost || !sell) return s;
+                  return s + (sell - cost / conv) * it.qty * conv;
+                }, 0);
+                return totalProfit > 0 ? (
+                  <div className="flex justify-between text-sm border-t pt-2">
+                    <span className="text-muted-foreground">Untung ekspektasi</span>
+                    <span className="font-semibold text-emerald-600">{formatRupiah(totalProfit)}</span>
+                  </div>
+                ) : null;
+              })()}
               <div className="flex justify-between border-t pt-2 font-semibold">
-                <span>Total</span>
+                <span>Total Modal</span>
                 <span>{formatRupiah(Number(detailOpen.total))}</span>
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
