@@ -841,6 +841,21 @@ function POPage() {
                           <span className="font-semibold text-primary">{(parseInt(it.qty || "0", 10) || 0) * (Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1))} pcs</span>
                         </div>
                       </div>
+                      {(() => {
+                        const qty = parseInt(it.qty || "0", 10) || 0;
+                        const conv = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+                        const cost = parseNumber(it.unit_cost);
+                        const sell = parseNumber(it.sell_price);
+                        if (!qty || !cost || !sell) return null;
+                        const profit = (sell - cost / conv) * qty * conv;
+                        const perPcs = sell - cost / conv;
+                        return (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Untung ({formatRupiah(perPcs)}/pcs)</span>
+                            <span className={`font-semibold ${profit >= 0 ? "text-emerald-600" : "text-destructive"}`}>{formatRupiah(profit)}</span>
+                          </div>
+                        );
+                      })()}
                       <div className="flex justify-between border-t pt-2 text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
                         <span className="font-semibold">{formatRupiah(sub)}</span>
