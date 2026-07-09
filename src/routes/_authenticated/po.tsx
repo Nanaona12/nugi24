@@ -940,6 +940,18 @@ function POPage() {
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-9 text-sm text-right" placeholder="—" />
+                              {(() => {
+                                const cost = parseNumber(it.unit_cost);
+                                const sell = parseNumber(it.sell_price);
+                                if (!cost || !sell) return null;
+                                const perPcs = sell - cost / conv;
+                                const total = perPcs * (parseInt(it.qty || "0", 10) || 0) * conv;
+                                return (
+                                  <div className={`mt-0.5 text-[10px] text-right font-semibold ${perPcs >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                                    +{formatRupiah(perPcs)}/pcs • {formatRupiah(total)}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="p-1 text-right text-xs text-primary font-semibold">{stockAdd}</td>
                             <td className="p-1 text-right font-medium">{formatRupiah(sub)}</td>
