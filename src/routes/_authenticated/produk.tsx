@@ -1196,17 +1196,30 @@ function UnitsEditor({ units, onChange, costPerBase = 0 }: { units: ProductUnit[
             </Button>
           </div>
           <div className="space-y-1.5 pl-2 border-l-2 border-primary/30">
-            {u.tiers.map((t, ti) => (
-              <div key={ti} className="flex items-center gap-2 text-xs">
-                <span className="text-muted-foreground">≥</span>
-                <Input type="number" min={1} value={t.min_qty} onChange={(e) => updateTier(ui, ti, { min_qty: parseInt(e.target.value || "1", 10) })} className="h-8 w-20" />
-                <span className="text-muted-foreground">{u.name || "satuan"} →</span>
-                <Input type="number" min={0} value={t.price} onChange={(e) => updateTier(ui, ti, { price: parseNumber(e.target.value) })} className="h-8 flex-1" placeholder="Harga" />
-                <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeTier(ui, ti)}>
-                  <XIcon className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            ))}
+            {u.tiers.map((t, ti) => {
+              const conv = Math.max(1, Number(u.conversion || 1));
+              const unitCost = costPerBase * conv;
+              const profit = t.price > 0 && unitCost > 0 ? t.price - unitCost : 0;
+              const marginPct = unitCost > 0 ? (profit / unitCost) * 100 : 0;
+              return (
+                <div key={ti} className="space-y-1">
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-muted-foreground">≥</span>
+                    <Input type="number" min={1} value={t.min_qty} onChange={(e) => updateTier(ui, ti, { min_qty: parseInt(e.target.value || "1", 10) })} className="h-8 w-20" />
+                    <span className="text-muted-foreground">{u.name || "satuan"} →</span>
+                    <Input type="number" min={0} value={t.price} onChange={(e) => updateTier(ui, ti, { price: parseNumber(e.target.value) })} className="h-8 flex-1" placeholder="Harga" />
+                    <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => removeTier(ui, ti)}>
+                      <XIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                  {costPerBase > 0 && t.price > 0 && (
+                    <div className={`text-[10px] pl-6 font-semibold ${profit >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                      Modal: {formatRupiah(unitCost)} • Untung: {formatRupiah(profit)} ({marginPct.toFixed(0)}%)
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             <Button type="button" size="sm" variant="ghost" className="h-7 text-xs" onClick={() => addTier(ui)}>
               <Plus className="mr-1 h-3 w-3" /> Tingkat harga
             </Button>
