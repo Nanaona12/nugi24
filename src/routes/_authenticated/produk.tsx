@@ -951,7 +951,7 @@ function ProdukPage() {
           )}
 
 
-          <UnitsEditor units={formUnits} onChange={setFormUnits} />
+          <UnitsEditor units={formUnits} onChange={setFormUnits} costPerBase={parseNumber(form.cost_price) || 0} />
 
           {!form.id && (
             <div className="space-y-2 rounded-md border p-3">
