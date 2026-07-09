@@ -1133,7 +1133,7 @@ function FormField({ label, value, onChange, type = "text", placeholder }: { lab
 
 
 
-function UnitsEditor({ units, onChange }: { units: ProductUnit[]; onChange: (u: ProductUnit[]) => void }) {
+function UnitsEditor({ units, onChange, costPerBase = 0 }: { units: ProductUnit[]; onChange: (u: ProductUnit[]) => void; costPerBase?: number }) {
   const update = (i: number, patch: Partial<ProductUnit>) => {
     const copy = units.map((u, idx) => (idx === i ? { ...u, ...patch } : u));
     if (patch.is_base) copy.forEach((u, idx) => { if (idx !== i) u.is_base = false; });
