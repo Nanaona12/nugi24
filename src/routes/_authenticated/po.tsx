@@ -953,10 +953,18 @@ function POPage() {
               />
             </div>
 
-            <div className="md:col-span-2 flex justify-between border-t pt-2 text-sm">
+            <div className="md:col-span-2 flex flex-wrap justify-between border-t pt-2 text-sm gap-2">
               <span className="text-muted-foreground">{itemCount} item</span>
-              <span className="text-base font-semibold text-primary">{formatRupiah(total)}</span>
+              <div className="flex items-center gap-4">
+                {totalProfitExpected > 0 && (
+                  <span className="text-xs text-emerald-600 font-semibold">
+                    Untung ekspektasi: {formatRupiah(totalProfitExpected)}
+                  </span>
+                )}
+                <span className="text-base font-semibold text-primary">{formatRupiah(total)}</span>
+              </div>
             </div>
+
 
           </div>
 
