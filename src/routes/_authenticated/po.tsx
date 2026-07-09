@@ -160,6 +160,14 @@ function POPage() {
     0,
   );
   const itemCount = items.reduce((s, it) => s + (parseInt(it.qty || "0", 10) || 0), 0);
+  const totalProfitExpected = items.reduce((s, it) => {
+    const qty = parseInt(it.qty || "0", 10) || 0;
+    const conv = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+    const cost = parseNumber(it.unit_cost);
+    const sellPerPcs = parseNumber(it.sell_price);
+    if (!sellPerPcs || !cost) return s;
+    return s + (sellPerPcs - cost / conv) * qty * conv;
+  }, 0);
 
   const resetForm = () => {
     setSupplier("");
