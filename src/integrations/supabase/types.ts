@@ -478,7 +478,7 @@ export type Database = {
       product_batches: {
         Row: {
           created_at: string
-          expiry_date: string
+          expiry_date: string | null
           id: string
           note: string | null
           po_id: string | null
@@ -486,11 +486,12 @@ export type Database = {
           qty: number
           source: string
           tenant_id: string
+          unit_cost: number | null
           updated_at: string
         }
         Insert: {
           created_at?: string
-          expiry_date: string
+          expiry_date?: string | null
           id?: string
           note?: string | null
           po_id?: string | null
@@ -498,11 +499,12 @@ export type Database = {
           qty: number
           source?: string
           tenant_id: string
+          unit_cost?: number | null
           updated_at?: string
         }
         Update: {
           created_at?: string
-          expiry_date?: string
+          expiry_date?: string | null
           id?: string
           note?: string | null
           po_id?: string | null
@@ -510,6 +512,7 @@ export type Database = {
           qty?: number
           source?: string
           tenant_id?: string
+          unit_cost?: number | null
           updated_at?: string
         }
         Relationships: [

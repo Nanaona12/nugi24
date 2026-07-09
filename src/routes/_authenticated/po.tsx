@@ -77,6 +77,7 @@ type POItem = {
   qty: number;
   unit_cost: number;
   subtotal: number;
+  sell_price?: number | null;
   unit_name?: string | null;
   unit_conversion?: number | null;
 };
@@ -160,6 +161,14 @@ function POPage() {
     0,
   );
   const itemCount = items.reduce((s, it) => s + (parseInt(it.qty || "0", 10) || 0), 0);
+  const totalProfitExpected = items.reduce((s, it) => {
+    const qty = parseInt(it.qty || "0", 10) || 0;
+    const conv = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+    const cost = parseNumber(it.unit_cost);
+    const sellPerPcs = parseNumber(it.sell_price);
+    if (!sellPerPcs || !cost) return s;
+    return s + (sellPerPcs - cost / conv) * qty * conv;
+  }, 0);
 
   const resetForm = () => {
     setSupplier("");
@@ -833,6 +842,21 @@ function POPage() {
                           <span className="font-semibold text-primary">{(parseInt(it.qty || "0", 10) || 0) * (Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1))} pcs</span>
                         </div>
                       </div>
+                      {(() => {
+                        const qty = parseInt(it.qty || "0", 10) || 0;
+                        const conv = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+                        const cost = parseNumber(it.unit_cost);
+                        const sell = parseNumber(it.sell_price);
+                        if (!qty || !cost || !sell) return null;
+                        const profit = (sell - cost / conv) * qty * conv;
+                        const perPcs = sell - cost / conv;
+                        return (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Untung ({formatRupiah(perPcs)}/pcs)</span>
+                            <span className={`font-semibold ${profit >= 0 ? "text-emerald-600" : "text-destructive"}`}>{formatRupiah(profit)}</span>
+                          </div>
+                        );
+                      })()}
                       <div className="flex justify-between border-t pt-2 text-sm">
                         <span className="text-muted-foreground">Subtotal</span>
                         <span className="font-semibold">{formatRupiah(sub)}</span>
@@ -917,6 +941,18 @@ function POPage() {
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-9 text-sm text-right" placeholder="—" />
+                              {(() => {
+                                const cost = parseNumber(it.unit_cost);
+                                const sell = parseNumber(it.sell_price);
+                                if (!cost || !sell) return null;
+                                const perPcs = sell - cost / conv;
+                                const total = perPcs * (parseInt(it.qty || "0", 10) || 0) * conv;
+                                return (
+                                  <div className={`mt-0.5 text-[10px] text-right font-semibold ${perPcs >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                                    +{formatRupiah(perPcs)}/pcs • {formatRupiah(total)}
+                                  </div>
+                                );
+                              })()}
                             </td>
                             <td className="p-1 text-right text-xs text-primary font-semibold">{stockAdd}</td>
                             <td className="p-1 text-right font-medium">{formatRupiah(sub)}</td>
@@ -945,10 +981,18 @@ function POPage() {
               />
             </div>
 
-            <div className="md:col-span-2 flex justify-between border-t pt-2 text-sm">
+            <div className="md:col-span-2 flex flex-wrap justify-between border-t pt-2 text-sm gap-2">
               <span className="text-muted-foreground">{itemCount} item</span>
-              <span className="text-base font-semibold text-primary">{formatRupiah(total)}</span>
+              <div className="flex items-center gap-4">
+                {totalProfitExpected > 0 && (
+                  <span className="text-xs text-emerald-600 font-semibold">
+                    Untung ekspektasi: {formatRupiah(totalProfitExpected)}
+                  </span>
+                )}
+                <span className="text-base font-semibold text-primary">{formatRupiah(total)}</span>
+              </div>
             </div>
+
 
           </div>
 
@@ -1007,20 +1051,47 @@ function POPage() {
                 </div>
               )}
               <ul className="divide-y rounded border">
-                {detailItems.map((it) => (
-                  <li key={it.id} className="flex justify-between gap-2 p-2">
-                    <div>
-                      <div className="font-medium">{it.product_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {it.product_code} • {it.qty} × {formatRupiah(Number(it.unit_cost))}
+                {detailItems.map((it) => {
+                  const conv = Math.max(1, Number(it.unit_conversion || 1));
+                  const cost = Number(it.unit_cost || 0);
+                  const sell = Number(it.sell_price || 0);
+                  const profit = sell > 0 && cost > 0 ? (sell - cost / conv) * it.qty * conv : 0;
+                  return (
+                    <li key={it.id} className="flex justify-between gap-2 p-2">
+                      <div>
+                        <div className="font-medium">{it.product_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {it.product_code} • {it.qty} {it.unit_name || "pcs"} × {formatRupiah(cost)}
+                          {conv > 1 && <span className="ml-1 text-primary">= {it.qty * conv} pcs</span>}
+                        </div>
+                        {profit > 0 && (
+                          <div className="text-[11px] text-emerald-600 font-semibold">
+                            Untung: {formatRupiah(profit)}
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="font-semibold">{formatRupiah(Number(it.subtotal))}</div>
-                  </li>
-                ))}
+                      <div className="font-semibold">{formatRupiah(Number(it.subtotal))}</div>
+                    </li>
+                  );
+                })}
               </ul>
+              {(() => {
+                const totalProfit = detailItems.reduce((s, it) => {
+                  const conv = Math.max(1, Number(it.unit_conversion || 1));
+                  const cost = Number(it.unit_cost || 0);
+                  const sell = Number(it.sell_price || 0);
+                  if (!cost || !sell) return s;
+                  return s + (sell - cost / conv) * it.qty * conv;
+                }, 0);
+                return totalProfit > 0 ? (
+                  <div className="flex justify-between text-sm border-t pt-2">
+                    <span className="text-muted-foreground">Untung ekspektasi</span>
+                    <span className="font-semibold text-emerald-600">{formatRupiah(totalProfit)}</span>
+                  </div>
+                ) : null;
+              })()}
               <div className="flex justify-between border-t pt-2 font-semibold">
-                <span>Total</span>
+                <span>Total Modal</span>
                 <span>{formatRupiah(Number(detailOpen.total))}</span>
               </div>
               <div className="flex flex-wrap gap-2 pt-2">
