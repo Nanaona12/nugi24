@@ -77,6 +77,7 @@ type POItem = {
   qty: number;
   unit_cost: number;
   subtotal: number;
+  sell_price?: number | null;
   unit_name?: string | null;
   unit_conversion?: number | null;
 };
