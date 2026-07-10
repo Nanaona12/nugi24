@@ -44,6 +44,7 @@ BEGIN
     remaining := remaining - take;
   END LOOP;
 
+  -- Set unit_cost transaksi (per pcs) berdasarkan modal batch, fallback ke master produk
   IF cost_qty > 0 THEN
     NEW.unit_cost := round((cost_sum / cost_qty)::numeric, 2);
   ELSIF NEW.unit_cost IS NULL OR NEW.unit_cost = 0 THEN
