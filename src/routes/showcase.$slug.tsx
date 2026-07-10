@@ -48,7 +48,7 @@ function ShowcaseDetail() {
     (async () => {
       setLoading(true);
       const { data: t } = await (supabase as any)
-        .from("tenants")
+        .from("tenants_showcase")
         .select("id, name, slug, phone, address, showcase_description, latitude, longitude")
         .eq("slug", slug)
         .eq("showcase_enabled", true)

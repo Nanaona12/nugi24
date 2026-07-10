@@ -47,7 +47,7 @@ function ShowcaseIndex() {
   useEffect(() => {
     (async () => {
       const { data } = await (supabase as any)
-        .from("tenants")
+        .from("tenants_showcase")
         .select("id, name, slug, phone, address, showcase_description, latitude, longitude")
         .eq("showcase_enabled", true)
         .not("slug", "is", null)
