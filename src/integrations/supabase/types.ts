@@ -59,6 +59,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "bookkeeping_entries_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cashier_holds: {
@@ -176,6 +183,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cashier_shifts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       cashiers: {
@@ -215,6 +229,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cashiers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
         ]
@@ -298,6 +319,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
         ]
@@ -390,6 +418,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "household_withdrawals_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       payments: {
@@ -459,6 +494,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       plan_change_audit: {
@@ -507,6 +549,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_change_audit_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
         ]
@@ -573,6 +622,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "product_batches_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       product_price_tiers: {
@@ -619,6 +675,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_price_tiers_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
         ]
@@ -670,6 +733,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "product_units_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
         ]
@@ -729,6 +799,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
         ]
@@ -797,6 +874,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "purchase_order_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       purchase_orders: {
@@ -848,6 +932,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
         ]
@@ -914,6 +1005,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "refund_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       refunds: {
@@ -953,6 +1051,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "refunds_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
           {
@@ -1004,6 +1109,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "shift_expenses_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       subscriptions: {
@@ -1048,6 +1160,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       tenant_cashier_users: {
@@ -1072,6 +1191,13 @@ export type Database = {
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_cashier_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
         ]
@@ -1201,6 +1327,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "transaction_items_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "transaction_items_transaction_id_fkey"
             columns: ["transaction_id"]
             isOneToOne: false
@@ -1274,6 +1407,13 @@ export type Database = {
             referencedRelation: "tenants"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "transactions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
         ]
       }
       user_roles: {
@@ -1299,7 +1439,42 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      tenants_showcase: {
+        Row: {
+          address: string | null
+          id: string | null
+          latitude: number | null
+          longitude: number | null
+          name: string | null
+          phone: string | null
+          showcase_description: string | null
+          showcase_enabled: boolean | null
+          slug: string | null
+        }
+        Insert: {
+          address?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          phone?: string | null
+          showcase_description?: string | null
+          showcase_enabled?: boolean | null
+          slug?: string | null
+        }
+        Update: {
+          address?: string | null
+          id?: string | null
+          latitude?: number | null
+          longitude?: number | null
+          name?: string | null
+          phone?: string | null
+          showcase_description?: string | null
+          showcase_enabled?: boolean | null
+          slug?: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       current_tenant_id: { Args: never; Returns: string }
