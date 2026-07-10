@@ -759,9 +759,9 @@ function POPage() {
           onFocusOutside={(e) => { if (aiOpen) e.preventDefault(); }}
         >
           <DialogHeader>
-            <DialogTitle>Buat Purchase Order</DialogTitle>
+            <DialogTitle>{editingPoId ? "Edit Draft PO" : "Buat Purchase Order"}</DialogTitle>
             <DialogDescription>
-              Pilih produk dari katalog atau tambahkan manual.
+              {editingPoId ? "Ubah item / harga / catatan draft PO ini." : "Pilih produk dari katalog atau tambahkan manual."}
             </DialogDescription>
           </DialogHeader>
 
