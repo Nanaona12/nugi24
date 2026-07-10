@@ -24,7 +24,19 @@ import {
   AlarmClock,
   Boxes,
   BarChart3,
+  Wallet,
+  Plus,
+  Trash2,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 import {
   ResponsiveContainer,
   LineChart,
@@ -95,7 +107,63 @@ function KeuntunganPage() {
     productCount: number;
     topProducts: { name: string; qty: number; value: number }[];
   }>({ totalValue: 0, totalUnits: 0, productCount: 0, topProducts: [] });
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  type ProfitWithdrawal = { id: string; entry_date: string; description: string; amount: number };
+  const [withdrawals, setWithdrawals] = useState<ProfitWithdrawal[]>([]);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [wAmount, setWAmount] = useState("");
+  const [wNote, setWNote] = useState("");
+  const [wDate, setWDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [wSaving, setWSaving] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
+
+  const loadWithdrawals = async () => {
+    const { data, error } = await (supabase as any)
+      .from("bookkeeping_entries")
+      .select("id, entry_date, description, amount, ref")
+      .eq("ref", "profit_withdrawal")
+      .order("entry_date", { ascending: false })
+      .limit(200);
+    if (!error) setWithdrawals((data || []) as ProfitWithdrawal[]);
+  };
+
+  useEffect(() => {
+    (async () => {
+      const { data: t } = await supabase.from("tenants").select("id").limit(1).maybeSingle();
+      if (t?.id) setTenantId(t.id as string);
+      loadWithdrawals();
+    })();
+  }, []);
+
+  const submitWithdrawal = async () => {
+    if (!tenantId) { toast.error("Toko belum terhubung"); return; }
+    const amt = Number(wAmount);
+    if (!Number.isFinite(amt) || amt <= 0) { toast.error("Nominal tidak valid"); return; }
+    setWSaving(true);
+    const { error } = await (supabase as any).from("bookkeeping_entries").insert({
+      tenant_id: tenantId,
+      entry_date: new Date(wDate + "T" + new Date().toTimeString().slice(0, 8)).toISOString(),
+      kind: "out",
+      description: wNote.trim() || "Ambil Keuntungan (Prive)",
+      ref: "profit_withdrawal",
+      amount: amt,
+    });
+    setWSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pengambilan keuntungan dicatat. Data transaksi tidak berubah.");
+    setWithdrawOpen(false);
+    setWAmount(""); setWNote("");
+    loadWithdrawals();
+  };
+
+  const deleteWithdrawal = async (id: string) => {
+    if (!confirm("Hapus catatan pengambilan ini?")) return;
+    const { error } = await (supabase as any).from("bookkeeping_entries").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Dihapus");
+    loadWithdrawals();
+  };
+
 
   useEffect(() => {
     (async () => {
@@ -717,6 +785,101 @@ function KeuntunganPage() {
           sub={`${stats.txCount} transaksi • ${stats.totalQty} item`}
         />
       </div>
+
+      {/* Ambil Keuntungan (Prive) */}
+      {(() => {
+        const totalTaken = withdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
+        const sisa = stats.allProfit - totalTaken;
+        return (
+          <Card className="p-4">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 text-sm font-semibold">
+                <Wallet className="h-4 w-4 text-emerald-600" />
+                Ambil Keuntungan (Prive Pemilik)
+              </div>
+              <Button size="sm" onClick={() => setWithdrawOpen(true)}>
+                <Plus className="mr-1 h-4 w-4" /> Ambil Untung
+              </Button>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <div className="rounded-md border p-3">
+                <div className="text-xs uppercase text-muted-foreground">Total Untung (Data)</div>
+                <div className="mt-1 text-xl font-bold text-primary">{formatRupiah(stats.allProfit)}</div>
+                <div className="text-[11px] text-muted-foreground">Tidak berubah walau diambil</div>
+              </div>
+              <div className="rounded-md border p-3">
+                <div className="text-xs uppercase text-muted-foreground">Sudah Diambil</div>
+                <div className="mt-1 text-xl font-bold text-amber-600">{formatRupiah(totalTaken)}</div>
+                <div className="text-[11px] text-muted-foreground">{withdrawals.length} kali pengambilan</div>
+              </div>
+              <div className="rounded-md border p-3">
+                <div className="text-xs uppercase text-muted-foreground">Sisa Belum Diambil</div>
+                <div className={`mt-1 text-xl font-bold ${sisa < 0 ? "text-destructive" : "text-emerald-600"}`}>{formatRupiah(sisa)}</div>
+              </div>
+            </div>
+            {withdrawals.length > 0 && (
+              <div className="mt-4 overflow-x-auto">
+                <div className="mb-2 text-xs font-semibold text-muted-foreground">Riwayat Pengambilan</div>
+                <table className="w-full text-sm">
+                  <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="p-2">Tanggal</th>
+                      <th className="p-2">Keterangan</th>
+                      <th className="p-2 text-right">Nominal</th>
+                      <th className="p-2 w-10"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {withdrawals.slice(0, 10).map((w) => (
+                      <tr key={w.id} className="border-t">
+                        <td className="p-2">{new Date(w.entry_date).toLocaleDateString("id-ID")}</td>
+                        <td className="p-2">{w.description}</td>
+                        <td className="p-2 text-right font-semibold">{formatRupiah(Number(w.amount))}</td>
+                        <td className="p-2 text-right">
+                          <Button size="icon" variant="ghost" onClick={() => deleteWithdrawal(w.id)} className="h-7 w-7 text-destructive">
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        );
+      })()}
+
+      <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Ambil Keuntungan</DialogTitle>
+            <DialogDescription>
+              Catat pengambilan uang oleh pemilik. Data transaksi & laba tetap utuh — hanya dicatat di pembukuan sebagai pengeluaran (Prive).
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-3">
+            <div className="grid gap-1">
+              <Label className="text-xs">Tanggal</Label>
+              <Input type="date" value={wDate} onChange={(e) => setWDate(e.target.value)} />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs">Nominal (Rp)</Label>
+              <Input type="number" inputMode="decimal" value={wAmount} onChange={(e) => setWAmount(e.target.value)} placeholder="0" />
+            </div>
+            <div className="grid gap-1">
+              <Label className="text-xs">Keterangan (opsional)</Label>
+              <Textarea value={wNote} onChange={(e) => setWNote(e.target.value)} placeholder="mis. Ambil untung bulan Juli" rows={2} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setWithdrawOpen(false)} disabled={wSaving}>Batal</Button>
+            <Button onClick={submitWithdrawal} disabled={wSaving}>{wSaving ? "Menyimpan..." : "Catat Pengambilan"}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+
 
       {/* Total Aset (Nilai Inventori) */}
       <Card className="p-4">

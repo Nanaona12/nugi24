@@ -61,6 +61,42 @@ export type Database = {
           },
         ]
       }
+      cashier_holds: {
+        Row: {
+          cashier_user_id: string
+          created_at: string
+          customer_name: string
+          id: string
+          note: string | null
+          payload: Json
+          saved_at: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          cashier_user_id: string
+          created_at?: string
+          customer_name: string
+          id?: string
+          note?: string | null
+          payload: Json
+          saved_at?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          cashier_user_id?: string
+          created_at?: string
+          customer_name?: string
+          id?: string
+          note?: string | null
+          payload?: Json
+          saved_at?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cashier_shifts: {
         Row: {
           actual_cash: number

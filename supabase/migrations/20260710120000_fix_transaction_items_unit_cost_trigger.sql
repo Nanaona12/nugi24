@@ -1,25 +1,14 @@
-
--- 1. Kolom modal per batch (per pcs / base unit)
-ALTER TABLE public.product_batches
-  ADD COLUMN IF NOT EXISTS unit_cost numeric;
-
--- 2. Boleh tanpa expiry (barang non-perishable)
-ALTER TABLE public.product_batches
-  ALTER COLUMN expiry_date DROP NOT NULL;
-
--- 3. Ganti trigger ke BEFORE INSERT, hitung modal tertimbang dari batch FEFO
-DROP TRIGGER IF EXISTS trg_fefo_deduct ON public.transaction_items;
-
+-- Fix FEFO trigger to populate transaction_items.unit_cost instead of a nonexistent cost_price field
 CREATE OR REPLACE FUNCTION public.fefo_deduct_batches()
 RETURNS trigger
 LANGUAGE plpgsql
 SECURITY DEFINER
-SET search_path TO 'public'
+SET search_path TO public
 AS $function$
 DECLARE
   remaining integer;
   base_qty integer;
-  b RECORD;
+  b record;
   take integer;
   cost_sum numeric := 0;
   cost_qty integer := 0;
@@ -35,7 +24,6 @@ BEGIN
   END IF;
   remaining := base_qty;
 
-  -- FEFO: NULL expiry dianggap paling belakang
   FOR b IN
     SELECT id, qty, unit_cost
     FROM public.product_batches
@@ -70,8 +58,7 @@ BEGIN
 END;
 $function$;
 
+DROP TRIGGER IF EXISTS trg_fefo_deduct ON public.transaction_items;
 CREATE TRIGGER trg_fefo_deduct
   BEFORE INSERT ON public.transaction_items
   FOR EACH ROW EXECUTE FUNCTION public.fefo_deduct_batches();
-
-REVOKE ALL ON FUNCTION public.fefo_deduct_batches() FROM PUBLIC, anon, authenticated;
