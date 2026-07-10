@@ -28,29 +28,54 @@ export function tierPriceFor(unit: ProductUnit, qty: number): { price: number; t
   return { price: Number(chosen.price), tier: chosen };
 }
 
-/** Muat units + tiers untuk daftar product id. */
+/** Muat units + tiers untuk daftar product id (batched + paginated agar aman utk banyak produk). */
 export async function loadUnitsForProducts(productIds: string[]): Promise<Record<string, ProductUnit[]>> {
   if (productIds.length === 0) return {};
-  const { data: units, error: uErr } = await (supabase as any)
-    .from("product_units")
-    .select("*")
-    .in("product_id", productIds)
-    .order("sort_order", { ascending: true });
-  if (uErr) throw uErr;
-  const unitList = (units || []) as any[];
-  const unitIds = unitList.map((u) => u.id);
-  let tiersByUnit: Record<string, PriceTier[]> = {};
-  if (unitIds.length > 0) {
-    const { data: tiers, error: tErr } = await (supabase as any)
-      .from("product_price_tiers")
-      .select("*")
-      .in("product_unit_id", unitIds)
-      .order("min_qty", { ascending: true });
-    if (tErr) throw tErr;
-    for (const t of (tiers || []) as any[]) {
-      (tiersByUnit[t.product_unit_id] ||= []).push({ id: t.id, min_qty: t.min_qty, price: Number(t.price) });
+
+  const CHUNK = 100;  // batasi panjang URL utk .in()
+  const PAGE = 1000;  // batas default PostgREST per query
+
+  const unitList: any[] = [];
+  for (let i = 0; i < productIds.length; i += CHUNK) {
+    const idsChunk = productIds.slice(i, i + CHUNK);
+    let from = 0;
+    while (true) {
+      const { data, error } = await (supabase as any)
+        .from("product_units")
+        .select("*")
+        .in("product_id", idsChunk)
+        .order("sort_order", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      const rows = (data || []) as any[];
+      unitList.push(...rows);
+      if (rows.length < PAGE) break;
+      from += PAGE;
     }
   }
+
+  const unitIds = unitList.map((u) => u.id);
+  const tiersByUnit: Record<string, PriceTier[]> = {};
+  for (let i = 0; i < unitIds.length; i += CHUNK) {
+    const idsChunk = unitIds.slice(i, i + CHUNK);
+    let from = 0;
+    while (true) {
+      const { data, error } = await (supabase as any)
+        .from("product_price_tiers")
+        .select("*")
+        .in("product_unit_id", idsChunk)
+        .order("min_qty", { ascending: true })
+        .range(from, from + PAGE - 1);
+      if (error) throw error;
+      const rows = (data || []) as any[];
+      for (const t of rows) {
+        (tiersByUnit[t.product_unit_id] ||= []).push({ id: t.id, min_qty: t.min_qty, price: Number(t.price) });
+      }
+      if (rows.length < PAGE) break;
+      from += PAGE;
+    }
+  }
+
   const byProduct: Record<string, ProductUnit[]> = {};
   for (const u of unitList) {
     (byProduct[u.product_id] ||= []).push({
