@@ -1057,10 +1057,10 @@ function POPage() {
                 Batal
               </Button>
               <Button variant="secondary" onClick={() => saveDraft("draft")} disabled={saving}>
-                Simpan Draft
+                {editingPoId ? "Simpan Perubahan Draft" : "Simpan Draft"}
               </Button>
               <Button onClick={() => saveDraft("ordered")} disabled={saving}>
-                {saving ? "Menyimpan..." : "Buat & Pesan"}
+                {saving ? "Menyimpan..." : editingPoId ? "Simpan & Pesan" : "Buat & Pesan"}
               </Button>
             </DialogFooter>
           </div>
