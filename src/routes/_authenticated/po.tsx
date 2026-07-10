@@ -1152,6 +1152,11 @@ function POPage() {
                 <Button size="sm" variant="outline" onClick={() => printPO(detailOpen, detailItems)}>
                   <Download className="mr-2 h-4 w-4" /> Cetak / PDF
                 </Button>
+                {detailOpen.status === "draft" && (
+                  <Button size="sm" variant="secondary" onClick={() => editDraft(detailOpen)}>
+                    <ClipboardList className="mr-2 h-4 w-4" /> Edit Draft
+                  </Button>
+                )}
                 {detailOpen.status !== "received" && detailOpen.status !== "cancelled" && (
                   <Button size="sm" onClick={() => setReceiveFor(detailOpen)}>
                     <PackageCheck className="mr-2 h-4 w-4" /> Terima Barang
