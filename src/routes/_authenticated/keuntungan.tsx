@@ -107,7 +107,63 @@ function KeuntunganPage() {
     productCount: number;
     topProducts: { name: string; qty: number; value: number }[];
   }>({ totalValue: 0, totalUnits: 0, productCount: 0, topProducts: [] });
+  const [tenantId, setTenantId] = useState<string | null>(null);
+  type ProfitWithdrawal = { id: string; entry_date: string; description: string; amount: number };
+  const [withdrawals, setWithdrawals] = useState<ProfitWithdrawal[]>([]);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [wAmount, setWAmount] = useState("");
+  const [wNote, setWNote] = useState("");
+  const [wDate, setWDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [wSaving, setWSaving] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
+
+  const loadWithdrawals = async () => {
+    const { data, error } = await (supabase as any)
+      .from("bookkeeping_entries")
+      .select("id, entry_date, description, amount, ref")
+      .eq("ref", "profit_withdrawal")
+      .order("entry_date", { ascending: false })
+      .limit(200);
+    if (!error) setWithdrawals((data || []) as ProfitWithdrawal[]);
+  };
+
+  useEffect(() => {
+    (async () => {
+      const { data: t } = await supabase.from("tenants").select("id").limit(1).maybeSingle();
+      if (t?.id) setTenantId(t.id as string);
+      loadWithdrawals();
+    })();
+  }, []);
+
+  const submitWithdrawal = async () => {
+    if (!tenantId) { toast.error("Toko belum terhubung"); return; }
+    const amt = Number(wAmount);
+    if (!Number.isFinite(amt) || amt <= 0) { toast.error("Nominal tidak valid"); return; }
+    setWSaving(true);
+    const { error } = await (supabase as any).from("bookkeeping_entries").insert({
+      tenant_id: tenantId,
+      entry_date: new Date(wDate + "T" + new Date().toTimeString().slice(0, 8)).toISOString(),
+      kind: "out",
+      description: wNote.trim() || "Ambil Keuntungan (Prive)",
+      ref: "profit_withdrawal",
+      amount: amt,
+    });
+    setWSaving(false);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Pengambilan keuntungan dicatat. Data transaksi tidak berubah.");
+    setWithdrawOpen(false);
+    setWAmount(""); setWNote("");
+    loadWithdrawals();
+  };
+
+  const deleteWithdrawal = async (id: string) => {
+    if (!confirm("Hapus catatan pengambilan ini?")) return;
+    const { error } = await (supabase as any).from("bookkeeping_entries").delete().eq("id", id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Dihapus");
+    loadWithdrawals();
+  };
+
 
   useEffect(() => {
     (async () => {
