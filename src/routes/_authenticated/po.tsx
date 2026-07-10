@@ -397,6 +397,35 @@ function POPage() {
     setDetailItems((data || []) as POItem[]);
   };
 
+  const editDraft = async (po: PO) => {
+    if (po.status !== "draft") {
+      toast.info("Hanya PO berstatus Draft yang bisa diedit");
+      return;
+    }
+    const { data, error } = await supabase
+      .from("purchase_order_items")
+      .select("*")
+      .eq("po_id", po.id);
+    if (error) return toast.error(error.message);
+    const drafted: DraftItem[] = ((data || []) as POItem[]).map((it) => ({
+      product_id: it.product_id,
+      product_code: it.product_code || "",
+      product_name: it.product_name,
+      qty: String(it.qty ?? 0),
+      unit_cost: String(it.unit_cost ?? 0),
+      sell_price: it.sell_price != null ? String(it.sell_price) : "",
+      unit_name: it.unit_name || "pcs",
+      unit_conversion: String(it.unit_conversion ?? 1),
+    }));
+    setSupplier(po.supplier);
+    setNotes(po.notes || "");
+    setItems(drafted);
+    setEditingPoId(po.id);
+    setDetailOpen(null);
+    setCreateOpen(true);
+  };
+
+
   const updateStatus = async (po: PO, status: string) => {
     const { error } = await supabase
       .from("purchase_orders")
