@@ -749,7 +749,7 @@ function POPage() {
             return;
           }
           setCreateOpen(open);
-          if (!open) setAiOpen(false);
+          if (!open) { setAiOpen(false); resetForm(); }
         }}
       >
         <DialogContent
