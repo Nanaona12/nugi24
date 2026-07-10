@@ -339,22 +339,41 @@ function POPage() {
       return toast.error("Sesi habis, login ulang");
     }
 
-    const { data: po, error: e1 } = await supabase
-      .from("purchase_orders")
-      .insert({
-        user_id: user.id,
-        supplier: supplier.trim(),
-        status,
-        notes: notes.trim() || null,
-        total,
-        item_count: itemCount,
-      })
-      .select()
-      .single();
-
-    if (e1 || !po) {
-      setSaving(false);
-      return toast.error(e1?.message || "Gagal simpan");
+    let poId = editingPoId;
+    if (editingPoId) {
+      const { error: uErr } = await supabase
+        .from("purchase_orders")
+        .update({
+          supplier: supplier.trim(),
+          status,
+          notes: notes.trim() || null,
+          total,
+          item_count: itemCount,
+        })
+        .eq("id", editingPoId);
+      if (uErr) {
+        setSaving(false);
+        return toast.error(uErr.message);
+      }
+      await supabase.from("purchase_order_items").delete().eq("po_id", editingPoId);
+    } else {
+      const { data: po, error: e1 } = await supabase
+        .from("purchase_orders")
+        .insert({
+          user_id: user.id,
+          supplier: supplier.trim(),
+          status,
+          notes: notes.trim() || null,
+          total,
+          item_count: itemCount,
+        })
+        .select()
+        .single();
+      if (e1 || !po) {
+        setSaving(false);
+        return toast.error(e1?.message || "Gagal simpan");
+      }
+      poId = po.id;
     }
 
     const rows = valid.map((it) => {
@@ -365,7 +384,7 @@ function POPage() {
       const unit_name = (it.unit_name || "pcs").trim() || "pcs";
       const prod = it.product_id ? products.find((p) => p.id === it.product_id) : null;
       return {
-        po_id: po.id,
+        po_id: poId!,
         product_id: it.product_id,
         product_code: it.product_code || "-",
         product_barcode: prod?.barcode || null,
@@ -379,17 +398,20 @@ function POPage() {
       };
     });
 
-
-
     const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
     setSaving(false);
     if (e2) return toast.error(e2.message);
 
-    toast.success(`PO ${status === "draft" ? "disimpan sebagai draft" : "dibuat"}`);
+    toast.success(
+      editingPoId
+        ? "Draft PO diperbarui"
+        : `PO ${status === "draft" ? "disimpan sebagai draft" : "dibuat"}`,
+    );
     setCreateOpen(false);
     resetForm();
     load();
   };
+
 
   const openDetail = async (po: PO) => {
     setDetailOpen(po);
