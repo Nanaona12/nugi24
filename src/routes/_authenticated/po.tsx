@@ -1015,8 +1015,8 @@ function POPage() {
 
       {/* Detail Dialog */}
       <Dialog open={!!detailOpen} onOpenChange={(o) => !o && setDetailOpen(null)}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden p-0">
+          <DialogHeader className="px-6 pt-6">
             <DialogTitle>
               PO #{detailOpen?.id.slice(0, 8)} — {detailOpen?.supplier}
             </DialogTitle>
@@ -1025,7 +1025,7 @@ function POPage() {
             </DialogDescription>
           </DialogHeader>
           {detailOpen && (
-            <div className="space-y-3 text-sm">
+            <div className="space-y-3 text-sm overflow-y-auto px-6 pb-6 flex-1">
               <div className="flex items-center gap-2">
                 <StatusBadge status={detailOpen.status} />
                 <div className="ml-auto">
