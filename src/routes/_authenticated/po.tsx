@@ -176,7 +176,9 @@ function POPage() {
     setNotes("");
     setItems([]);
     setPickQuery("");
+    setEditingPoId(null);
   };
+
 
   const lowStockProducts = useMemo(() => {
     return products
