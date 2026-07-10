@@ -122,6 +122,7 @@ function POPage() {
   const [saving, setSaving] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [receiveFor, setReceiveFor] = useState<PO | null>(null);
+  const [editingPoId, setEditingPoId] = useState<string | null>(null);
   const poActionsRef = useRef<HTMLDivElement>(null);
 
 
