@@ -56,13 +56,13 @@ BEGIN
     remaining := remaining - take;
   END LOOP;
 
-  -- Set unit_cost transaksi (per pcs) berdasarkan modal batch, fallback ke master produk
+  -- Set cost_price transaksi (per pcs) berdasarkan modal batch, fallback ke master produk
   IF cost_qty > 0 THEN
-    NEW.unit_cost := round((cost_sum / cost_qty)::numeric, 2);
-  ELSIF NEW.unit_cost IS NULL OR NEW.unit_cost = 0 THEN
+    NEW.cost_price := round((cost_sum / cost_qty)::numeric, 2);
+  ELSIF NEW.cost_price IS NULL OR NEW.cost_price = 0 THEN
     SELECT cost_price INTO fallback_cost FROM public.products WHERE id = NEW.product_id;
     IF fallback_cost IS NOT NULL THEN
-      NEW.unit_cost := fallback_cost;
+      NEW.cost_price := fallback_cost;
     END IF;
   END IF;
 

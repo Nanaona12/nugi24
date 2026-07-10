@@ -333,78 +333,53 @@ function KasirPage() {
   const [refundOpen, setRefundOpen] = useState(false);
   const [aiOrderOpen, setAiOrderOpen] = useState(false);
 
-  // --- Draft (cart yang ditahan / disimpan sementara) — sinkron via Supabase per kasir ---
+  // --- Draft (cart yang ditahan / disimpan sementara) ---
   type CartDraft = { id: string; customer_name: string; note?: string; items: CartLine[]; saved_at: string };
   const [drafts, setDrafts] = useState<CartDraft[]>([]);
   const [saveDraftOpen, setSaveDraftOpen] = useState(false);
   const [draftListOpen, setDraftListOpen] = useState(false);
   const [draftCustomer, setDraftCustomer] = useState("");
   const [draftNote, setDraftNote] = useState("");
-
-  const loadDrafts = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !tenantId) return;
-    const { data, error } = await (supabase as any)
-      .from("cashier_holds")
-      .select("id, customer_name, note, payload, saved_at")
-      .eq("cashier_user_id", user.id)
-      .eq("tenant_id", tenantId)
-      .order("saved_at", { ascending: false });
-    if (error) { console.error(error); return; }
-    setDrafts(((data || []) as any[]).map((r) => ({
-      id: r.id,
-      customer_name: r.customer_name,
-      note: r.note || undefined,
-      items: (r.payload?.items || []) as CartLine[],
-      saved_at: r.saved_at,
-    })));
-  };
-
+  const draftKey = tenantId ? `dp.cart_drafts.${tenantId}` : null;
   useEffect(() => {
-    if (!tenantId) return;
-    loadDrafts();
-    let channel: any = null;
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      channel = supabase
-        .channel(`cashier_holds_${user.id}`)
-        .on("postgres_changes", { event: "*", schema: "public", table: "cashier_holds", filter: `cashier_user_id=eq.${user.id}` }, () => {
-          loadDrafts();
-        })
-        .subscribe();
-    })();
-    return () => { if (channel) supabase.removeChannel(channel); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantId]);
-
-  const saveDraft = async () => {
+    if (!draftKey) return;
+    try {
+      const raw = localStorage.getItem(draftKey);
+      setDrafts(raw ? (JSON.parse(raw) as CartDraft[]) : []);
+    } catch {
+      setDrafts([]);
+    }
+  }, [draftKey]);
+  const persistDrafts = (next: CartDraft[]) => {
+    setDrafts(next);
+    if (draftKey) {
+      try { localStorage.setItem(draftKey, JSON.stringify(next)); } catch { /* ignore */ }
+    }
+  };
+  const saveDraft = () => {
     if (cart.length === 0) { toast.error("Keranjang kosong"); return; }
     const name = draftCustomer.trim();
     if (!name) { toast.error("Nama pelanggan wajib diisi"); return; }
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user || !tenantId) { toast.error("Sesi habis"); return; }
-    const { error } = await (supabase as any).from("cashier_holds").insert({
-      tenant_id: tenantId,
-      cashier_user_id: user.id,
+    const d: CartDraft = {
+      id: (crypto as any).randomUUID?.() ?? String(Date.now()),
       customer_name: name,
-      note: draftNote.trim() || null,
-      payload: { items: cart },
-    });
-    if (error) { toast.error(error.message); return; }
+      note: draftNote.trim() || undefined,
+      items: cart,
+      saved_at: new Date().toISOString(),
+    };
+    persistDrafts([d, ...drafts]);
     setCart([]);
     setSaveDraftOpen(false);
     setDraftCustomer("");
     setDraftNote("");
-    toast.success(`Draft "${name}" disimpan (tersedia di device lain untuk akun kasir ini)`);
-    loadDrafts();
+    toast.success(`Draft "${name}" disimpan`);
   };
-
   const resumeDraft = async (d: CartDraft) => {
     if (cart.length > 0) {
       const ok = window.confirm("Keranjang saat ini akan diganti dengan draft. Lanjutkan?");
       if (!ok) return;
     }
+    // Pastikan units untuk produk di draft ter-load
     try {
       const ids = Array.from(new Set(d.items.map((l) => l.product.id)));
       const missing = ids.filter((id) => !unitsByProduct[id]);
@@ -414,22 +389,17 @@ function KasirPage() {
       }
     } catch { /* ignore */ }
     setCart(d.items);
-    await (supabase as any).from("cashier_holds").delete().eq("id", d.id);
+    persistDrafts(drafts.filter((x) => x.id !== d.id));
     setDraftListOpen(false);
     toast.success(`Draft "${d.customer_name}" dilanjutkan`);
-    loadDrafts();
   };
-
-  const deleteDraft = async (id: string) => {
+  const deleteDraft = (id: string) => {
     const d = drafts.find((x) => x.id === id);
     if (!d) return;
     if (!window.confirm(`Hapus draft "${d.customer_name}"?`)) return;
-    const { error } = await (supabase as any).from("cashier_holds").delete().eq("id", id);
-    if (error) { toast.error(error.message); return; }
+    persistDrafts(drafts.filter((x) => x.id !== id));
     toast.success("Draft dihapus");
-    loadDrafts();
   };
-
 
   const handleCreateStaticQris = async (amountOverride?: number) => {
     const amt = amountOverride ?? totals.total;

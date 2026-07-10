@@ -122,7 +122,6 @@ function POPage() {
   const [saving, setSaving] = useState(false);
   const [aiOpen, setAiOpen] = useState(false);
   const [receiveFor, setReceiveFor] = useState<PO | null>(null);
-  const [editingPoId, setEditingPoId] = useState<string | null>(null);
   const poActionsRef = useRef<HTMLDivElement>(null);
 
 
@@ -176,9 +175,7 @@ function POPage() {
     setNotes("");
     setItems([]);
     setPickQuery("");
-    setEditingPoId(null);
   };
-
 
   const lowStockProducts = useMemo(() => {
     return products
@@ -339,41 +336,22 @@ function POPage() {
       return toast.error("Sesi habis, login ulang");
     }
 
-    let poId = editingPoId;
-    if (editingPoId) {
-      const { error: uErr } = await supabase
-        .from("purchase_orders")
-        .update({
-          supplier: supplier.trim(),
-          status,
-          notes: notes.trim() || null,
-          total,
-          item_count: itemCount,
-        })
-        .eq("id", editingPoId);
-      if (uErr) {
-        setSaving(false);
-        return toast.error(uErr.message);
-      }
-      await supabase.from("purchase_order_items").delete().eq("po_id", editingPoId);
-    } else {
-      const { data: po, error: e1 } = await supabase
-        .from("purchase_orders")
-        .insert({
-          user_id: user.id,
-          supplier: supplier.trim(),
-          status,
-          notes: notes.trim() || null,
-          total,
-          item_count: itemCount,
-        })
-        .select()
-        .single();
-      if (e1 || !po) {
-        setSaving(false);
-        return toast.error(e1?.message || "Gagal simpan");
-      }
-      poId = po.id;
+    const { data: po, error: e1 } = await supabase
+      .from("purchase_orders")
+      .insert({
+        user_id: user.id,
+        supplier: supplier.trim(),
+        status,
+        notes: notes.trim() || null,
+        total,
+        item_count: itemCount,
+      })
+      .select()
+      .single();
+
+    if (e1 || !po) {
+      setSaving(false);
+      return toast.error(e1?.message || "Gagal simpan");
     }
 
     const rows = valid.map((it) => {
@@ -384,7 +362,7 @@ function POPage() {
       const unit_name = (it.unit_name || "pcs").trim() || "pcs";
       const prod = it.product_id ? products.find((p) => p.id === it.product_id) : null;
       return {
-        po_id: poId!,
+        po_id: po.id,
         product_id: it.product_id,
         product_code: it.product_code || "-",
         product_barcode: prod?.barcode || null,
@@ -398,20 +376,17 @@ function POPage() {
       };
     });
 
+
+
     const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
     setSaving(false);
     if (e2) return toast.error(e2.message);
 
-    toast.success(
-      editingPoId
-        ? "Draft PO diperbarui"
-        : `PO ${status === "draft" ? "disimpan sebagai draft" : "dibuat"}`,
-    );
+    toast.success(`PO ${status === "draft" ? "disimpan sebagai draft" : "dibuat"}`);
     setCreateOpen(false);
     resetForm();
     load();
   };
-
 
   const openDetail = async (po: PO) => {
     setDetailOpen(po);
@@ -421,35 +396,6 @@ function POPage() {
       .eq("po_id", po.id);
     setDetailItems((data || []) as POItem[]);
   };
-
-  const editDraft = async (po: PO) => {
-    if (po.status !== "draft") {
-      toast.info("Hanya PO berstatus Draft yang bisa diedit");
-      return;
-    }
-    const { data, error } = await supabase
-      .from("purchase_order_items")
-      .select("*")
-      .eq("po_id", po.id);
-    if (error) return toast.error(error.message);
-    const drafted: DraftItem[] = ((data || []) as POItem[]).map((it) => ({
-      product_id: it.product_id,
-      product_code: it.product_code || "",
-      product_name: it.product_name,
-      qty: String(it.qty ?? 0),
-      unit_cost: String(it.unit_cost ?? 0),
-      sell_price: it.sell_price != null ? String(it.sell_price) : "",
-      unit_name: it.unit_name || "pcs",
-      unit_conversion: String(it.unit_conversion ?? 1),
-    }));
-    setSupplier(po.supplier);
-    setNotes(po.notes || "");
-    setItems(drafted);
-    setEditingPoId(po.id);
-    setDetailOpen(null);
-    setCreateOpen(true);
-  };
-
 
   const updateStatus = async (po: PO, status: string) => {
     const { error } = await supabase
@@ -749,7 +695,7 @@ function POPage() {
             return;
           }
           setCreateOpen(open);
-          if (!open) { setAiOpen(false); resetForm(); }
+          if (!open) setAiOpen(false);
         }}
       >
         <DialogContent
@@ -759,9 +705,9 @@ function POPage() {
           onFocusOutside={(e) => { if (aiOpen) e.preventDefault(); }}
         >
           <DialogHeader>
-            <DialogTitle>{editingPoId ? "Edit Draft PO" : "Buat Purchase Order"}</DialogTitle>
+            <DialogTitle>Buat Purchase Order</DialogTitle>
             <DialogDescription>
-              {editingPoId ? "Ubah item / harga / catatan draft PO ini." : "Pilih produk dari katalog atau tambahkan manual."}
+              Pilih produk dari katalog atau tambahkan manual.
             </DialogDescription>
           </DialogHeader>
 
@@ -1057,10 +1003,10 @@ function POPage() {
                 Batal
               </Button>
               <Button variant="secondary" onClick={() => saveDraft("draft")} disabled={saving}>
-                {editingPoId ? "Simpan Perubahan Draft" : "Simpan Draft"}
+                Simpan Draft
               </Button>
               <Button onClick={() => saveDraft("ordered")} disabled={saving}>
-                {saving ? "Menyimpan..." : editingPoId ? "Simpan & Pesan" : "Buat & Pesan"}
+                {saving ? "Menyimpan..." : "Buat & Pesan"}
               </Button>
             </DialogFooter>
           </div>
@@ -1069,8 +1015,8 @@ function POPage() {
 
       {/* Detail Dialog */}
       <Dialog open={!!detailOpen} onOpenChange={(o) => !o && setDetailOpen(null)}>
-        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col overflow-hidden p-0">
-          <DialogHeader className="px-6 pt-6">
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
             <DialogTitle>
               PO #{detailOpen?.id.slice(0, 8)} — {detailOpen?.supplier}
             </DialogTitle>
@@ -1079,7 +1025,7 @@ function POPage() {
             </DialogDescription>
           </DialogHeader>
           {detailOpen && (
-            <div className="space-y-3 text-sm overflow-y-auto px-6 pb-6 flex-1">
+            <div className="space-y-3 text-sm">
               <div className="flex items-center gap-2">
                 <StatusBadge status={detailOpen.status} />
                 <div className="ml-auto">
@@ -1152,11 +1098,6 @@ function POPage() {
                 <Button size="sm" variant="outline" onClick={() => printPO(detailOpen, detailItems)}>
                   <Download className="mr-2 h-4 w-4" /> Cetak / PDF
                 </Button>
-                {detailOpen.status === "draft" && (
-                  <Button size="sm" variant="secondary" onClick={() => editDraft(detailOpen)}>
-                    <ClipboardList className="mr-2 h-4 w-4" /> Edit Draft
-                  </Button>
-                )}
                 {detailOpen.status !== "received" && detailOpen.status !== "cancelled" && (
                   <Button size="sm" onClick={() => setReceiveFor(detailOpen)}>
                     <PackageCheck className="mr-2 h-4 w-4" /> Terima Barang
