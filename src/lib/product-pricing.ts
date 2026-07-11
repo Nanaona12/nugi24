@@ -14,6 +14,7 @@ export type ProductUnit = {
   conversion: number;  // berapa unit dasar per 1 satuan ini (pcs=1, slove=10, dus=60)
   sort_order: number;
   is_base: boolean;
+  show_in_showcase?: boolean; // tampilkan tingkatan harga satuan ini di galeri publik
   tiers: PriceTier[];  // diurutkan ascending by min_qty
 };
 
@@ -85,6 +86,7 @@ export async function loadUnitsForProducts(productIds: string[]): Promise<Record
       conversion: u.conversion,
       sort_order: u.sort_order,
       is_base: u.is_base,
+      show_in_showcase: u.show_in_showcase !== false,
       tiers: tiersByUnit[u.id] || [],
     });
   }
@@ -111,6 +113,7 @@ export async function replaceProductUnits(productId: string, units: ProductUnit[
     conversion: Math.max(1, Math.floor(u.conversion || 1)),
     sort_order: i,
     is_base: u.is_base,
+    show_in_showcase: u.show_in_showcase !== false,
   }));
   const { data: inserted, error: insErr } = await (supabase as any)
     .from("product_units")

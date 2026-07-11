@@ -1088,19 +1088,19 @@ function POPage() {
                 ))}
               </datalist>
               <div className="max-h-80 overflow-auto rounded border">
-                <table className="w-full min-w-[900px] text-sm">
+                <table className="w-full min-w-[1100px] text-sm">
 
 
                   <thead className="sticky top-0 bg-muted text-left">
                     <tr>
                       <th className="p-2 w-20">Kode</th>
-                      <th className="p-2 min-w-[140px] w-[160px]">Nama</th>
-                      <th className="p-2 w-24">Kategori</th>
+                      <th className="p-2 min-w-[200px] w-[220px]">Nama</th>
+                      <th className="p-2 min-w-[140px] w-[150px]">Kategori</th>
                       <th className="p-2 w-16 text-right">Qty</th>
                       <th className="p-2 w-20">Satuan</th>
                       <th className="p-2 w-20 text-right">Isi</th>
-                      <th className="p-2 w-24 text-right">Modal/satuan</th>
-                      <th className="p-2 w-24 text-right">Modal/pcs</th>
+                      <th className="p-2 w-28 text-right">Modal/satuan</th>
+                      <th className="p-2 w-28 text-right">Modal/pcs</th>
                       <th className="p-2 w-24 text-right">Jual/pcs</th>
                       <th className="p-2 w-16 text-right">Stok +</th>
                       <th className="p-2 w-24 text-right">Subtotal</th>

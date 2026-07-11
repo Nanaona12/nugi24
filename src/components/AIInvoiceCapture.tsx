@@ -158,11 +158,11 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
               {existingCategories.map((c) => <option key={c} value={c} />)}
             </datalist>
             <div className="rounded border max-h-[50vh] overflow-auto">
-              <table className="w-full text-xs">
+              <table className="w-full min-w-[720px] text-xs">
                 <thead className="sticky top-0 bg-muted text-left">
                   <tr>
-                    <th className="p-2">Barang</th>
-                    <th className="p-2 w-28">Kategori</th>
+                    <th className="p-2 min-w-[200px]">Barang</th>
+                    <th className="p-2 min-w-[140px] w-[150px]">Kategori</th>
                     <th className="p-2 w-16 text-right">Qty</th>
                     <th className="p-2 w-24 text-right">Modal</th>
                     <th className="p-2 w-24 text-right">Jual</th>

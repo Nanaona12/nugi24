@@ -30,7 +30,7 @@ export const Route = createFileRoute("/showcase/$slug")({
 
 type Tenant = { id: string; name: string; slug: string; phone: string | null; address: string | null; showcase_description: string | null; latitude: number | null; longitude: number | null };
 type Product = { id: string; name: string; category: string | null; price: number; stock: number; image_url: string | null; code: string };
-type Unit = { id: string; product_id: string; name: string; conversion: number; sort_order: number; is_base: boolean };
+type Unit = { id: string; product_id: string; name: string; conversion: number; sort_order: number; is_base: boolean; show_in_showcase: boolean };
 type Tier = { id: string; product_unit_id: string; min_qty: number; price: number };
 
 function ShowcaseDetail() {
@@ -62,7 +62,7 @@ function ShowcaseDetail() {
           .eq("tenant_id", t.id)
           .order("name"),
         (supabase as any).from("product_units")
-          .select("id, product_id, name, conversion, sort_order, is_base")
+          .select("id, product_id, name, conversion, sort_order, is_base, show_in_showcase")
           .eq("tenant_id", t.id)
           .order("sort_order"),
         (supabase as any).from("product_price_tiers")
@@ -183,7 +183,9 @@ function ShowcaseDetail() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((p) => {
-              const pUnits = (unitsByProduct[p.id] ?? []).sort((a, b) => a.sort_order - b.sort_order);
+              const pUnits = (unitsByProduct[p.id] ?? [])
+                .filter((u) => u.show_in_showcase !== false)
+                .sort((a, b) => a.sort_order - b.sort_order);
               const out = p.stock <= 0;
               return (
                 <Card key={p.id} className={`overflow-hidden flex flex-col ${out ? "opacity-70" : ""}`}>
