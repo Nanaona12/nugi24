@@ -19,7 +19,9 @@ type POItem = {
   qty_received?: number | null;
   unit_name?: string | null;
   unit_conversion?: number | null;
+  category?: string | null;
 };
+
 
 type NewProdCfg = {
   create: boolean;
@@ -43,15 +45,21 @@ export function ReceivingDialog({
   const [newCfg, setNewCfg] = useState<Record<string, NewProdCfg>>({});
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [existingCategories, setExistingCategories] = useState<string[]>([]);
+
 
   useEffect(() => {
     if (!open || !poId) return;
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("purchase_order_items")
-        .select("id,product_id,product_code,product_name,qty,unit_cost,sell_price,qty_received,unit_name,unit_conversion")
+        .select("id,product_id,product_code,product_name,qty,unit_cost,sell_price,qty_received,unit_name,unit_conversion,category")
         .eq("po_id", poId);
+
+      const { data: catData } = await supabase.from("products").select("category");
+      setExistingCategories(Array.from(new Set(((catData as any[]) || []).map((r) => (r.category || "").toString().trim()).filter(Boolean))));
+
 
 
       setLoading(false);
@@ -70,9 +78,10 @@ export function ReceivingDialog({
             create: true,
             code: it.product_code && it.product_code !== "-" ? it.product_code : "",
             barcode: "",
-            category: "",
+            category: (it.category || "").toString(),
             sell_price: sellPerPcs > 0 ? String(sellPerPcs) : "",
           };
+
         }
       }
       setRecv(map);
@@ -230,8 +239,12 @@ export function ReceivingDialog({
                           </div>
                           <div>
                             <Label className="text-[10px] uppercase">Kategori</Label>
-                            <Input value={cfg.category} onChange={(e) => setNewCfg({ ...newCfg, [it.id]: { ...cfg, category: e.target.value } })} className="h-8 text-xs" placeholder="Opsional" />
+                            <Input list={`recv-cats-${it.id}`} value={cfg.category} onChange={(e) => setNewCfg({ ...newCfg, [it.id]: { ...cfg, category: e.target.value } })} className="h-8 text-xs" placeholder="Pilih / ketik" />
+                            <datalist id={`recv-cats-${it.id}`}>
+                              {existingCategories.map((c) => <option key={c} value={c} />)}
+                            </datalist>
                           </div>
+
                           <div>
                             <Label className="text-[10px] uppercase">Jual/pcs</Label>
                             <Input type="number" inputMode="decimal" value={cfg.sell_price} onChange={(e) => setNewCfg({ ...newCfg, [it.id]: { ...cfg, sell_price: e.target.value } })} className="h-8 text-xs text-right" />

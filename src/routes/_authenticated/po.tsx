@@ -60,6 +60,7 @@ type Product = {
   cost_price: number;
   stock: number;
   min_stock: number | null;
+  category?: string | null;
 };
 
 
@@ -87,6 +88,7 @@ type POItem = {
   sell_price?: number | null;
   unit_name?: string | null;
   unit_conversion?: number | null;
+  category?: string | null;
 };
 
 type DraftItem = {
@@ -98,7 +100,9 @@ type DraftItem = {
   sell_price: string;
   unit_name: string;      // "pcs" | "slove" | "dus" | ...
   unit_conversion: string; // berapa pcs per 1 satuan (default 1)
+  category: string;
 };
+
 
 
 
@@ -142,7 +146,7 @@ function POPage() {
   const load = async () => {
     const [{ data: poData, error: e1 }, { data: pData, error: e2 }] = await Promise.all([
       supabase.from("purchase_orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("products").select("id,code,barcode,name,price,cost_price,stock,min_stock").order("name"),
+      supabase.from("products").select("id,code,barcode,name,price,cost_price,stock,min_stock,category").order("name"),
     ]);
     if (e1) toast.error(e1.message);
     else setPos((poData || []) as PO[]);
@@ -239,7 +243,9 @@ function POPage() {
         sell_price: String(p.price),
         unit_name: "pcs",
         unit_conversion: "1",
+        category: p.category || "",
       },
+
     ]);
   };
 
@@ -252,7 +258,9 @@ function POPage() {
     sell_price: String(p.price),
     unit_name: "pcs",
     unit_conversion: "1",
+    category: p.category || "",
   });
+
 
 
   const openCreateForLowStock = (mode: "out" | "low") => {
@@ -293,9 +301,10 @@ function POPage() {
   const addManual = () => {
     setItems((prev) => [
       ...prev,
-      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0", unit_name: "pcs", unit_conversion: "1" },
+      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0", unit_name: "pcs", unit_conversion: "1", category: "" },
     ]);
   };
+
 
   const applyInvoiceResult = (r: AiInvoiceResult) => {
     if (r.supplier && !supplier.trim()) setSupplier(r.supplier);
@@ -317,9 +326,10 @@ function POPage() {
         sell_price: String(Math.round(it.sell_price ?? matched?.price ?? 0)),
         unit_name: "pcs",
         unit_conversion: "1",
-
+        category: (it.category || matched?.category || "").toString(),
       };
     });
+
     setItems((prev) => [...prev, ...newItems]);
     setCreateOpen(true);
     toast.success(`${newItems.length} item dari struk ditambahkan`);
@@ -422,10 +432,12 @@ function POPage() {
         subtotal: qty * unit_cost,
         unit_name,
         unit_conversion,
+        category: it.category?.trim() || null,
       };
     });
 
-    const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
+
+    const { error: e2 } = await (supabase as any).from("purchase_order_items").insert(rows);
     if (e2) { setSaving(false); return toast.error(e2.message); }
 
     // Upload struk (opsional)
@@ -502,7 +514,9 @@ function POPage() {
       sell_price: it.sell_price != null ? String(it.sell_price) : "",
       unit_name: it.unit_name || "pcs",
       unit_conversion: String(it.unit_conversion ?? 1),
+      category: it.category || "",
     }));
+
     setSupplier(po.supplier);
     setNotes(po.notes || "");
     setItems(drafted);
@@ -1068,13 +1082,20 @@ function POPage() {
 
             {/* Items - Desktop table */}
             <div className="space-y-2 hidden md:block">
+              <datalist id="po-cats">
+                {Array.from(new Set(products.map((p) => (p.category || "").trim()).filter(Boolean))).map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
               <div className="max-h-80 overflow-auto rounded border">
                 <table className="w-full min-w-[900px] text-sm">
+
 
                   <thead className="sticky top-0 bg-muted text-left">
                     <tr>
                       <th className="p-2 w-20">Kode</th>
                       <th className="p-2 min-w-[140px] w-[160px]">Nama</th>
+                      <th className="p-2 w-24">Kategori</th>
                       <th className="p-2 w-16 text-right">Qty</th>
                       <th className="p-2 w-20">Satuan</th>
                       <th className="p-2 w-20 text-right">Isi</th>
@@ -1089,10 +1110,11 @@ function POPage() {
                   <tbody>
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="p-6 text-center text-muted-foreground">
+                        <td colSpan={12} className="p-6 text-center text-muted-foreground">
                           Belum ada item
                         </td>
                       </tr>
+
                     ) : (
                       items.map((it, i) => {
                         const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
@@ -1106,6 +1128,10 @@ function POPage() {
                             <td className="p-1">
                               <Input value={it.product_name} onChange={(e) => updateItem(i, { product_name: e.target.value })} className="h-9 w-full text-sm px-2" disabled={!!it.product_id} title={it.product_name} />
                             </td>
+                            <td className="p-1">
+                              <Input list="po-cats" value={it.category} onChange={(e) => updateItem(i, { category: e.target.value })} className="h-9 w-full text-xs px-2" placeholder="Pilih/ketik" disabled={!!it.product_id} title={it.category} />
+                            </td>
+
                             <td className="p-1">
                               <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 w-full text-sm text-right px-2" />
                             </td>
@@ -1176,7 +1202,9 @@ function POPage() {
                 onClose={() => setAiOpen(false)}
                 onResult={applyInvoiceResult}
                 existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
+                existingCategories={Array.from(new Set(products.map((p) => (p.category || "").trim()).filter(Boolean)))}
               />
+
             </div>
 
             <div className="md:col-span-2 flex flex-wrap justify-between border-t pt-2 text-sm gap-2">
