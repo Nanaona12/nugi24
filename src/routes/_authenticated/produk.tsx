@@ -258,8 +258,10 @@ function ProdukPage() {
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: "0",
+      min_stock: p.min_stock != null ? String(p.min_stock) : "",
       image_url: "",
     });
+
     // Salin satuan & harga tier dari produk sumber
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
