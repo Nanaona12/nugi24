@@ -56,7 +56,9 @@ type Product = {
   price: number;
   cost_price: number;
   stock: number;
+  min_stock: number | null;
 };
+
 
 type PO = {
   id: string;
