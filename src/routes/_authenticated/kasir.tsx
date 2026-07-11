@@ -1235,7 +1235,7 @@ function KasirPage() {
                         </span>
                       )}
                       <div className="mb-1.5 flex items-start gap-2 pr-12">
-                        <div className="h-12 w-12 shrink-0 overflow-hidden rounded-md border bg-muted">
+                        <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-muted">
                           {p.image_url ? (
                             <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
                           ) : (
@@ -1245,8 +1245,8 @@ function KasirPage() {
                           )}
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="line-clamp-2 text-sm font-medium">{p.name}</div>
-                          <div className="text-xs text-muted-foreground">{p.code}</div>
+                          <div className="line-clamp-3 text-sm font-medium leading-tight" title={p.name}>{p.name}</div>
+                          <div className="mt-0.5 text-xs text-muted-foreground">{p.code}</div>
                         </div>
                       </div>
                       <div className="mt-2 flex w-full items-center justify-between">
