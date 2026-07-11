@@ -967,6 +967,19 @@ function ProdukPage() {
             <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
             <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
             <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
+            <div className="sm:col-span-2">
+              <FormField
+                label="Batas stok menipis (opsional)"
+                value={form.min_stock}
+                onChange={(v) => setForm({ ...form, min_stock: v })}
+                type="number"
+                placeholder="Kosong = pakai batas global di halaman PO"
+              />
+              <div className="text-[11px] text-muted-foreground mt-1">
+                Jika stok ≤ nilai ini, produk muncul di kartu "Produk Habis / Stok Menipis" di halaman PO.
+              </div>
+            </div>
+
           </div>
 
           <ProductImageField
