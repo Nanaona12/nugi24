@@ -157,6 +157,7 @@ async function sendUsbBytes(data: Uint8Array): Promise<void> {
 export async function printReceipt(r: ReceiptData, settings: PrinterSettings): Promise<void> {
   const method = settings.method;
   if (method === "browser") return printBrowser(r, settings.paper);
+  if (method === "rawbt") return printRawBT(r, settings.paper);
   if (method === "bluetooth") {
     const bytes = buildEscposReceipt(r, settings.paper);
     return sendBluetoothBytes(bytes);
