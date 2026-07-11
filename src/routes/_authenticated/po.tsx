@@ -665,6 +665,7 @@ function POPage() {
                   <th className="p-2">Kode</th>
                   <th className="p-2">Nama</th>
                   <th className="p-2 text-right">Stok</th>
+                  <th className="p-2 text-right w-24">Batas</th>
                   <th className="p-2 text-right">Harga</th>
                   <th className="p-2"></th>
                 </tr>
@@ -672,6 +673,8 @@ function POPage() {
               <tbody>
                 {lowStockProducts.map((p) => {
                   const out = (p.stock ?? 0) <= 0;
+                  const eff = effectiveThreshold(p);
+                  const isCustom = p.min_stock != null;
                   return (
                     <tr key={p.id} className="border-t hover:bg-muted/40">
                       <td className="p-2 font-mono text-xs">{p.code}</td>
@@ -680,6 +683,31 @@ function POPage() {
                         <Badge variant={out ? "destructive" : "secondary"}>
                           {out ? "Habis" : `${p.stock} tersisa`}
                         </Badge>
+                      </td>
+                      <td className="p-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            defaultValue={isCustom ? String(p.min_stock) : ""}
+                            placeholder={String(lowThreshold)}
+                            onBlur={async (e) => {
+                              const raw = e.target.value.trim();
+                              const newVal = raw === "" ? null : Math.max(0, parseInt(raw, 10) || 0);
+                              if (newVal === (p.min_stock ?? null)) return;
+                              const { error } = await supabase
+                                .from("products")
+                                .update({ min_stock: newVal } as any)
+                                .eq("id", p.id);
+                              if (error) { toast.error(error.message); return; }
+                              setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, min_stock: newVal } : x));
+                              toast.success(newVal == null ? `Batas ${p.name}: pakai default` : `Batas ${p.name} = ${newVal}`);
+                            }}
+                            className="h-8 w-16 text-xs text-right"
+                            title={isCustom ? "Batas khusus produk ini" : "Kosong = pakai batas default"}
+                          />
+                          <span className="text-[10px] text-muted-foreground w-4">{isCustom ? "•" : ""}</span>
+                        </div>
                       </td>
                       <td className="p-2 text-right">{formatRupiah(p.price)}</td>
                       <td className="p-2 text-right">
@@ -695,6 +723,7 @@ function POPage() {
                   );
                 })}
               </tbody>
+
             </table>
           </div>
         </Card>
