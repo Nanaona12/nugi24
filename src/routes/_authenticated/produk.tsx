@@ -1262,6 +1262,13 @@ function UnitsEditor({ units, onChange, costPerBase = 0 }: { units: ProductUnit[
             <label className="flex items-center gap-1 text-xs cursor-pointer">
               <input type="radio" checked={u.is_base} onChange={() => update(ui, { is_base: true })} /> Dasar
             </label>
+            <label className="flex items-center gap-1 text-xs cursor-pointer" title="Tampilkan tingkat harga satuan ini di galeri publik (showcase)">
+              <input
+                type="checkbox"
+                checked={u.show_in_showcase !== false}
+                onChange={(e) => update(ui, { show_in_showcase: e.target.checked })}
+              /> Tampil di galeri
+            </label>
             <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeUnit(ui)}>
               <XIcon className="h-4 w-4" />
             </Button>
