@@ -62,7 +62,7 @@ function ShowcaseDetail() {
           .eq("tenant_id", t.id)
           .order("name"),
         (supabase as any).from("product_units")
-          .select("id, product_id, name, conversion, sort_order, is_base")
+          .select("id, product_id, name, conversion, sort_order, is_base, show_in_showcase")
           .eq("tenant_id", t.id)
           .order("sort_order"),
         (supabase as any).from("product_price_tiers")
