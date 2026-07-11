@@ -1,4 +1,4 @@
-export type PrinterMethod = "browser" | "bluetooth" | "usb" | "ask";
+export type PrinterMethod = "browser" | "bluetooth" | "usb" | "rawbt" | "ask";
 export type PaperWidth = 58 | 80;
 
 export type PrinterSettings = {
