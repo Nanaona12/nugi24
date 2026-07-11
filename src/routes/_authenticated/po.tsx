@@ -68,7 +68,9 @@ type PO = {
   total: number;
   item_count: number;
   created_at: string;
+  receipt_image_path?: string | null;
 };
+
 
 type POItem = {
   id: string;
