@@ -86,6 +86,7 @@ export async function loadUnitsForProducts(productIds: string[]): Promise<Record
       conversion: u.conversion,
       sort_order: u.sort_order,
       is_base: u.is_base,
+      show_in_showcase: u.show_in_showcase !== false,
       tiers: tiersByUnit[u.id] || [],
     });
   }
