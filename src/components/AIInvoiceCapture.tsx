@@ -16,10 +16,12 @@ type Props = {
   onClose: () => void;
   onResult: (r: AiInvoiceResult) => void;
   existingProducts?: { id: string; name: string; barcode?: string | null; code?: string }[];
+  existingCategories?: string[];
   inline?: boolean;
 };
 
-export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [], inline = false }: Props) {
+export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [], existingCategories = [], inline = false }: Props) {
+
   const [images, setImages] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
   const [storeType, setStoreType] = useState<StoreType>("auto");
