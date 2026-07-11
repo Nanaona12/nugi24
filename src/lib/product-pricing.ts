@@ -113,6 +113,7 @@ export async function replaceProductUnits(productId: string, units: ProductUnit[
     conversion: Math.max(1, Math.floor(u.conversion || 1)),
     sort_order: i,
     is_base: u.is_base,
+    show_in_showcase: u.show_in_showcase !== false,
   }));
   const { data: inserted, error: insErr } = await (supabase as any)
     .from("product_units")
