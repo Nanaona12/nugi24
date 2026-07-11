@@ -126,6 +126,28 @@ export function PrinterSettingsCard() {
           </div>
         </div>
 
+        {(onAndroid || s.method === "rawbt") && (
+          <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Smartphone className="h-4 w-4" /> RawBT — untuk POS Android (Harvard/Sunmi/PAX/dll)
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Browser Chrome di Android <b>tidak bisa</b> mengontrol printer thermal built-in secara langsung.
+              Untuk mencetak dari perangkat POS Android, install aplikasi <b>RawBT</b> dari Play Store (gratis),
+              lalu di RawBT pilih printer bawaan / Bluetooth Anda satu kali. Setelah itu pilih metode <b>RawBT</b>
+              di sini — struk akan langsung dicetak lewat RawBT.
+            </p>
+            <a
+              className="inline-flex items-center text-xs font-medium text-primary underline"
+              href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Buka RawBT di Play Store →
+            </a>
+          </div>
+        )}
+
         <div>
           <Button onClick={doTest} disabled={busy}>
             <TestTube2 className="mr-2 h-4 w-4" /> Uji Cetak
