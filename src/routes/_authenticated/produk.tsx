@@ -237,7 +237,9 @@ function ProdukPage() {
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: String(p.stock),
+      min_stock: p.min_stock != null ? String(p.min_stock) : "",
       image_url: p.image_url || "",
+
     });
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
