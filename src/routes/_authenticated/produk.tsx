@@ -32,6 +32,7 @@ type Product = {
   wholesale_price: number | null;
   wholesale_min_qty: number | null;
   stock: number;
+  min_stock?: number | null;
   image_url?: string | null;
 };
 
@@ -46,6 +47,7 @@ type ProductForm = {
   wholesale_price: string;
   wholesale_min_qty: string;
   stock: string;
+  min_stock: string;
   image_url: string;
 };
 
@@ -59,8 +61,10 @@ const emptyForm: ProductForm = {
   wholesale_price: "",
   wholesale_min_qty: "",
   stock: "0",
+  min_stock: "",
   image_url: "",
 };
+
 
 
 function ProdukPage() {
