@@ -294,6 +294,7 @@ function ProdukPage() {
       wholesale_price: form.wholesale_price ? parseNumber(form.wholesale_price) : null,
       wholesale_min_qty: form.wholesale_min_qty ? parseInt(form.wholesale_min_qty, 10) : null,
       stock: parseInt(form.stock || "0", 10),
+      min_stock: form.min_stock !== "" ? Math.max(0, parseInt(form.min_stock, 10) || 0) : null,
       image_url: form.image_url.trim() || null,
     };
     // Validasi satuan
@@ -311,6 +312,31 @@ function ProdukPage() {
     const baseTier1 = [...baseUnit.tiers].sort((a, b) => a.min_qty - b.min_qty)[0];
     const basePrice = baseTier1.price;
     payload.price = basePrice;
+
+    // Peringatan: harga jual di bawah modal (penyebab keuntungan minus)
+    const costBase = parseNumber(form.cost_price);
+    if (costBase > 0) {
+      const badTiers: string[] = [];
+      for (const u of cleanUnits) {
+        const conv = Math.max(1, Number(u.conversion || 1));
+        const unitCost = costBase * conv;
+        for (const t of u.tiers) {
+          if (t.price > 0 && t.price < unitCost) {
+            badTiers.push(`${u.name} ≥${t.min_qty}: ${formatRupiah(t.price)} < modal ${formatRupiah(unitCost)}`);
+          }
+        }
+      }
+      if (badTiers.length > 0) {
+        const ok = confirm(
+          `⚠ Harga jual di bawah harga modal — akan menyebabkan keuntungan MINUS:\n\n` +
+            badTiers.join("\n") +
+            `\n\nTetap simpan?`,
+        );
+        if (!ok) return;
+      }
+    }
+
+
 
     let prodId = form.id;
     if (form.id) {
