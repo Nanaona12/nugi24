@@ -1089,6 +1089,7 @@ function POPage() {
                     <tr>
                       <th className="p-2 w-20">Kode</th>
                       <th className="p-2 min-w-[140px] w-[160px]">Nama</th>
+                      <th className="p-2 w-24">Kategori</th>
                       <th className="p-2 w-16 text-right">Qty</th>
                       <th className="p-2 w-20">Satuan</th>
                       <th className="p-2 w-20 text-right">Isi</th>
@@ -1103,10 +1104,11 @@ function POPage() {
                   <tbody>
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="p-6 text-center text-muted-foreground">
+                        <td colSpan={12} className="p-6 text-center text-muted-foreground">
                           Belum ada item
                         </td>
                       </tr>
+
                     ) : (
                       items.map((it, i) => {
                         const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
