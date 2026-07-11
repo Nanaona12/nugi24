@@ -627,7 +627,7 @@ function POPage() {
 
             </div>
             <div className="flex items-center gap-1.5">
-              <Label className="text-xs whitespace-nowrap">Batas</Label>
+              <Label className="text-xs whitespace-nowrap">Batas default</Label>
               <Input
                 type="number"
                 min={0}
@@ -638,7 +638,9 @@ function POPage() {
                   localStorage.setItem("po_low_threshold", String(v));
                 }}
                 className="h-8 w-16 text-xs"
+                title="Dipakai untuk produk yang belum diatur batas sendiri"
               />
+
             </div>
             {outOfStockCount > 0 && (
               <Button
