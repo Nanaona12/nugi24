@@ -1338,6 +1338,32 @@ function POPage() {
         onOpenChange={(o) => { if (!o) setReceiveFor(null); }}
         onDone={() => { setReceiveFor(null); setDetailOpen(null); load(); }}
       />
+
+      <Dialog open={!!receiptViewOpen} onOpenChange={(o) => !o && setReceiptViewOpen(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Struk / Nota — {receiptViewOpen?.supplier}</DialogTitle>
+            <DialogDescription>Foto struk yang disimpan bersama PO.</DialogDescription>
+          </DialogHeader>
+          {receiptViewOpen && (
+            <div className="space-y-2">
+              <img
+                src={receiptViewOpen.url}
+                alt="Struk PO"
+                className="max-h-[70vh] w-full rounded border object-contain bg-muted"
+              />
+              <div className="flex justify-end">
+                <a href={receiptViewOpen.url} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline">
+                    <Download className="mr-2 h-4 w-4" /> Buka di tab baru
+                  </Button>
+                </a>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
