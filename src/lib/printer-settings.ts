@@ -42,3 +42,6 @@ export function supportsWebBluetooth(): boolean {
 export function supportsWebUsb(): boolean {
   return typeof navigator !== "undefined" && !!(navigator as any).usb;
 }
+export function isAndroid(): boolean {
+  return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
+}
