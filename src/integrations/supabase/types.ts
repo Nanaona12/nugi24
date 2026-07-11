@@ -694,6 +694,7 @@ export type Database = {
           is_base: boolean
           name: string
           product_id: string
+          show_in_showcase: boolean
           sort_order: number
           tenant_id: string
           updated_at: string
@@ -705,6 +706,7 @@ export type Database = {
           is_base?: boolean
           name: string
           product_id: string
+          show_in_showcase?: boolean
           sort_order?: number
           tenant_id?: string
           updated_at?: string
@@ -716,6 +718,7 @@ export type Database = {
           is_base?: boolean
           name?: string
           product_id?: string
+          show_in_showcase?: boolean
           sort_order?: number
           tenant_id?: string
           updated_at?: string

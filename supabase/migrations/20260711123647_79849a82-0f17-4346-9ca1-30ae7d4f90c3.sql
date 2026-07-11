@@ -1,0 +1,1 @@
+ALTER TABLE public.product_units ADD COLUMN IF NOT EXISTS show_in_showcase boolean NOT NULL DEFAULT true;
