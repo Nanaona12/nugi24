@@ -115,7 +115,46 @@ function KeuntunganPage() {
   const [wNote, setWNote] = useState("");
   const [wDate, setWDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [wSaving, setWSaving] = useState(false);
+  const [resolvedLoss, setResolvedLoss] = useState<Record<string, { id: string; note: string | null; created_at: string }>>({});
+  const [showResolvedLoss, setShowResolvedLoss] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
+
+  const loadResolvedLoss = async () => {
+    const { data } = await (supabase as any)
+      .from("resolved_loss_products")
+      .select("id, product_name, note, created_at");
+    const map: Record<string, { id: string; note: string | null; created_at: string }> = {};
+    for (const r of (data || []) as any[]) {
+      map[r.product_name] = { id: r.id, note: r.note, created_at: r.created_at };
+    }
+    setResolvedLoss(map);
+  };
+
+  useEffect(() => { loadResolvedLoss(); }, []);
+
+  const markLossResolved = async (name: string) => {
+    if (!tenantId) { toast.error("Toko belum terhubung"); return; }
+    const note = prompt(`Tandai "${name}" sudah diselesaikan. Catatan (opsional):`, "Harga sudah dinaikkan / stok lama sudah habis");
+    if (note === null) return;
+    const { error } = await (supabase as any).from("resolved_loss_products").upsert({
+      tenant_id: tenantId,
+      product_name: name,
+      note: note.trim() || null,
+    }, { onConflict: "tenant_id,product_name" });
+    if (error) { toast.error(error.message); return; }
+    toast.success("Ditandai selesai");
+    loadResolvedLoss();
+  };
+
+  const unmarkLossResolved = async (name: string) => {
+    const r = resolvedLoss[name];
+    if (!r) return;
+    const { error } = await (supabase as any).from("resolved_loss_products").delete().eq("id", r.id);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Tanda selesai dibatalkan");
+    loadResolvedLoss();
+  };
+
 
   const loadWithdrawals = async () => {
     const { data, error } = await (supabase as any)
