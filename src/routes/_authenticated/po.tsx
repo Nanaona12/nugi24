@@ -492,9 +492,13 @@ function POPage() {
     setNotes(po.notes || "");
     setItems(drafted);
     setEditingPoId(po.id);
+    setReceiptFile(null);
+    setReceiptPreview("");
+    setExistingReceiptPath((po as any).receipt_image_path || null);
     setDetailOpen(null);
     setCreateOpen(true);
   };
+
 
 
   const updateStatus = async (po: PO, status: string) => {
