@@ -80,6 +80,7 @@ export function PrinterSettingsCard() {
                 <SelectItem value="browser">Browser Print (universal)</SelectItem>
                 <SelectItem value="bluetooth" disabled={!hasBt}>Bluetooth Thermal {hasBt ? "" : "(tidak didukung browser ini)"}</SelectItem>
                 <SelectItem value="usb" disabled={!hasUsb}>USB Thermal {hasUsb ? "" : "(tidak didukung browser ini)"}</SelectItem>
+                <SelectItem value="rawbt">RawBT (POS Android / printer built-in)</SelectItem>
                 <SelectItem value="ask">Tanya setiap kali</SelectItem>
               </SelectContent>
             </Select>
