@@ -423,9 +423,30 @@ function POPage() {
     });
 
     const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
-    setSaving(false);
-    if (e2) return toast.error(e2.message);
+    if (e2) { setSaving(false); return toast.error(e2.message); }
 
+    // Upload struk (opsional)
+    if (receiptFile && poId) {
+      try {
+        const { data: tid } = await (supabase as any).rpc("current_tenant_id");
+        if (tid) {
+          const ext = (receiptFile.name.split(".").pop() || "jpg").toLowerCase();
+          const path = `${tid}/po/${poId}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("receipts")
+            .upload(path, receiptFile, { upsert: true, contentType: receiptFile.type || "image/jpeg" });
+          if (upErr) {
+            toast.error("Struk gagal diunggah: " + upErr.message);
+          } else {
+            await supabase.from("purchase_orders").update({ receipt_image_path: path } as any).eq("id", poId);
+          }
+        }
+      } catch (e: any) {
+        toast.error("Struk gagal diunggah: " + (e?.message || ""));
+      }
+    }
+
+    setSaving(false);
     toast.success(
       editingPoId
         ? "Draft PO diperbarui"
@@ -435,6 +456,7 @@ function POPage() {
     resetForm();
     load();
   };
+
 
 
   const openDetail = async (po: PO) => {
