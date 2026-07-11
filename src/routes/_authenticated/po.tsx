@@ -182,13 +182,19 @@ function POPage() {
   };
 
 
+  const effectiveThreshold = (p: Product) =>
+    p.min_stock != null && p.min_stock >= 0 ? p.min_stock : lowThreshold;
+
   const lowStockProducts = useMemo(() => {
     return products
-      .filter((p) => (p.stock ?? 0) <= lowThreshold)
+      .filter((p) => (p.stock ?? 0) <= effectiveThreshold(p))
       .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, lowThreshold]);
 
   const outOfStockCount = lowStockProducts.filter((p) => (p.stock ?? 0) <= 0).length;
+  const customThresholdCount = products.filter((p) => p.min_stock != null).length;
+
 
   const pricingIssueProducts = useMemo(() => {
     return products.filter((p) => {
