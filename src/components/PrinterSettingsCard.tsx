@@ -22,6 +22,7 @@ export function PrinterSettingsCard() {
   const [busy, setBusy] = useState(false);
   const hasBt = supportsWebBluetooth();
   const hasUsb = supportsWebUsb();
+  const onAndroid = isAndroid();
 
   useEffect(() => { setS(loadPrinterSettings()); }, []);
 
