@@ -154,11 +154,15 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
               </div>
             </div>
 
+            <datalist id="ai-invoice-cats">
+              {existingCategories.map((c) => <option key={c} value={c} />)}
+            </datalist>
             <div className="rounded border max-h-[50vh] overflow-auto">
               <table className="w-full text-xs">
                 <thead className="sticky top-0 bg-muted text-left">
                   <tr>
                     <th className="p-2">Barang</th>
+                    <th className="p-2 w-28">Kategori</th>
                     <th className="p-2 w-16 text-right">Qty</th>
                     <th className="p-2 w-24 text-right">Modal</th>
                     <th className="p-2 w-24 text-right">Jual</th>
@@ -172,6 +176,9 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
                         <Input value={it.name} onChange={(e) => updateItem(i, { name: e.target.value })} className="h-8 text-xs" />
                         {it.matched_product_id && <div className="text-[10px] text-green-600 mt-0.5">✓ cocok dengan produk existing</div>}
                       </td>
+                      <td className="p-1">
+                        <Input list="ai-invoice-cats" value={it.category ?? ""} onChange={(e) => updateItem(i, { category: e.target.value })} className="h-8 text-xs" placeholder="Pilih / ketik" />
+                      </td>
                       <td className="p-1"><Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: parseInt(e.target.value || "1", 10) || 1 })} className="h-8 text-xs text-right" /></td>
                       <td className="p-1"><Input type="number" value={it.cost_price} onChange={(e) => updateItem(i, { cost_price: parseFloat(e.target.value || "0") })} className="h-8 text-xs text-right" /></td>
                       <td className="p-1"><Input type="number" value={it.sell_price ?? 0} onChange={(e) => updateItem(i, { sell_price: parseFloat(e.target.value || "0") })} className="h-8 text-xs text-right" /></td>
@@ -182,6 +189,7 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
               </table>
             </div>
             {preview.total != null && <div className="text-right text-sm text-muted-foreground">Total struk: <b>{formatRupiah(preview.total)}</b></div>}
+
         </div>
       )}
 
