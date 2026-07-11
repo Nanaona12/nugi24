@@ -1296,6 +1296,12 @@ function POPage() {
                 <Button size="sm" variant="outline" onClick={() => printPO(detailOpen, detailItems)}>
                   <Download className="mr-2 h-4 w-4" /> Cetak / PDF
                 </Button>
+                {(detailOpen as any).receipt_image_path && (
+                  <Button size="sm" variant="outline" onClick={() => openReceipt(detailOpen)} disabled={receiptLoading}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> {receiptLoading ? "Membuka..." : "Lihat Struk"}
+                  </Button>
+                )}
+
                 {detailOpen.status === "draft" && (
                   <Button size="sm" variant="secondary" onClick={() => editDraft(detailOpen)}>
                     <ClipboardList className="mr-2 h-4 w-4" /> Edit Draft
