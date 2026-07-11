@@ -468,6 +468,18 @@ function POPage() {
     setDetailItems((data || []) as POItem[]);
   };
 
+  const openReceipt = async (po: PO) => {
+    const path = (po as any).receipt_image_path as string | null;
+    if (!path) { toast.info("Struk PO ini belum diunggah"); return; }
+    setReceiptLoading(true);
+    const { data, error } = await supabase.storage.from("receipts").createSignedUrl(path, 60 * 30);
+    setReceiptLoading(false);
+    if (error || !data?.signedUrl) { toast.error(error?.message || "Gagal buka struk"); return; }
+    setReceiptViewOpen({ url: data.signedUrl, supplier: po.supplier });
+  };
+
+
+
   const editDraft = async (po: PO) => {
     if (po.status !== "draft") {
       toast.info("Hanya PO berstatus Draft yang bisa diedit");
