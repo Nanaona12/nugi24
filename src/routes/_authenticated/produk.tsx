@@ -973,7 +973,22 @@ function ProdukPage() {
               </div>
             </div>
             <FormField label="Nama *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} />
-            <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
+            <div className="grid gap-1.5">
+              <Label className="text-sm">Kategori</Label>
+              <Input
+                list="produk-kategori-list"
+                value={form.category}
+                onChange={(e) => setForm({ ...form, category: e.target.value })}
+                placeholder="Pilih dari daftar atau ketik kategori baru"
+              />
+              <datalist id="produk-kategori-list">
+                {existingCategories.map((c) => <option key={c} value={c} />)}
+              </datalist>
+              <div className="text-[11px] text-muted-foreground">
+                {existingCategories.length} kategori tersedia. Ketik nama baru untuk menambah.
+              </div>
+            </div>
+
             <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
             <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
             <div className="sm:col-span-2">
