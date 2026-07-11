@@ -437,7 +437,7 @@ function POPage() {
     });
 
 
-    const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
+    const { error: e2 } = await (supabase as any).from("purchase_order_items").insert(rows);
     if (e2) { setSaving(false); return toast.error(e2.message); }
 
     // Upload struk (opsional)
