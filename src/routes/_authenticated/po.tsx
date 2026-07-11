@@ -249,8 +249,11 @@ function POPage() {
       return;
     }
     resetForm();
-    const target = Math.max(lowThreshold * 2, 10);
-    setItems(pool.map((p) => buildDraftItem(p, target - (p.stock ?? 0))));
+    setItems(pool.map((p) => {
+      const target = Math.max(effectiveThreshold(p) * 2, 10);
+      return buildDraftItem(p, target - (p.stock ?? 0));
+    }));
+
     setCreateOpen(true);
   };
 
