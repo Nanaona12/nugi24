@@ -71,6 +71,7 @@ type Product = {
   wholesale_price: number | null;
   wholesale_min_qty: number | null;
   stock: number;
+  image_url?: string | null;
 };
 
 type SaleMode = "eceran" | "grosiran";
