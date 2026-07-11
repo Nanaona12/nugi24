@@ -815,6 +815,7 @@ export type Database = {
       }
       purchase_order_items: {
         Row: {
+          category: string | null
           id: string
           po_id: string
           product_barcode: string | null
@@ -831,6 +832,7 @@ export type Database = {
           unit_name: string | null
         }
         Insert: {
+          category?: string | null
           id?: string
           po_id: string
           product_barcode?: string | null
@@ -847,6 +849,7 @@ export type Database = {
           unit_name?: string | null
         }
         Update: {
+          category?: string | null
           id?: string
           po_id?: string
           product_barcode?: string | null
