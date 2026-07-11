@@ -621,8 +621,10 @@ function POPage() {
               </div>
               <div className="text-xs text-muted-foreground">
                 {outOfStockCount} habis • {lowStockProducts.length - outOfStockCount} menipis
-                {" • "}batas ≤ {lowThreshold}
+                {" • "}batas default ≤ {lowThreshold}
+                {customThresholdCount > 0 && ` • ${customThresholdCount} produk pakai batas sendiri`}
               </div>
+
             </div>
             <div className="flex items-center gap-1.5">
               <Label className="text-xs whitespace-nowrap">Batas</Label>
