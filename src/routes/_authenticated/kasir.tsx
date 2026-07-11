@@ -33,6 +33,7 @@ import {
   Wallet,
   AlertTriangle,
   Sparkles,
+  Package,
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
