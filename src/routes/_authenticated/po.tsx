@@ -1082,8 +1082,14 @@ function POPage() {
 
             {/* Items - Desktop table */}
             <div className="space-y-2 hidden md:block">
+              <datalist id="po-cats">
+                {Array.from(new Set(products.map((p) => (p.category || "").trim()).filter(Boolean))).map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
               <div className="max-h-80 overflow-auto rounded border">
                 <table className="w-full min-w-[900px] text-sm">
+
 
                   <thead className="sticky top-0 bg-muted text-left">
                     <tr>
