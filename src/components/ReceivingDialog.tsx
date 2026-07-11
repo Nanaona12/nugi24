@@ -52,10 +52,11 @@ export function ReceivingDialog({
     if (!open || !poId) return;
     (async () => {
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("purchase_order_items")
         .select("id,product_id,product_code,product_name,qty,unit_cost,sell_price,qty_received,unit_name,unit_conversion,category")
         .eq("po_id", poId);
+
       const { data: catData } = await supabase.from("products").select("category");
       setExistingCategories(Array.from(new Set(((catData as any[]) || []).map((r) => (r.category || "").toString().trim()).filter(Boolean))));
 
