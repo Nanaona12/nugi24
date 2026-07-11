@@ -32,6 +32,7 @@ type Product = {
   wholesale_price: number | null;
   wholesale_min_qty: number | null;
   stock: number;
+  min_stock?: number | null;
   image_url?: string | null;
 };
 
@@ -46,6 +47,7 @@ type ProductForm = {
   wholesale_price: string;
   wholesale_min_qty: string;
   stock: string;
+  min_stock: string;
   image_url: string;
 };
 
@@ -59,8 +61,10 @@ const emptyForm: ProductForm = {
   wholesale_price: "",
   wholesale_min_qty: "",
   stock: "0",
+  min_stock: "",
   image_url: "",
 };
+
 
 
 function ProdukPage() {
@@ -233,7 +237,9 @@ function ProdukPage() {
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: String(p.stock),
+      min_stock: p.min_stock != null ? String(p.min_stock) : "",
       image_url: p.image_url || "",
+
     });
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
@@ -252,8 +258,10 @@ function ProdukPage() {
       wholesale_price: p.wholesale_price ? String(p.wholesale_price) : "",
       wholesale_min_qty: p.wholesale_min_qty ? String(p.wholesale_min_qty) : "",
       stock: "0",
+      min_stock: p.min_stock != null ? String(p.min_stock) : "",
       image_url: "",
     });
+
     // Salin satuan & harga tier dari produk sumber
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
@@ -286,6 +294,7 @@ function ProdukPage() {
       wholesale_price: form.wholesale_price ? parseNumber(form.wholesale_price) : null,
       wholesale_min_qty: form.wholesale_min_qty ? parseInt(form.wholesale_min_qty, 10) : null,
       stock: parseInt(form.stock || "0", 10),
+      min_stock: form.min_stock !== "" ? Math.max(0, parseInt(form.min_stock, 10) || 0) : null,
       image_url: form.image_url.trim() || null,
     };
     // Validasi satuan
@@ -303,6 +312,31 @@ function ProdukPage() {
     const baseTier1 = [...baseUnit.tiers].sort((a, b) => a.min_qty - b.min_qty)[0];
     const basePrice = baseTier1.price;
     payload.price = basePrice;
+
+    // Peringatan: harga jual di bawah modal (penyebab keuntungan minus)
+    const costBase = parseNumber(form.cost_price);
+    if (costBase > 0) {
+      const badTiers: string[] = [];
+      for (const u of cleanUnits) {
+        const conv = Math.max(1, Number(u.conversion || 1));
+        const unitCost = costBase * conv;
+        for (const t of u.tiers) {
+          if (t.price > 0 && t.price < unitCost) {
+            badTiers.push(`${u.name} ≥${t.min_qty}: ${formatRupiah(t.price)} < modal ${formatRupiah(unitCost)}`);
+          }
+        }
+      }
+      if (badTiers.length > 0) {
+        const ok = confirm(
+          `⚠ Harga jual di bawah harga modal — akan menyebabkan keuntungan MINUS:\n\n` +
+            badTiers.join("\n") +
+            `\n\nTetap simpan?`,
+        );
+        if (!ok) return;
+      }
+    }
+
+
 
     let prodId = form.id;
     if (form.id) {
@@ -933,6 +967,19 @@ function ProdukPage() {
             <FormField label="Kategori" value={form.category} onChange={(v) => setForm({ ...form, category: v })} />
             <FormField label="Stok (dalam satuan dasar)" value={form.stock} onChange={(v) => setForm({ ...form, stock: v })} type="number" />
             <FormField label="Harga Modal" value={form.cost_price} onChange={(v) => setForm({ ...form, cost_price: v })} type="number" />
+            <div className="sm:col-span-2">
+              <FormField
+                label="Batas stok menipis (opsional)"
+                value={form.min_stock}
+                onChange={(v) => setForm({ ...form, min_stock: v })}
+                type="number"
+                placeholder="Kosong = pakai batas global di halaman PO"
+              />
+              <div className="text-[11px] text-muted-foreground mt-1">
+                Jika stok ≤ nilai ini, produk muncul di kartu "Produk Habis / Stok Menipis" di halaman PO.
+              </div>
+            </div>
+
           </div>
 
           <ProductImageField

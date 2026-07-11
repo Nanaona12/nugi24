@@ -36,6 +36,9 @@ import {
   AlertTriangle,
   PackageX,
   Sparkles,
+  ImageIcon,
+  X as XIcon,
+
 } from "lucide-react";
 import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
 import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
@@ -56,7 +59,9 @@ type Product = {
   price: number;
   cost_price: number;
   stock: number;
+  min_stock: number | null;
 };
+
 
 type PO = {
   id: string;
@@ -66,7 +71,9 @@ type PO = {
   total: number;
   item_count: number;
   created_at: string;
+  receipt_image_path?: string | null;
 };
+
 
 type POItem = {
   id: string;
@@ -123,13 +130,19 @@ function POPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [receiveFor, setReceiveFor] = useState<PO | null>(null);
   const [editingPoId, setEditingPoId] = useState<string | null>(null);
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string>("");
+  const [existingReceiptPath, setExistingReceiptPath] = useState<string | null>(null);
+  const [receiptViewOpen, setReceiptViewOpen] = useState<{ url: string; supplier: string } | null>(null);
+  const [receiptLoading, setReceiptLoading] = useState(false);
   const poActionsRef = useRef<HTMLDivElement>(null);
+
 
 
   const load = async () => {
     const [{ data: poData, error: e1 }, { data: pData, error: e2 }] = await Promise.all([
       supabase.from("purchase_orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("products").select("id,code,barcode,name,price,cost_price,stock").order("name"),
+      supabase.from("products").select("id,code,barcode,name,price,cost_price,stock,min_stock").order("name"),
     ]);
     if (e1) toast.error(e1.message);
     else setPos((poData || []) as PO[]);
@@ -177,16 +190,26 @@ function POPage() {
     setItems([]);
     setPickQuery("");
     setEditingPoId(null);
+    setReceiptFile(null);
+    setReceiptPreview("");
+    setExistingReceiptPath(null);
   };
 
 
+
+  const effectiveThreshold = (p: Product) =>
+    p.min_stock != null && p.min_stock >= 0 ? p.min_stock : lowThreshold;
+
   const lowStockProducts = useMemo(() => {
     return products
-      .filter((p) => (p.stock ?? 0) <= lowThreshold)
+      .filter((p) => (p.stock ?? 0) <= effectiveThreshold(p))
       .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [products, lowThreshold]);
 
   const outOfStockCount = lowStockProducts.filter((p) => (p.stock ?? 0) <= 0).length;
+  const customThresholdCount = products.filter((p) => p.min_stock != null).length;
+
 
   const pricingIssueProducts = useMemo(() => {
     return products.filter((p) => {
@@ -241,13 +264,17 @@ function POPage() {
       return;
     }
     resetForm();
-    const target = Math.max(lowThreshold * 2, 10);
-    setItems(pool.map((p) => buildDraftItem(p, target - (p.stock ?? 0))));
+    setItems(pool.map((p) => {
+      const target = Math.max(effectiveThreshold(p) * 2, 10);
+      return buildDraftItem(p, target - (p.stock ?? 0));
+    }));
+
     setCreateOpen(true);
   };
 
   const addLowStockToDraft = (p: Product) => {
-    const target = Math.max(lowThreshold * 2, 10);
+    const target = Math.max(effectiveThreshold(p) * 2, 10);
+
     const qty = Math.max(1, target - (p.stock ?? 0));
     if (!createOpen) {
       resetForm();
@@ -399,9 +426,30 @@ function POPage() {
     });
 
     const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
-    setSaving(false);
-    if (e2) return toast.error(e2.message);
+    if (e2) { setSaving(false); return toast.error(e2.message); }
 
+    // Upload struk (opsional)
+    if (receiptFile && poId) {
+      try {
+        const { data: tid } = await (supabase as any).rpc("current_tenant_id");
+        if (tid) {
+          const ext = (receiptFile.name.split(".").pop() || "jpg").toLowerCase();
+          const path = `${tid}/po/${poId}.${ext}`;
+          const { error: upErr } = await supabase.storage
+            .from("receipts")
+            .upload(path, receiptFile, { upsert: true, contentType: receiptFile.type || "image/jpeg" });
+          if (upErr) {
+            toast.error("Struk gagal diunggah: " + upErr.message);
+          } else {
+            await supabase.from("purchase_orders").update({ receipt_image_path: path } as any).eq("id", poId);
+          }
+        }
+      } catch (e: any) {
+        toast.error("Struk gagal diunggah: " + (e?.message || ""));
+      }
+    }
+
+    setSaving(false);
     toast.success(
       editingPoId
         ? "Draft PO diperbarui"
@@ -413,6 +461,7 @@ function POPage() {
   };
 
 
+
   const openDetail = async (po: PO) => {
     setDetailOpen(po);
     const { data } = await supabase
@@ -421,6 +470,18 @@ function POPage() {
       .eq("po_id", po.id);
     setDetailItems((data || []) as POItem[]);
   };
+
+  const openReceipt = async (po: PO) => {
+    const path = (po as any).receipt_image_path as string | null;
+    if (!path) { toast.info("Struk PO ini belum diunggah"); return; }
+    setReceiptLoading(true);
+    const { data, error } = await supabase.storage.from("receipts").createSignedUrl(path, 60 * 30);
+    setReceiptLoading(false);
+    if (error || !data?.signedUrl) { toast.error(error?.message || "Gagal buka struk"); return; }
+    setReceiptViewOpen({ url: data.signedUrl, supplier: po.supplier });
+  };
+
+
 
   const editDraft = async (po: PO) => {
     if (po.status !== "draft") {
@@ -446,9 +507,13 @@ function POPage() {
     setNotes(po.notes || "");
     setItems(drafted);
     setEditingPoId(po.id);
+    setReceiptFile(null);
+    setReceiptPreview("");
+    setExistingReceiptPath((po as any).receipt_image_path || null);
     setDetailOpen(null);
     setCreateOpen(true);
   };
+
 
 
   const updateStatus = async (po: PO, status: string) => {
@@ -609,11 +674,13 @@ function POPage() {
               </div>
               <div className="text-xs text-muted-foreground">
                 {outOfStockCount} habis • {lowStockProducts.length - outOfStockCount} menipis
-                {" • "}batas ≤ {lowThreshold}
+                {" • "}batas default ≤ {lowThreshold}
+                {customThresholdCount > 0 && ` • ${customThresholdCount} produk pakai batas sendiri`}
               </div>
+
             </div>
             <div className="flex items-center gap-1.5">
-              <Label className="text-xs whitespace-nowrap">Batas</Label>
+              <Label className="text-xs whitespace-nowrap">Batas default</Label>
               <Input
                 type="number"
                 min={0}
@@ -624,7 +691,9 @@ function POPage() {
                   localStorage.setItem("po_low_threshold", String(v));
                 }}
                 className="h-8 w-16 text-xs"
+                title="Dipakai untuk produk yang belum diatur batas sendiri"
               />
+
             </div>
             {outOfStockCount > 0 && (
               <Button
@@ -649,6 +718,7 @@ function POPage() {
                   <th className="p-2">Kode</th>
                   <th className="p-2">Nama</th>
                   <th className="p-2 text-right">Stok</th>
+                  <th className="p-2 text-right w-24">Batas</th>
                   <th className="p-2 text-right">Harga</th>
                   <th className="p-2"></th>
                 </tr>
@@ -656,6 +726,8 @@ function POPage() {
               <tbody>
                 {lowStockProducts.map((p) => {
                   const out = (p.stock ?? 0) <= 0;
+                  const eff = effectiveThreshold(p);
+                  const isCustom = p.min_stock != null;
                   return (
                     <tr key={p.id} className="border-t hover:bg-muted/40">
                       <td className="p-2 font-mono text-xs">{p.code}</td>
@@ -664,6 +736,31 @@ function POPage() {
                         <Badge variant={out ? "destructive" : "secondary"}>
                           {out ? "Habis" : `${p.stock} tersisa`}
                         </Badge>
+                      </td>
+                      <td className="p-2 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Input
+                            type="number"
+                            min={0}
+                            defaultValue={isCustom ? String(p.min_stock) : ""}
+                            placeholder={String(lowThreshold)}
+                            onBlur={async (e) => {
+                              const raw = e.target.value.trim();
+                              const newVal = raw === "" ? null : Math.max(0, parseInt(raw, 10) || 0);
+                              if (newVal === (p.min_stock ?? null)) return;
+                              const { error } = await supabase
+                                .from("products")
+                                .update({ min_stock: newVal } as any)
+                                .eq("id", p.id);
+                              if (error) { toast.error(error.message); return; }
+                              setProducts((prev) => prev.map((x) => x.id === p.id ? { ...x, min_stock: newVal } : x));
+                              toast.success(newVal == null ? `Batas ${p.name}: pakai default` : `Batas ${p.name} = ${newVal}`);
+                            }}
+                            className="h-8 w-16 text-xs text-right"
+                            title={isCustom ? "Batas khusus produk ini" : "Kosong = pakai batas default"}
+                          />
+                          <span className="text-[10px] text-muted-foreground w-4">{isCustom ? "•" : ""}</span>
+                        </div>
                       </td>
                       <td className="p-2 text-right">{formatRupiah(p.price)}</td>
                       <td className="p-2 text-right">
@@ -679,6 +776,7 @@ function POPage() {
                   );
                 })}
               </tbody>
+
             </table>
           </div>
         </Card>
@@ -775,6 +873,52 @@ function POPage() {
               <Input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Opsional" />
             </div>
           </div>
+
+          {/* Struk / Foto Nota (opsional) */}
+          <div className="mt-3 rounded-md border bg-muted/30 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-primary" />
+              <div className="text-sm font-semibold">Foto Struk / Nota (opsional)</div>
+              {existingReceiptPath && !receiptFile && (
+                <Badge variant="secondary" className="ml-auto">Sudah ada — pilih file baru untuk ganti</Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  setReceiptFile(f);
+                  if (f) {
+                    const reader = new FileReader();
+                    reader.onload = () => setReceiptPreview(String(reader.result || ""));
+                    reader.readAsDataURL(f);
+                  } else {
+                    setReceiptPreview("");
+                  }
+                }}
+                className="h-9 text-xs max-w-xs"
+              />
+              {(receiptPreview || existingReceiptPath) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setReceiptFile(null); setReceiptPreview(""); }}
+                >
+                  <XIcon className="mr-1 h-3.5 w-3.5" /> Batalkan pilihan
+                </Button>
+              )}
+            </div>
+            {receiptPreview && (
+              <img src={receiptPreview} alt="Preview struk" className="max-h-40 rounded border" />
+            )}
+            <div className="text-[11px] text-muted-foreground">
+              Foto disimpan pribadi per toko dan bisa dibuka lagi dari detail PO.
+            </div>
+          </div>
+
 
           <div className="mt-3 grid gap-4 md:grid-cols-[240px_1fr]">
             {/* Product picker */}
@@ -1152,6 +1296,12 @@ function POPage() {
                 <Button size="sm" variant="outline" onClick={() => printPO(detailOpen, detailItems)}>
                   <Download className="mr-2 h-4 w-4" /> Cetak / PDF
                 </Button>
+                {(detailOpen as any).receipt_image_path && (
+                  <Button size="sm" variant="outline" onClick={() => openReceipt(detailOpen)} disabled={receiptLoading}>
+                    <ImageIcon className="mr-2 h-4 w-4" /> {receiptLoading ? "Membuka..." : "Lihat Struk"}
+                  </Button>
+                )}
+
                 {detailOpen.status === "draft" && (
                   <Button size="sm" variant="secondary" onClick={() => editDraft(detailOpen)}>
                     <ClipboardList className="mr-2 h-4 w-4" /> Edit Draft
@@ -1188,6 +1338,32 @@ function POPage() {
         onOpenChange={(o) => { if (!o) setReceiveFor(null); }}
         onDone={() => { setReceiveFor(null); setDetailOpen(null); load(); }}
       />
+
+      <Dialog open={!!receiptViewOpen} onOpenChange={(o) => !o && setReceiptViewOpen(null)}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle>Struk / Nota — {receiptViewOpen?.supplier}</DialogTitle>
+            <DialogDescription>Foto struk yang disimpan bersama PO.</DialogDescription>
+          </DialogHeader>
+          {receiptViewOpen && (
+            <div className="space-y-2">
+              <img
+                src={receiptViewOpen.url}
+                alt="Struk PO"
+                className="max-h-[70vh] w-full rounded border object-contain bg-muted"
+              />
+              <div className="flex justify-end">
+                <a href={receiptViewOpen.url} target="_blank" rel="noreferrer">
+                  <Button size="sm" variant="outline">
+                    <Download className="mr-2 h-4 w-4" /> Buka di tab baru
+                  </Button>
+                </a>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
