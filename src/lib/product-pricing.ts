@@ -14,6 +14,7 @@ export type ProductUnit = {
   conversion: number;  // berapa unit dasar per 1 satuan ini (pcs=1, slove=10, dus=60)
   sort_order: number;
   is_base: boolean;
+  show_in_showcase?: boolean; // tampilkan tingkatan harga satuan ini di galeri publik
   tiers: PriceTier[];  // diurutkan ascending by min_qty
 };
 
