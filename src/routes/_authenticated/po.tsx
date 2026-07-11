@@ -258,7 +258,8 @@ function POPage() {
   };
 
   const addLowStockToDraft = (p: Product) => {
-    const target = Math.max(lowThreshold * 2, 10);
+    const target = Math.max(effectiveThreshold(p) * 2, 10);
+
     const qty = Math.max(1, target - (p.stock ?? 0));
     if (!createOpen) {
       resetForm();
