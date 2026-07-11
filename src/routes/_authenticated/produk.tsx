@@ -833,6 +833,15 @@ function ProdukPage() {
                     <td className="p-3 font-mono text-xs text-muted-foreground">{p.barcode || <span className="italic opacity-60">—</span>}</td>
                     <td className="p-3 font-medium">
                       <div className="flex items-center gap-2 flex-wrap">
+                        <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border bg-muted">
+                          {p.image_url ? (
+                            <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center text-muted-foreground/40">
+                              <Package className="h-4 w-4" />
+                            </div>
+                          )}
+                        </div>
                         <span>{p.name}</span>
                         {(() => {
                           const iss = pricingIssueFor(p);
