@@ -183,7 +183,9 @@ function ShowcaseDetail() {
         ) : (
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((p) => {
-              const pUnits = (unitsByProduct[p.id] ?? []).sort((a, b) => a.sort_order - b.sort_order);
+              const pUnits = (unitsByProduct[p.id] ?? [])
+                .filter((u) => u.show_in_showcase !== false)
+                .sort((a, b) => a.sort_order - b.sort_order);
               const out = p.stock <= 0;
               return (
                 <Card key={p.id} className={`overflow-hidden flex flex-col ${out ? "opacity-70" : ""}`}>
