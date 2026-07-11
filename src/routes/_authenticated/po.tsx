@@ -131,7 +131,7 @@ function POPage() {
   const load = async () => {
     const [{ data: poData, error: e1 }, { data: pData, error: e2 }] = await Promise.all([
       supabase.from("purchase_orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("products").select("id,code,barcode,name,price,cost_price,stock").order("name"),
+      supabase.from("products").select("id,code,barcode,name,price,cost_price,stock,min_stock").order("name"),
     ]);
     if (e1) toast.error(e1.message);
     else setPos((poData || []) as PO[]);
