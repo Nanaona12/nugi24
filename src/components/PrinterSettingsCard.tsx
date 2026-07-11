@@ -5,13 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Printer, Bluetooth, Usb, TestTube2 } from "lucide-react";
+import { Printer, Bluetooth, Usb, TestTube2, Smartphone } from "lucide-react";
 import {
   defaultPrinterSettings,
   loadPrinterSettings,
   savePrinterSettings,
   supportsWebBluetooth,
   supportsWebUsb,
+  isAndroid,
   type PrinterSettings,
 } from "@/lib/printer-settings";
 import { pairBluetooth, pairUsb, testPrint } from "@/lib/printer";
@@ -21,6 +22,7 @@ export function PrinterSettingsCard() {
   const [busy, setBusy] = useState(false);
   const hasBt = supportsWebBluetooth();
   const hasUsb = supportsWebUsb();
+  const onAndroid = isAndroid();
 
   useEffect(() => { setS(loadPrinterSettings()); }, []);
 
@@ -78,6 +80,7 @@ export function PrinterSettingsCard() {
                 <SelectItem value="browser">Browser Print (universal)</SelectItem>
                 <SelectItem value="bluetooth" disabled={!hasBt}>Bluetooth Thermal {hasBt ? "" : "(tidak didukung browser ini)"}</SelectItem>
                 <SelectItem value="usb" disabled={!hasUsb}>USB Thermal {hasUsb ? "" : "(tidak didukung browser ini)"}</SelectItem>
+                <SelectItem value="rawbt">RawBT (POS Android / printer built-in)</SelectItem>
                 <SelectItem value="ask">Tanya setiap kali</SelectItem>
               </SelectContent>
             </Select>
@@ -122,6 +125,28 @@ export function PrinterSettingsCard() {
             </Button>
           </div>
         </div>
+
+        {(onAndroid || s.method === "rawbt") && (
+          <div className="rounded-md border border-primary/40 bg-primary/5 p-3 space-y-2">
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Smartphone className="h-4 w-4" /> RawBT — untuk POS Android (Harvard/Sunmi/PAX/dll)
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Browser Chrome di Android <b>tidak bisa</b> mengontrol printer thermal built-in secara langsung.
+              Untuk mencetak dari perangkat POS Android, install aplikasi <b>RawBT</b> dari Play Store (gratis),
+              lalu di RawBT pilih printer bawaan / Bluetooth Anda satu kali. Setelah itu pilih metode <b>RawBT</b>
+              di sini — struk akan langsung dicetak lewat RawBT.
+            </p>
+            <a
+              className="inline-flex items-center text-xs font-medium text-primary underline"
+              href="https://play.google.com/store/apps/details?id=ru.a402d.rawbtprinter"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Buka RawBT di Play Store →
+            </a>
+          </div>
+        )}
 
         <div>
           <Button onClick={doTest} disabled={busy}>

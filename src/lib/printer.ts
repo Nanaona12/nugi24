@@ -5,6 +5,10 @@ import type { PaperWidth, PrinterSettings } from "./printer-settings";
 const BT_SERVICE = 0x18f0; // 000018f0-0000-1000-8000-00805f9b34fb
 const BT_CHAR = 0x2af1;
 
+function isMobile(): boolean {
+  return typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 /** Print via browser dialog with @page sized for thermal paper. */
 export function printBrowser(r: ReceiptData, paper: PaperWidth): void {
   const widthMm = paper;
@@ -17,31 +21,53 @@ export function printBrowser(r: ReceiptData, paper: PaperWidth): void {
 </style></head><body><pre>${text.replace(/[&<>]/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;"} as any)[c])}</pre>
 <script>window.onload=()=>{setTimeout(()=>{window.print();setTimeout(()=>window.close(),400)},150)}<\/script>
 </body></html>`;
-  const w = window.open("", "_blank", "width=380,height=640");
-  if (!w) {
-    // popup blocked → fallback iframe
-    const iframe = document.createElement("iframe");
-    iframe.style.position = "fixed";
-    iframe.style.right = "0";
-    iframe.style.bottom = "0";
-    iframe.style.width = "0";
-    iframe.style.height = "0";
-    iframe.style.border = "0";
-    document.body.appendChild(iframe);
-    const doc = iframe.contentDocument!;
-    doc.open();
-    doc.write(html);
-    doc.close();
-    setTimeout(() => {
+
+  // On mobile, popup windows are often blocked or don't trigger print dialog.
+  // Prefer iframe fallback which is more reliable across Android Chrome/WebView.
+  const useIframe = isMobile() || !window.open;
+  if (!useIframe) {
+    const w = window.open("", "_blank", "width=380,height=640");
+    if (w) {
+      w.document.open();
+      w.document.write(html);
+      w.document.close();
+      return;
+    }
+  }
+  const iframe = document.createElement("iframe");
+  iframe.style.position = "fixed";
+  iframe.style.right = "0";
+  iframe.style.bottom = "0";
+  iframe.style.width = "0";
+  iframe.style.height = "0";
+  iframe.style.border = "0";
+  document.body.appendChild(iframe);
+  const doc = iframe.contentDocument!;
+  doc.open();
+  doc.write(html);
+  doc.close();
+  setTimeout(() => {
+    try {
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
-      setTimeout(() => document.body.removeChild(iframe), 2000);
-    }, 300);
-    return;
-  }
-  w.document.open();
-  w.document.write(html);
-  w.document.close();
+    } catch (e) {
+      throw new Error("Browser tidak bisa membuka dialog cetak. Coba metode RawBT (untuk printer POS Android) atau Bluetooth/USB.");
+    }
+    setTimeout(() => { try { document.body.removeChild(iframe); } catch {} }, 3000);
+  }, 300);
+}
+
+/** Print via RawBT app (Android). Requires user to install RawBT from Play Store.
+ *  RawBT drives built-in / Bluetooth / USB thermal printers on Android POS devices. */
+export function printRawBT(r: ReceiptData, paper: PaperWidth): void {
+  const bytes = buildEscposReceipt(r, paper);
+  // base64 encode
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  const b64 = btoa(bin);
+  // RawBT intent — opens the RawBT app which sends the ESC/POS payload to the configured printer
+  const url = `intent:base64,${b64}#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;`;
+  window.location.href = url;
 }
 
 // ------------------- Bluetooth -------------------
@@ -131,6 +157,7 @@ async function sendUsbBytes(data: Uint8Array): Promise<void> {
 export async function printReceipt(r: ReceiptData, settings: PrinterSettings): Promise<void> {
   const method = settings.method;
   if (method === "browser") return printBrowser(r, settings.paper);
+  if (method === "rawbt") return printRawBT(r, settings.paper);
   if (method === "bluetooth") {
     const bytes = buildEscposReceipt(r, settings.paper);
     return sendBluetoothBytes(bytes);

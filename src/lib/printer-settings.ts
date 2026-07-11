@@ -1,4 +1,4 @@
-export type PrinterMethod = "browser" | "bluetooth" | "usb" | "ask";
+export type PrinterMethod = "browser" | "bluetooth" | "usb" | "rawbt" | "ask";
 export type PaperWidth = 58 | 80;
 
 export type PrinterSettings = {
@@ -41,4 +41,7 @@ export function supportsWebBluetooth(): boolean {
 }
 export function supportsWebUsb(): boolean {
   return typeof navigator !== "undefined" && !!(navigator as any).usb;
+}
+export function isAndroid(): boolean {
+  return typeof navigator !== "undefined" && /Android/i.test(navigator.userAgent);
 }
