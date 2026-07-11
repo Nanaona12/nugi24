@@ -992,46 +992,93 @@ function KeuntunganPage() {
       )}
 
 
-      {stats.lossMakers.length > 0 && (
-        <Card className="border-destructive/40 bg-destructive/5 p-4">
-          <div className="mb-2 flex items-center gap-2 text-sm font-semibold text-destructive">
-            <AlertTriangle className="h-4 w-4" />
-            Penyebab Keuntungan Minus — {stats.lossMakers.length} produk dijual di bawah modal
-          </div>
-          <p className="mb-3 text-xs text-muted-foreground">
-            Produk berikut harga jualnya lebih rendah dari harga modal. Naikkan harga jual (terutama tier grosir/slove)
-            atau perbaiki harga modal di menu Produk.
-          </p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th className="p-2">Produk</th>
-                  <th className="p-2 text-right">Qty</th>
-                  <th className="p-2 text-right">Omset</th>
-                  <th className="p-2 text-right">Modal</th>
-                  <th className="p-2 text-right">Kerugian</th>
-                  <th className="p-2 text-right">Kejadian</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.lossMakers.slice(0, 8).map((l) => (
-                  <tr key={l.name} className="border-t">
-                    <td className="p-2 font-medium">{l.name}</td>
-                    <td className="p-2 text-right">{l.qty}</td>
-                    <td className="p-2 text-right">{formatRupiah(l.revenue)}</td>
-                    <td className="p-2 text-right text-muted-foreground">{formatRupiah(l.cost)}</td>
-                    <td className="p-2 text-right font-semibold text-destructive">{formatRupiah(l.loss)}</td>
-                    <td className="p-2 text-right">
-                      <Badge variant="destructive">{l.occurrences}×</Badge>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
-      )}
+      {stats.lossMakers.length > 0 && (() => {
+        const activeLoss = stats.lossMakers.filter((l) => !resolvedLoss[l.name]);
+        const resolvedList = stats.lossMakers.filter((l) => resolvedLoss[l.name]);
+        const shown = showResolvedLoss ? resolvedList : activeLoss;
+        if (activeLoss.length === 0 && resolvedList.length === 0) return null;
+        return (
+          <Card className={`p-4 ${showResolvedLoss ? "border-emerald-500/40 bg-emerald-500/5" : "border-destructive/40 bg-destructive/5"}`}>
+            <div className="mb-2 flex flex-wrap items-center gap-2 text-sm font-semibold">
+              <AlertTriangle className={`h-4 w-4 ${showResolvedLoss ? "text-emerald-600" : "text-destructive"}`} />
+              <span className={showResolvedLoss ? "text-emerald-700 dark:text-emerald-400" : "text-destructive"}>
+                {showResolvedLoss
+                  ? `Penyebab Keuntungan Minus (sudah diselesaikan) — ${resolvedList.length}`
+                  : `Penyebab Keuntungan Minus — ${activeLoss.length} produk dijual di bawah modal`}
+              </span>
+              <div className="ml-auto flex items-center gap-2">
+                {resolvedList.length > 0 && (
+                  <Button size="sm" variant="ghost" onClick={() => setShowResolvedLoss((v) => !v)}>
+                    {showResolvedLoss ? `Lihat yang aktif (${activeLoss.length})` : `Lihat yang selesai (${resolvedList.length})`}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <p className="mb-3 text-xs text-muted-foreground">
+              {showResolvedLoss
+                ? "Produk yang sudah ditandai selesai — masalahnya sudah dianggap teratasi. Data transaksi tetap ada."
+                : "Produk berikut harga jualnya lebih rendah dari harga modal. Naikkan harga jual (terutama tier grosir/slove) atau perbaiki harga modal di menu Produk, lalu tandai selesai."}
+            </p>
+            {shown.length === 0 ? (
+              <div className="text-xs text-muted-foreground italic p-2">
+                {showResolvedLoss ? "Belum ada yang ditandai selesai." : "🎉 Tidak ada masalah aktif — semuanya sudah diselesaikan."}
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="p-2">Produk</th>
+                      <th className="p-2 text-right">Qty</th>
+                      <th className="p-2 text-right">Omset</th>
+                      <th className="p-2 text-right">Modal</th>
+                      <th className="p-2 text-right">Kerugian</th>
+                      <th className="p-2 text-right">Kejadian</th>
+                      <th className="p-2 text-right"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {shown.slice(0, 20).map((l) => {
+                      const r = resolvedLoss[l.name];
+                      return (
+                        <tr key={l.name} className="border-t">
+                          <td className="p-2 font-medium">
+                            {l.name}
+                            {r?.note && (
+                              <div className="text-[11px] text-emerald-700 dark:text-emerald-400 mt-0.5">
+                                ✓ {r.note}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-2 text-right">{l.qty}</td>
+                          <td className="p-2 text-right">{formatRupiah(l.revenue)}</td>
+                          <td className="p-2 text-right text-muted-foreground">{formatRupiah(l.cost)}</td>
+                          <td className="p-2 text-right font-semibold text-destructive">{formatRupiah(l.loss)}</td>
+                          <td className="p-2 text-right">
+                            <Badge variant="destructive">{l.occurrences}×</Badge>
+                          </td>
+                          <td className="p-2 text-right">
+                            {r ? (
+                              <Button size="sm" variant="ghost" onClick={() => unmarkLossResolved(l.name)}>
+                                Batal
+                              </Button>
+                            ) : (
+                              <Button size="sm" variant="outline" onClick={() => markLossResolved(l.name)}>
+                                Tandai selesai
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        );
+      })()}
+
 
       {filteredItems.length === 0 && (
         <Card className="p-6 text-sm text-muted-foreground">Belum ada data transaksi pada rentang ini.</Card>
