@@ -36,6 +36,9 @@ import {
   AlertTriangle,
   PackageX,
   Sparkles,
+  ImageIcon,
+  X as XIcon,
+
 } from "lucide-react";
 import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
 import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
