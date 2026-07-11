@@ -30,7 +30,7 @@ export const Route = createFileRoute("/showcase/$slug")({
 
 type Tenant = { id: string; name: string; slug: string; phone: string | null; address: string | null; showcase_description: string | null; latitude: number | null; longitude: number | null };
 type Product = { id: string; name: string; category: string | null; price: number; stock: number; image_url: string | null; code: string };
-type Unit = { id: string; product_id: string; name: string; conversion: number; sort_order: number; is_base: boolean };
+type Unit = { id: string; product_id: string; name: string; conversion: number; sort_order: number; is_base: boolean; show_in_showcase: boolean };
 type Tier = { id: string; product_unit_id: string; min_qty: number; price: number };
 
 function ShowcaseDetail() {
