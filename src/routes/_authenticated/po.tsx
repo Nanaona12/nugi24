@@ -60,6 +60,7 @@ type Product = {
   cost_price: number;
   stock: number;
   min_stock: number | null;
+  category?: string | null;
 };
 
 
@@ -87,6 +88,7 @@ type POItem = {
   sell_price?: number | null;
   unit_name?: string | null;
   unit_conversion?: number | null;
+  category?: string | null;
 };
 
 type DraftItem = {
@@ -98,7 +100,9 @@ type DraftItem = {
   sell_price: string;
   unit_name: string;      // "pcs" | "slove" | "dus" | ...
   unit_conversion: string; // berapa pcs per 1 satuan (default 1)
+  category: string;
 };
+
 
 
 
@@ -142,7 +146,7 @@ function POPage() {
   const load = async () => {
     const [{ data: poData, error: e1 }, { data: pData, error: e2 }] = await Promise.all([
       supabase.from("purchase_orders").select("*").order("created_at", { ascending: false }),
-      supabase.from("products").select("id,code,barcode,name,price,cost_price,stock,min_stock").order("name"),
+      supabase.from("products").select("id,code,barcode,name,price,cost_price,stock,min_stock,category").order("name"),
     ]);
     if (e1) toast.error(e1.message);
     else setPos((poData || []) as PO[]);
@@ -252,7 +256,9 @@ function POPage() {
     sell_price: String(p.price),
     unit_name: "pcs",
     unit_conversion: "1",
+    category: p.category || "",
   });
+
 
 
   const openCreateForLowStock = (mode: "out" | "low") => {
@@ -293,9 +299,10 @@ function POPage() {
   const addManual = () => {
     setItems((prev) => [
       ...prev,
-      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0", unit_name: "pcs", unit_conversion: "1" },
+      { product_id: null, product_code: "", product_name: "", qty: "1", unit_cost: "0", sell_price: "0", unit_name: "pcs", unit_conversion: "1", category: "" },
     ]);
   };
+
 
   const applyInvoiceResult = (r: AiInvoiceResult) => {
     if (r.supplier && !supplier.trim()) setSupplier(r.supplier);
@@ -317,9 +324,10 @@ function POPage() {
         sell_price: String(Math.round(it.sell_price ?? matched?.price ?? 0)),
         unit_name: "pcs",
         unit_conversion: "1",
-
+        category: (it.category || matched?.category || "").toString(),
       };
     });
+
     setItems((prev) => [...prev, ...newItems]);
     setCreateOpen(true);
     toast.success(`${newItems.length} item dari struk ditambahkan`);
@@ -422,8 +430,10 @@ function POPage() {
         subtotal: qty * unit_cost,
         unit_name,
         unit_conversion,
+        category: it.category?.trim() || null,
       };
     });
+
 
     const { error: e2 } = await supabase.from("purchase_order_items").insert(rows);
     if (e2) { setSaving(false); return toast.error(e2.message); }
@@ -502,7 +512,9 @@ function POPage() {
       sell_price: it.sell_price != null ? String(it.sell_price) : "",
       unit_name: it.unit_name || "pcs",
       unit_conversion: String(it.unit_conversion ?? 1),
+      category: it.category || "",
     }));
+
     setSupplier(po.supplier);
     setNotes(po.notes || "");
     setItems(drafted);
