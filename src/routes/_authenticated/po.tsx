@@ -243,7 +243,9 @@ function POPage() {
         sell_price: String(p.price),
         unit_name: "pcs",
         unit_conversion: "1",
+        category: p.category || "",
       },
+
     ]);
   };
 
