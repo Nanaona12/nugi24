@@ -187,7 +187,11 @@ function POPage() {
     setItems([]);
     setPickQuery("");
     setEditingPoId(null);
+    setReceiptFile(null);
+    setReceiptPreview("");
+    setExistingReceiptPath(null);
   };
+
 
 
   const effectiveThreshold = (p: Product) =>
