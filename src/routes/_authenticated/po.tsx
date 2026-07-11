@@ -874,6 +874,52 @@ function POPage() {
             </div>
           </div>
 
+          {/* Struk / Foto Nota (opsional) */}
+          <div className="mt-3 rounded-md border bg-muted/30 p-3 space-y-2">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-4 w-4 text-primary" />
+              <div className="text-sm font-semibold">Foto Struk / Nota (opsional)</div>
+              {existingReceiptPath && !receiptFile && (
+                <Badge variant="secondary" className="ml-auto">Sudah ada — pilih file baru untuk ganti</Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Input
+                type="file"
+                accept="image/*"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] || null;
+                  setReceiptFile(f);
+                  if (f) {
+                    const reader = new FileReader();
+                    reader.onload = () => setReceiptPreview(String(reader.result || ""));
+                    reader.readAsDataURL(f);
+                  } else {
+                    setReceiptPreview("");
+                  }
+                }}
+                className="h-9 text-xs max-w-xs"
+              />
+              {(receiptPreview || existingReceiptPath) && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => { setReceiptFile(null); setReceiptPreview(""); }}
+                >
+                  <XIcon className="mr-1 h-3.5 w-3.5" /> Batalkan pilihan
+                </Button>
+              )}
+            </div>
+            {receiptPreview && (
+              <img src={receiptPreview} alt="Preview struk" className="max-h-40 rounded border" />
+            )}
+            <div className="text-[11px] text-muted-foreground">
+              Foto disimpan pribadi per toko dan bisa dibuka lagi dari detail PO.
+            </div>
+          </div>
+
+
           <div className="mt-3 grid gap-4 md:grid-cols-[240px_1fr]">
             {/* Product picker */}
             <div className="space-y-2">
