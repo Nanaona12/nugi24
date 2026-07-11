@@ -1190,7 +1190,9 @@ function POPage() {
                 onClose={() => setAiOpen(false)}
                 onResult={applyInvoiceResult}
                 existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
+                existingCategories={Array.from(new Set(products.map((p) => (p.category || "").trim()).filter(Boolean)))}
               />
+
             </div>
 
             <div className="md:col-span-2 flex flex-wrap justify-between border-t pt-2 text-sm gap-2">
