@@ -753,6 +753,7 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          min_stock: number | null
           name: string
           price: number
           stock: number
@@ -769,6 +770,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          min_stock?: number | null
           name: string
           price?: number
           stock?: number
@@ -785,6 +787,7 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          min_stock?: number | null
           name?: string
           price?: number
           stock?: number
@@ -889,6 +892,7 @@ export type Database = {
           id: string
           item_count: number
           notes: string | null
+          receipt_image_path: string | null
           received_at: string | null
           received_status: string
           status: string
@@ -903,6 +907,7 @@ export type Database = {
           id?: string
           item_count?: number
           notes?: string | null
+          receipt_image_path?: string | null
           received_at?: string | null
           received_status?: string
           status?: string
@@ -917,6 +922,7 @@ export type Database = {
           id?: string
           item_count?: number
           notes?: string | null
+          receipt_image_path?: string | null
           received_at?: string | null
           received_status?: string
           status?: string
@@ -1068,6 +1074,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      resolved_loss_products: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          product_name: string
+          resolved_by: string | null
+          tenant_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          product_name: string
+          resolved_by?: string | null
+          tenant_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          product_name?: string
+          resolved_by?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
       }
       shift_expenses: {
         Row: {
