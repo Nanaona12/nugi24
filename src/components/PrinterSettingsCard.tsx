@@ -5,13 +5,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Printer, Bluetooth, Usb, TestTube2 } from "lucide-react";
+import { Printer, Bluetooth, Usb, TestTube2, Smartphone } from "lucide-react";
 import {
   defaultPrinterSettings,
   loadPrinterSettings,
   savePrinterSettings,
   supportsWebBluetooth,
   supportsWebUsb,
+  isAndroid,
   type PrinterSettings,
 } from "@/lib/printer-settings";
 import { pairBluetooth, pairUsb, testPrint } from "@/lib/printer";
