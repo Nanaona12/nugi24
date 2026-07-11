@@ -49,8 +49,10 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
       const r = await analyze({ data: {
         images: images.map((d) => ({ data_url: d })),
         existing_products: existingProducts.slice(0, 200),
+        existing_categories: existingCategories.slice(0, 100),
         store_type: storeType,
       } });
+
       setPreview(r);
       if ((r.items || []).length === 0) toast.warning("Tidak ada item terdeteksi — coba foto ulang");
       else toast.success(`${r.items.length} item terdeteksi`);
