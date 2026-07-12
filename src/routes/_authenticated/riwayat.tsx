@@ -317,6 +317,12 @@ function RiwayatPage() {
             <div className="space-y-3 text-sm">
               <div className="text-xs text-muted-foreground">
                 {new Date(selected.created_at).toLocaleString("id-ID")}
+                {(selected.customer_name || selected.customer_phone) && (
+                  <div className="mt-1 text-foreground">
+                    Pelanggan: <span className="font-medium">{selected.customer_name || "-"}</span>
+                    {selected.customer_phone && <span className="ml-1 text-muted-foreground">({selected.customer_phone})</span>}
+                  </div>
+                )}
               </div>
               <ul className="divide-y rounded border">
                 {items.map((it) => (
