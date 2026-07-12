@@ -896,7 +896,7 @@ function KasirPage() {
         toast.error("Gagal simpan pelanggan: " + (e?.message || "unknown"));
       }
     }
-    const change = paidNum - totals.total;
+    const change = Math.max(0, paidNum - totals.total);
     const { data: tx, error: txErr } = await supabase
       .from("transactions")
       .insert({
