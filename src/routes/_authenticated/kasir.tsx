@@ -805,6 +805,7 @@ function KasirPage() {
     let paidNum: number;
     let cashPart = 0;
     let qrisPart = 0;
+    let debtAmount = 0;
     if (paymentMethod === "qris") {
       if (!qris || qris.status !== "paid") {
         toast.error("QRIS belum dibayar");
@@ -824,13 +825,30 @@ function KasirPage() {
         return;
       }
       paidNum = cashPart + qrisPart;
+    } else if (paymentMethod === "debt") {
+      // Full kasbon: seluruh total jadi hutang
+      paidNum = 0;
+      debtAmount = totals.total;
     } else {
       paidNum = Number(paid.replace(/[^\d]/g, ""));
       if (paidNum < totals.total) {
-        toast.error("Uang dibayar kurang");
+        if (debtRemainder) {
+          debtAmount = totals.total - paidNum;
+          cashPart = paidNum;
+        } else {
+          toast.error("Uang dibayar kurang");
+          return;
+        }
+      } else {
+        cashPart = paidNum;
+      }
+    }
+    // Validasi debtor bila ada hutang
+    if (debtAmount > 0) {
+      if (!debtorName.trim()) {
+        toast.error("Nama pengutang wajib diisi");
         return;
       }
-      cashPart = paidNum;
     }
     const phoneClean = normalizePhone(customerPhone);
     if (customerPhone && phoneClean.length < 8) {
