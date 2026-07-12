@@ -343,17 +343,32 @@ export const closeShift = createServerFn({ method: "POST" })
     const tenantId = await getTenantId(context);
     // Recompute totals server-side for trust
     const { data: txs } = await context.supabase
-      .from("transactions").select("total, payment_method").eq("shift_id", data.shift_id).eq("tenant_id", tenantId);
+      .from("transactions").select("total, payment_method, qris_amount").eq("shift_id", data.shift_id).eq("tenant_id", tenantId);
     const { data: exps } = await context.supabase
       .from("shift_expenses").select("amount").eq("shift_id", data.shift_id).eq("tenant_id", tenantId);
     let total_sales = 0, total_cash = 0, total_qris = 0, total_other = 0, total_transactions = 0;
     for (const t of (txs ?? []) as any[]) {
       const amt = Number(t.total) || 0;
+      const method = String(t.payment_method || "").toLowerCase();
+      const isDebt = method === "debt" || method === "kasbon" || method === "hutang";
       total_sales += amt;
       total_transactions += 1;
-      if (t.payment_method === "cash") total_cash += amt;
-      else if (t.payment_method === "qris") total_qris += amt;
-      else total_other += amt;
+      if (isDebt) continue;
+      let qris_portion = Number(t.qris_amount) || 0;
+      let cash_portion = 0;
+      let other_portion = 0;
+      if (method === "cash") {
+        cash_portion = amt;
+      } else if (method === "qris") {
+        if (qris_portion <= 0) qris_portion = amt;
+      } else if (method === "split") {
+        cash_portion = Math.max(0, amt - qris_portion);
+      } else {
+        other_portion = Math.max(0, amt - qris_portion);
+      }
+      total_cash += cash_portion;
+      total_qris += qris_portion;
+      total_other += other_portion;
     }
     const total_expenses = ((exps ?? []) as any[]).reduce((s, e) => s + (Number(e.amount) || 0), 0);
     const { data: cur } = await context.supabase
