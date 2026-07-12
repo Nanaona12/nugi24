@@ -1,62 +1,58 @@
+## Masalah
 
-# Rencana: Cetak Struk Fisik ke Printer
+Transaksi **SPLIT** (bayar sebagian tunai + sebagian QRIS) tidak dihitung dengan benar di ringkasan shift.
 
-Menambah dukungan **print fisik** untuk struk transaksi dari halaman kasir dan riwayat, dengan 3 metode: Browser Print, Bluetooth Thermal (ESC/POS), USB Thermal (ESC/POS). Mendukung kertas **58mm dan 80mm**, dan pengaturan **auto-print** setelah transaksi selesai.
+Contoh dari screenshot Anda:
+- Struk #74778990 SPLIT: Total Rp 409.300 → Cash Rp 244.000 + QRIS Rp 165.300.
+- Di closing shift muncul QRIS hanya Rp 42.500 (padahal harusnya ≥ Rp 200 rb) dan tunai kurang ~Rp 300 rb, sehingga setoran ke pembukuan jadi Rp 2.423.100 bukan Rp 2.725.900.
 
-## Yang akan dibangun
+### Penyebab
 
-### 1. Pengaturan printer (di halaman Pengaturan)
-Bagian baru "Printer Struk":
-- **Metode default**: Browser / Bluetooth / USB / Tanya setiap kali
-- **Ukuran kertas**: 58mm atau 80mm
-- **Auto-print setelah transaksi**: on/off
-- **Nama header/footer struk** (opsional, pakai yang sudah ada dari tenant)
-- Tombol "Uji Cetak" untuk tes tanpa harus transaksi
-- Tombol "Pasangkan printer Bluetooth" / "Pasangkan printer USB" (menyimpan device id di localStorage supaya tidak perlu pilih ulang tiap kali)
+Di `src/lib/cashier.functions.ts` (fungsi `getShiftSummary` dan `closeShift`), penjumlahan dilakukan seperti ini:
 
-Semua pengaturan disimpan di `localStorage` per perangkat (bukan di database) karena tiap kasir bisa punya printer beda.
+```
+if payment_method === "cash"  → masuk total_cash
+else if payment_method === "qris" → masuk total_qris
+else                              → masuk total_other   ← SPLIT nyangkut di sini
+```
 
-### 2. Metode cetak
+Padahal tabel `transactions` menyimpan porsi QRIS di kolom terpisah `qris_amount`. Untuk transaksi `split`:
+- Porsi QRIS ada di `qris_amount` — sekarang **diabaikan** (tidak masuk `total_qris`).
+- Porsi tunai = `total - qris_amount` — sekarang **tidak masuk** `total_cash`, jadi `expected_cash` (setoran) kurang.
 
-**a. Browser Print (universal)**
-- Render struk ke halaman HTML tersembunyi dengan CSS `@page` ukuran 58mm/80mm dan style monospace.
-- Panggil `window.print()`. Bekerja untuk printer thermal (via driver) maupun printer biasa. Kompatibel semua device.
+Transaksi **kasbon/hutang** juga sebaiknya tidak dihitung sebagai kas masuk (tidak ada uang diterima).
 
-**b. Bluetooth Thermal (Web Bluetooth API)**
-- Buat encoder ESC/POS ringan (tanpa library Node) untuk: init, teks kiri/tengah/kanan, bold, size normal/besar, feed, cut, garis putus-putus.
-- Kirim byte via GATT characteristic ke printer (service `000018f0-0000-1000-8000-00805f9b34fb`).
-- Simpan device untuk auto-reconnect. Deteksi platform: sembunyikan opsi ini di iOS/Safari dengan pesan penjelasan.
+## Perbaikan
 
-**c. USB Thermal (Web USB API)**
-- Encoder ESC/POS sama seperti Bluetooth.
-- `navigator.usb.requestDevice()` dengan filter class printer (0x07), lalu `transferOut` ke endpoint bulk.
-- Simpan `vendorId`/`productId`. Deteksi Chromium: sembunyikan di browser lain.
+Ubah logika pembagian di dua fungsi (`getShiftSummary` dan `closeShift`) di `src/lib/cashier.functions.ts` — juga tarik kolom `qris_amount` di query — menjadi:
 
-### 3. Integrasi ke alur transaksi
-- **Kasir (setelah bayar sukses)**: jika auto-print ON, cetak otomatis pakai metode default. Tambah juga tombol "Cetak Struk" di dialog sukses (samping tombol WhatsApp / Unduh PNG yang sudah ada).
-- **Riwayat**: tombol "Cetak Struk" di dialog detail transaksi (samping "Unduh PNG").
+```
+qris_portion = Number(t.qris_amount) || 0
+if payment_method === "cash":
+    cash_portion = total
+elif payment_method === "qris":
+    cash_portion = 0            (qris_portion fallback = total kalau kolom kosong)
+elif payment_method === "split":
+    cash_portion = max(0, total - qris_portion)
+elif payment_method === "debt" (kasbon):
+    cash_portion = 0, qris_portion = 0     # tidak ada uang diterima
+else:  # transfer / lainnya
+    cash_portion = 0
+    other_portion = total - qris_portion
 
-### 4. Fitur pendukung
-- Toast bila printer belum dipasangkan / gagal konek, dengan tombol shortcut ke Pengaturan.
-- Fallback graceful: jika Bluetooth/USB gagal, tawarkan Browser Print.
-- Struk berisi data yang sudah ada di `receipt-image.ts`: nama toko, no tx, waktu, item + qty × harga, total, bayar (cash/qris/split), kembali, pelanggan (bila ada), footer terima kasih.
+total_cash  += cash_portion
+total_qris  += qris_portion
+total_other += other_portion (kalau ada)
+```
 
-## Rincian teknis
+`expected_cash = opening_cash + total_cash − total_expenses` akan otomatis benar → setoran otomatis ke pembukuan juga kembali sesuai.
 
-**File baru**
-- `src/lib/printer-settings.ts` — load/save preferensi printer di localStorage, tipe `PrinterSettings`.
-- `src/lib/escpos.ts` — encoder ESC/POS murni (Uint8Array builder): `init`, `text`, `align`, `bold`, `size`, `feed`, `cut`, `line58`, `line80`.
-- `src/lib/printer.ts` — orkestrator: `printReceipt(data, settings)` yang memilih transport (browser/bt/usb), plus helper `pairBluetooth()`, `pairUsb()`, `printBrowser(data,width)`.
-- `src/components/PrinterSettingsCard.tsx` — UI pengaturan printer + tombol pasangkan & uji cetak.
+## Verifikasi setelah fix
 
-**File diedit**
-- `src/routes/_authenticated/pengaturan.tsx` — mount `PrinterSettingsCard`.
-- `src/routes/_authenticated/kasir.tsx` — panggil `printReceipt` setelah transaksi sukses (jika auto-print), tombol "Cetak Struk" di dialog sukses.
-- `src/routes/_authenticated/riwayat.tsx` — tombol "Cetak Struk" di dialog detail (dari data `Tx` + `TxItem[]` yang sudah dipakai untuk PNG).
+1. Buka closing shift hari ini → QRIS harus ≥ Rp 200 rb, tunai naik ~Rp 300 rb, total penjualan tetap Rp 2.725.900.
+2. Cek Pembukuan → entri "Setoran kasir" ikut menyesuaikan pada shift berikutnya (entri lama yang sudah tercatat tidak berubah otomatis — bisa dikoreksi manual bila perlu, saya tidak akan menyentuh data pembukuan lama tanpa persetujuan).
 
-**Data yang dikirim ke printer** mengikuti `ReceiptData` yang sudah ada di `src/lib/receipt-image.ts`, tapi diformat monospace 32 kolom (58mm) / 48 kolom (80mm).
+## Yang TIDAK diubah
 
-**Catatan kompatibilitas**
-- Web Bluetooth & Web USB hanya jalan di Chrome/Edge (Android + desktop), butuh HTTPS. Di iOS/Safari otomatis hanya tampil opsi Browser Print.
-- Semua kode berjalan di browser saja, tidak butuh perubahan backend / migrasi database.
-
+- Alur pencatatan transaksi di kasir (data `qris_amount` sudah benar tersimpan).
+- Data pembukuan/shift lama yang sudah ditutup.
