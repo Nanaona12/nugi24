@@ -103,28 +103,12 @@ function computeLine(
   allUnits?: ProductUnit[],
 ): { total: number; packs: number; remainder: number; packPrice: number; ecerPrice: number; autoUnit?: ProductUnit } {
   if (l.mode === "eceran") {
-    // cari unit grosir terbesar yang muat
-    const grosir = (allUnits || []).filter((u) => u.conversion > 1).sort((a, b) => b.conversion - a.conversion);
-    for (const g of grosir) {
-      if (l.qty >= g.conversion) {
-        const conv = g.conversion;
-        const packs = Math.floor(l.qty / conv);
-        const remainder = l.qty - packs * conv;
-        const packPrice = tierPriceFor(g, Math.max(1, packs)).price;
-        const ecerPrice = tierPriceFor(l.baseUnit, Math.max(1, remainder)).price;
-        return {
-          total: packs * packPrice + remainder * ecerPrice,
-          packs,
-          remainder,
-          packPrice,
-          ecerPrice,
-          autoUnit: g,
-        };
-      }
-    }
+    // Mode eceran: tetap gunakan harga satuan dasar apapun qty-nya.
+    // Tidak auto-switch ke satuan grosir walau qty melebihi konversi.
     const ecerPrice = tierPriceFor(l.baseUnit, l.qty).price;
     return { total: ecerPrice * l.qty, packs: 0, remainder: l.qty, packPrice: 0, ecerPrice };
   }
+
   const conv = Math.max(1, l.unit.conversion);
   const packs = Math.floor(l.qty / conv);
   const remainder = l.qty - packs * conv;
