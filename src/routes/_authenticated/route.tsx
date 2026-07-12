@@ -395,6 +395,12 @@ function AuthedLayout() {
               )}
             </div>
           )}
+          {!sub?.isSuperAdmin && openDebts > 0 && !pathname.startsWith("/hutang") && (
+            <div className="flex items-center justify-center gap-2 bg-amber-500 px-4 py-1.5 text-center text-xs text-white sm:text-sm">
+              <span>⚠️ Ada <b>{openDebts}</b> hutang belum lunas.</span>
+              <Link to="/hutang" className="underline font-semibold">Lihat daftar hutang</Link>
+            </div>
+          )}
           <main className="mx-auto w-full max-w-7xl px-4 py-6">
             <Outlet />
           </main>
