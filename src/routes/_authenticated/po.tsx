@@ -367,6 +367,26 @@ function POPage() {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   };
 
+  /** Ganti satuan pada baris. Jika satuan cocok dengan unit produk, isi conversion otomatis. */
+  const changeUnit = (i: number, unitName: string) => {
+    const it = items[i];
+    if (!it) return;
+    const patch: Partial<DraftItem> = { unit_name: unitName };
+    const units = it.product_id ? unitsByProduct[it.product_id] : undefined;
+    const matched = units?.find((u) => u.name.toLowerCase() === unitName.toLowerCase());
+    if (matched) {
+      const newConv = String(Math.max(1, Math.floor(matched.conversion || 1)));
+      patch.unit_conversion = newConv;
+      // sesuaikan modal per satuan berdasarkan modal/pcs produk (kalau ada)
+      const prod = products.find((p) => p.id === it.product_id);
+      const oldCostPcs = prod ? Number(prod.cost_price || 0) : 0;
+      if (oldCostPcs > 0) {
+        patch.unit_cost = String(Math.round(oldCostPcs * matched.conversion));
+      }
+    }
+    updateItem(i, patch);
+  };
+
   const removeItem = (i: number) => {
     setItems((prev) => prev.filter((_, idx) => idx !== i));
   };
