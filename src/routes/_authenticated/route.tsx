@@ -267,6 +267,7 @@ function AuthedLayout() {
     ...(isGrosir ? [{ to: "/po", icon: ClipboardList, label: "PO" }] : []),
     ...(isGrosir ? [{ to: "/kadaluarsa", icon: AlarmClock, label: "Kadaluarsa" }] : []),
     { to: "/riwayat", icon: Receipt, label: "Riwayat" },
+    { to: "/hutang", icon: Wallet, label: "Hutang" },
     { to: "/shift", icon: Layers, label: "Riwayat Shift" },
     ...(isGrosir ? [{ to: "/pengambilan", icon: Home, label: "Pengambilan" }] : []),
     { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
