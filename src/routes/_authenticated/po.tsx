@@ -1025,6 +1025,20 @@ function POPage() {
                           {(parseInt(it.unit_conversion || "1", 10) || 1) > 1 && (
                             <div className="mt-1 text-[10px] text-right text-muted-foreground">= {formatRupiah(parseNumber(it.unit_cost) / Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1))}/pcs</div>
                           )}
+                          {(() => {
+                            const existingProd = it.product_id ? products.find((p) => p.id === it.product_id) : null;
+                            const oldCostPcs = existingProd ? Number(existingProd.cost_price || 0) : 0;
+                            const conv2 = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+                            const newCostPcs = parseNumber(it.unit_cost) / conv2;
+                            if (!oldCostPcs || !newCostPcs) return null;
+                            const diff = newCostPcs - oldCostPcs;
+                            return (
+                              <div className="mt-0.5 text-[10px] text-right text-muted-foreground">
+                                Lama: {formatRupiah(oldCostPcs)}/pcs
+                                {diff !== 0 && <span className={`ml-1 font-semibold ${diff > 0 ? "text-destructive" : "text-emerald-600"}`}>{diff > 0 ? "+" : ""}{formatRupiah(diff)}</span>}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Modal/pcs</div>
