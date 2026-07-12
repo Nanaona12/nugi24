@@ -957,6 +957,29 @@ function KasirPage() {
       toast.error("Gagal kurangi stok: " + (e?.message || "unknown"));
     }
 
+    // Catat hutang / kasbon jika ada
+    if (debtAmount > 0) {
+      const { error: debtErr } = await supabase.from("debts").insert({
+        tenant_id: tenantId,
+        transaction_id: tx.id,
+        customer_id: debtorCustomerId,
+        debtor_name: debtorName.trim(),
+        debtor_phone: debtorPhone.trim() || null,
+        debtor_type: debtorType,
+        original_amount: debtAmount,
+        paid_amount: 0,
+        status: "open",
+        note: debtNote.trim() || null,
+        cashier_id: activeShift.cashier_id,
+        shift_id: activeShift.shift_id,
+      } as any);
+      if (debtErr) {
+        toast.error("Transaksi tersimpan, tapi gagal catat hutang: " + debtErr.message);
+      } else {
+        toast.success(`Hutang ${formatRupiah(debtAmount)} atas nama ${debtorName.trim()} tercatat`);
+      }
+    }
+
     const receipt = {
       id: tx.id,
       total: totals.total,
