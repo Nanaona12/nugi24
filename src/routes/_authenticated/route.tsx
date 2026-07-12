@@ -157,6 +157,30 @@ function AuthedLayout() {
     };
   }, [router]);
 
+  // Poll & subscribe outstanding debts count
+  useEffect(() => {
+    if (!user || sub?.isSuperAdmin) return;
+    let alive = true;
+    const load = async () => {
+      const { count } = await supabase
+        .from("debts")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "open");
+      if (alive) setOpenDebts(count ?? 0);
+    };
+    load();
+    const ch = supabase
+      .channel("debts-badge")
+      .on("postgres_changes", { event: "*", schema: "public", table: "debts" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "debt_payments" }, () => load())
+      .subscribe();
+    return () => {
+      alive = false;
+      supabase.removeChannel(ch);
+    };
+  }, [user, sub?.isSuperAdmin]);
+
+
   useEffect(() => {
     if (!user || !sub?.isSuperAdmin) return;
     if (pathname === "/auth" || pathname.startsWith("/auth")) return;
