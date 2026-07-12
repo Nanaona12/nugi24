@@ -206,7 +206,8 @@ function AuthedLayout() {
       setIsCashierSession(false);
       setCashierName("");
       await queryClient.cancelQueries();
-      const { error } = await supabase.auth.signOut();
+      // scope: 'local' → hanya keluar dari device ini, tidak mencabut sesi di device lain
+      const { error } = await supabase.auth.signOut({ scope: "local" });
       if (error) {
         toast.error("Gagal keluar: " + error.message);
         return;
