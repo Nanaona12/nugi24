@@ -44,6 +44,7 @@ import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
 import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
 import { ReceivingDialog } from "@/components/ReceivingDialog";
 import { PackageCheck } from "lucide-react";
+import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
 
 
 
@@ -116,6 +117,7 @@ const STATUS_LABEL: Record<string, string> = {
 function POPage() {
   const [pos, setPos] = useState<PO[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState<PO | null>(null);
   const [detailItems, setDetailItems] = useState<POItem[]>([]);
@@ -151,7 +153,17 @@ function POPage() {
     if (e1) toast.error(e1.message);
     else setPos((poData || []) as PO[]);
     if (e2) toast.error(e2.message);
-    else setProducts((pData || []) as Product[]);
+    else {
+      const prods = (pData || []) as Product[];
+      setProducts(prods);
+      try {
+        const map = await loadUnitsForProducts(prods.map((p) => p.id));
+        setUnitsByProduct(map);
+      } catch (err: any) {
+        // non-fatal
+        console.warn("loadUnitsForProducts:", err?.message || err);
+      }
+    }
   };
 
   useEffect(() => { load(); }, []);
@@ -353,6 +365,26 @@ function POPage() {
 
   const updateItem = (i: number, patch: Partial<DraftItem>) => {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
+  };
+
+  /** Ganti satuan pada baris. Jika satuan cocok dengan unit produk, isi conversion otomatis. */
+  const changeUnit = (i: number, unitName: string) => {
+    const it = items[i];
+    if (!it) return;
+    const patch: Partial<DraftItem> = { unit_name: unitName };
+    const units = it.product_id ? unitsByProduct[it.product_id] : undefined;
+    const matched = units?.find((u) => u.name.toLowerCase() === unitName.toLowerCase());
+    if (matched) {
+      const newConv = String(Math.max(1, Math.floor(matched.conversion || 1)));
+      patch.unit_conversion = newConv;
+      // sesuaikan modal per satuan berdasarkan modal/pcs produk (kalau ada)
+      const prod = products.find((p) => p.id === it.product_id);
+      const oldCostPcs = prod ? Number(prod.cost_price || 0) : 0;
+      if (oldCostPcs > 0) {
+        patch.unit_cost = String(Math.round(oldCostPcs * matched.conversion));
+      }
+    }
+    updateItem(i, patch);
   };
 
   const removeItem = (i: number) => {
@@ -1013,7 +1045,29 @@ function POPage() {
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Satuan</div>
-                          <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-10 text-sm" placeholder="pcs/dus/rcg" />
+                          {(() => {
+                            const units = it.product_id ? unitsByProduct[it.product_id] : undefined;
+                            if (units && units.length > 0) {
+                              const known = units.some((u) => u.name.toLowerCase() === (it.unit_name || "").toLowerCase());
+                              return (
+                                <select
+                                  className="h-10 w-full rounded-md border border-input bg-background px-2 text-sm"
+                                  value={known ? it.unit_name : "__custom"}
+                                  onChange={(e) => {
+                                    const v = e.target.value;
+                                    if (v === "__custom") { updateItem(i, { unit_name: "", unit_conversion: "1" }); return; }
+                                    changeUnit(i, v);
+                                  }}
+                                >
+                                  {units.map((u) => (
+                                    <option key={u.id || u.name} value={u.name}>{u.name} (isi {u.conversion})</option>
+                                  ))}
+                                  <option value="__custom">Satuan lain…</option>
+                                </select>
+                              );
+                            }
+                            return <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-10 text-sm" placeholder="pcs/dus/rcg" />;
+                          })()}
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Isi (pcs)</div>
@@ -1160,7 +1214,29 @@ function POPage() {
                               <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 w-full text-sm text-right px-2" />
                             </td>
                             <td className="p-1">
-                              <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 w-full text-sm px-2" placeholder="pcs/dus/rcg" />
+                              {(() => {
+                                const units = it.product_id ? unitsByProduct[it.product_id] : undefined;
+                                if (units && units.length > 0) {
+                                  const known = units.some((u) => u.name.toLowerCase() === (it.unit_name || "").toLowerCase());
+                                  return (
+                                    <select
+                                      className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                                      value={known ? it.unit_name : "__custom"}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (v === "__custom") { updateItem(i, { unit_name: "", unit_conversion: "1" }); return; }
+                                        changeUnit(i, v);
+                                      }}
+                                    >
+                                      {units.map((u) => (
+                                        <option key={u.id || u.name} value={u.name}>{u.name} (isi {u.conversion})</option>
+                                      ))}
+                                      <option value="__custom">Satuan lain…</option>
+                                    </select>
+                                  );
+                                }
+                                return <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 w-full text-sm px-2" placeholder="pcs/dus/rcg" />;
+                              })()}
                             </td>
 
                             <td className="p-1">
