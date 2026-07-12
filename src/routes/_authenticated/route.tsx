@@ -283,6 +283,7 @@ function AuthedLayout() {
     ? [
         { to: "/kasir", icon: ShoppingCart, label: "Kasir" },
         { to: "/pelanggan", icon: Users, label: "Pelanggan" },
+        { to: "/hutang", icon: Wallet, label: "Hutang" },
         { to: "/shift", icon: Layers, label: "Shift Saya" },
         { to: "/riwayat", icon: Receipt, label: "Riwayat" },
       ]
