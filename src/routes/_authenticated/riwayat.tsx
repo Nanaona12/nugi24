@@ -71,9 +71,26 @@ function RiwayatPage() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(200);
-    if (error) toast.error(error.message);
-    else setTxs((data || []) as Tx[]);
+    if (error) { toast.error(error.message); return; }
+    const rows = (data || []) as Tx[];
+    const phones = Array.from(new Set(
+      rows.map((r) => (r.customer_phone || "").replace(/\D/g, "")).filter((p) => p.length > 0)
+    ));
+    if (phones.length > 0) {
+      const { data: custs } = await supabase.from("customers").select("name, phone");
+      const map = new Map<string, string>();
+      (custs || []).forEach((c: any) => {
+        const norm = String(c.phone || "").replace(/\D/g, "");
+        if (norm) map.set(norm, c.name);
+      });
+      rows.forEach((r) => {
+        const norm = (r.customer_phone || "").replace(/\D/g, "");
+        if (norm && map.has(norm)) r.customer_name = map.get(norm) || null;
+      });
+    }
+    setTxs(rows);
   };
+
 
   useEffect(() => {
     load();
