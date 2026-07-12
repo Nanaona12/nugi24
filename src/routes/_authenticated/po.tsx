@@ -117,6 +117,7 @@ const STATUS_LABEL: Record<string, string> = {
 function POPage() {
   const [pos, setPos] = useState<PO[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
+  const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [createOpen, setCreateOpen] = useState(false);
   const [detailOpen, setDetailOpen] = useState<PO | null>(null);
   const [detailItems, setDetailItems] = useState<POItem[]>([]);
