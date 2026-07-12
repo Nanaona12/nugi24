@@ -495,7 +495,7 @@ function KasirPage() {
         localStorage.removeItem(SHIFT_KEY);
       } catch {}
       setActiveCashier(null);
-      await supabase.auth.signOut();
+      await supabase.auth.signOut({ scope: "local" });
       router.navigate({ to: "/auth", replace: true });
     } else {
       setLockOpen(true);
