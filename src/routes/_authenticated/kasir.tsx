@@ -568,6 +568,24 @@ function KasirPage() {
     })();
   }, []);
 
+  // Realtime: produk / satuan / tier harga berubah di admin → auto refresh daftar produk kasir.
+  // Debounce agar burst update tidak memicu banyak query.
+  useEffect(() => {
+    let t: any = null;
+    const bump = () => { if (t) clearTimeout(t); t = setTimeout(() => loadProducts(), 400); };
+    const ch = supabase
+      .channel("kasir-products-live")
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_units" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "product_price_tiers" }, bump)
+      .subscribe();
+    return () => { if (t) clearTimeout(t); supabase.removeChannel(ch); };
+  }, []);
+
+  // Pratinjau struk (belum dibayar)
+  const [previewOpen, setPreviewOpen] = useState(false);
+
+
   // Global shortcut: tekan `*` di mana pun (di luar input) → fokus ke pencarian dan mulai dengan `*`
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
