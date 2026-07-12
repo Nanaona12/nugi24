@@ -51,6 +51,7 @@ function AuthedLayout() {
   const [tenantName, setTenantName] = useState<string>("");
   const [isCashierSession, setIsCashierSession] = useState(false);
   const [cashierName, setCashierName] = useState<string>("");
+  const [openDebts, setOpenDebts] = useState<number>(0);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
