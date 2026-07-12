@@ -2045,6 +2045,84 @@ function KasirPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        {/* Pratinjau Struk (Belum Dibayar) */}
+        <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+          <DialogContent className="max-w-md p-0">
+            <DialogHeader className="px-5 pt-5">
+              <DialogTitle>Pratinjau Struk</DialogTitle>
+              <DialogDescription>Ringkasan pesanan sebelum pembayaran.</DialogDescription>
+            </DialogHeader>
+            <div className="relative mx-5 my-3 overflow-hidden rounded-md border bg-white text-black">
+              {/* Watermark diagonal */}
+              <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
+                <div className="rotate-[-24deg] select-none whitespace-nowrap rounded border-4 border-red-500/60 px-4 py-1 text-2xl font-black uppercase tracking-widest text-red-500/60">
+                  Belum Dibayar
+                </div>
+              </div>
+              <ScrollArea className="max-h-[65vh]">
+                <div className="p-4 font-mono text-[12px] leading-tight">
+                  <div className="text-center">
+                    <div className="text-sm font-bold uppercase">{storeName || "Toko"}</div>
+                    <div className="text-[10px] text-neutral-600">
+                      {new Date().toLocaleString("id-ID", { dateStyle: "short", timeStyle: "short" })}
+                    </div>
+                    <div className="text-[10px] text-neutral-600">Kasir: {activeCashier?.name || "-"}</div>
+                  </div>
+                  <div className="my-2 border-t border-dashed border-neutral-400" />
+                  <ul className="space-y-2">
+                    {cart.map((l) => {
+                      const c = computeLine(l, getUnits(l.product, unitsByProduct));
+                      const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
+                      const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
+                      return (
+                        <li key={l.key}>
+                          <div className="break-words font-semibold">{l.product.name}</div>
+                          {showPack ? (
+                            <>
+                              <div className="flex justify-between">
+                                <span>{c.packs} {packUnitName} × {formatRupiah(c.packPrice)}</span>
+                                <span>{formatRupiah(c.packs * c.packPrice)}</span>
+                              </div>
+                              {c.remainder > 0 && (
+                                <div className="flex justify-between">
+                                  <span>{c.remainder} {l.baseUnit.name} × {formatRupiah(c.ecerPrice)}</span>
+                                  <span>{formatRupiah(c.remainder * c.ecerPrice)}</span>
+                                </div>
+                              )}
+                            </>
+                          ) : (
+                            <div className="flex justify-between">
+                              <span>{l.qty} {l.baseUnit.name} × {formatRupiah(c.ecerPrice)}</span>
+                              <span>{formatRupiah(c.total)}</span>
+                            </div>
+                          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="my-2 border-t border-dashed border-neutral-400" />
+                  <div className="flex justify-between">
+                    <span>Total item</span>
+                    <span>{totals.items}</span>
+                  </div>
+                  <div className="flex justify-between text-base font-bold">
+                    <span>TOTAL</span>
+                    <span>{formatRupiah(totals.total)}</span>
+                  </div>
+                  <div className="mt-2 text-center text-[10px] text-neutral-600">
+                    * Ini bukan bukti pembayaran *
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>
+            <DialogFooter className="px-5 pb-5">
+              <Button variant="outline" onClick={() => setPreviewOpen(false)}>Tutup</Button>
+              <Button onClick={() => { setPreviewOpen(false); setPayOpen(true); }}>Lanjut Bayar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </div>
   );
