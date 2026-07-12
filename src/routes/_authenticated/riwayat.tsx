@@ -134,9 +134,10 @@ function RiwayatPage() {
         paymentMethod,
         cashPart,
         qrisPart,
-        customerName: null,
+        customerName: tx.customer_name || null,
         customerPhone: tx.customer_phone || null,
       });
+
       setReceiptImg(dataUrl);
     } catch (e: any) {
       toast.error("Gagal membuat gambar struk");
