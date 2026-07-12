@@ -153,7 +153,17 @@ function POPage() {
     if (e1) toast.error(e1.message);
     else setPos((poData || []) as PO[]);
     if (e2) toast.error(e2.message);
-    else setProducts((pData || []) as Product[]);
+    else {
+      const prods = (pData || []) as Product[];
+      setProducts(prods);
+      try {
+        const map = await loadUnitsForProducts(prods.map((p) => p.id));
+        setUnitsByProduct(map);
+      } catch (err: any) {
+        // non-fatal
+        console.warn("loadUnitsForProducts:", err?.message || err);
+      }
+    }
   };
 
   useEffect(() => { load(); }, []);
