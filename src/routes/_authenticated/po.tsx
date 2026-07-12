@@ -865,7 +865,7 @@ function POPage() {
         }}
       >
         <DialogContent
-          className="max-h-[calc(100dvh-2rem)] max-w-6xl overflow-y-auto pb-4"
+          className="max-h-[calc(100dvh-2rem)] w-[98vw] max-w-[98vw] sm:max-w-[96vw] overflow-y-auto pb-4"
           onInteractOutside={(e) => { if (aiOpen) e.preventDefault(); }}
           onPointerDownOutside={(e) => { if (aiOpen) e.preventDefault(); }}
           onFocusOutside={(e) => { if (aiOpen) e.preventDefault(); }}
@@ -1013,7 +1013,7 @@ function POPage() {
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Satuan</div>
-                          <Input value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-10 text-sm" placeholder="pcs/slove/dus" />
+                          <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-10 text-sm" placeholder="pcs/dus/rcg" />
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Isi (pcs)</div>
@@ -1025,6 +1025,20 @@ function POPage() {
                           {(parseInt(it.unit_conversion || "1", 10) || 1) > 1 && (
                             <div className="mt-1 text-[10px] text-right text-muted-foreground">= {formatRupiah(parseNumber(it.unit_cost) / Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1))}/pcs</div>
                           )}
+                          {(() => {
+                            const existingProd = it.product_id ? products.find((p) => p.id === it.product_id) : null;
+                            const oldCostPcs = existingProd ? Number(existingProd.cost_price || 0) : 0;
+                            const conv2 = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
+                            const newCostPcs = parseNumber(it.unit_cost) / conv2;
+                            if (!oldCostPcs || !newCostPcs) return null;
+                            const diff = newCostPcs - oldCostPcs;
+                            return (
+                              <div className="mt-0.5 text-[10px] text-right text-muted-foreground">
+                                Lama: {formatRupiah(oldCostPcs)}/pcs
+                                {diff !== 0 && <span className={`ml-1 font-semibold ${diff > 0 ? "text-destructive" : "text-emerald-600"}`}>{diff > 0 ? "+" : ""}{formatRupiah(diff)}</span>}
+                              </div>
+                            );
+                          })()}
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Modal/pcs</div>
@@ -1087,8 +1101,13 @@ function POPage() {
                   <option key={c} value={c} />
                 ))}
               </datalist>
+              <datalist id="po-units">
+                {["pcs", "dus", "ball", "karton", "box", "pack", "slove", "rcg", "renceng", "lusin", "kg", "gram", "liter", "ml", "botol", "sachet", "bungkus"].map((u) => (
+                  <option key={u} value={u} />
+                ))}
+              </datalist>
               <div className="max-h-80 overflow-auto rounded border">
-                <table className="w-full min-w-[1100px] text-sm">
+                <table className="w-full min-w-[1250px] text-sm">
 
 
                   <thead className="sticky top-0 bg-muted text-left">
@@ -1097,10 +1116,11 @@ function POPage() {
                       <th className="p-2 min-w-[200px] w-[220px]">Nama</th>
                       <th className="p-2 min-w-[140px] w-[150px]">Kategori</th>
                       <th className="p-2 w-16 text-right">Qty</th>
-                      <th className="p-2 w-20">Satuan</th>
-                      <th className="p-2 w-20 text-right">Isi</th>
-                      <th className="p-2 w-28 text-right">Modal/satuan</th>
-                      <th className="p-2 w-28 text-right">Modal/pcs</th>
+                      <th className="p-2 w-24">Satuan</th>
+                      <th className="p-2 w-16 text-right">Isi</th>
+                      <th className="p-2 w-24 text-right">Modal Lama</th>
+                      <th className="p-2 w-28 text-right">Modal Baru/satuan</th>
+                      <th className="p-2 w-28 text-right">Modal Baru/pcs</th>
                       <th className="p-2 w-24 text-right">Jual/pcs</th>
                       <th className="p-2 w-16 text-right">Stok +</th>
                       <th className="p-2 w-24 text-right">Subtotal</th>
@@ -1110,7 +1130,7 @@ function POPage() {
                   <tbody>
                     {items.length === 0 ? (
                       <tr>
-                        <td colSpan={12} className="p-6 text-center text-muted-foreground">
+                        <td colSpan={13} className="p-6 text-center text-muted-foreground">
                           Belum ada item
                         </td>
                       </tr>
@@ -1120,6 +1140,10 @@ function POPage() {
                         const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
                         const conv = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
                         const stockAdd = (parseInt(it.qty || "0", 10) || 0) * conv;
+                        const existingProd = it.product_id ? products.find((p) => p.id === it.product_id) : null;
+                        const oldCostPcs = existingProd ? Number(existingProd.cost_price || 0) : 0;
+                        const newCostPcs = parseNumber(it.unit_cost) / conv;
+                        const costDiff = oldCostPcs > 0 && newCostPcs > 0 ? newCostPcs - oldCostPcs : 0;
                         return (
                           <tr key={i} className="border-t align-top">
                             <td className="p-1">
@@ -1136,11 +1160,21 @@ function POPage() {
                               <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 w-full text-sm text-right px-2" />
                             </td>
                             <td className="p-1">
-                              <Input value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 w-full text-sm px-2" placeholder="pcs" />
+                              <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 w-full text-sm px-2" placeholder="pcs/dus/rcg" />
                             </td>
 
                             <td className="p-1">
                               <Input type="number" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-9 w-full text-sm text-right" />
+                            </td>
+                            <td className="p-1 text-right">
+                              {oldCostPcs > 0 ? (
+                                <div className="text-xs">
+                                  <div className="font-medium">{formatRupiah(oldCostPcs)}</div>
+                                  <div className="text-[10px] text-muted-foreground">/pcs</div>
+                                </div>
+                              ) : (
+                                <div className="text-[10px] text-muted-foreground">baru</div>
+                              )}
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-9 text-sm text-right" />
@@ -1162,6 +1196,11 @@ function POPage() {
                                 className="h-9 text-sm text-right"
                                 placeholder="—"
                               />
+                              {costDiff !== 0 && (
+                                <div className={`mt-0.5 text-[10px] text-right font-semibold ${costDiff > 0 ? "text-destructive" : "text-emerald-600"}`}>
+                                  {costDiff > 0 ? "+" : ""}{formatRupiah(costDiff)}/pcs
+                                </div>
+                              )}
                             </td>
                             <td className="p-1">
                               <Input type="number" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-9 text-sm text-right" placeholder="—" />
