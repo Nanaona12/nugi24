@@ -33,7 +33,9 @@ type Tx = {
   payment_method?: string;
   qris_amount?: number;
   customer_phone?: string | null;
+  customer_name?: string | null;
 };
+
 
 type TxItem = {
   id: string;
