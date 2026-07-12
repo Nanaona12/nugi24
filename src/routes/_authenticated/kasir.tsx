@@ -1878,7 +1878,7 @@ function KasirPage() {
                   </div>
                 )}
 
-
+                <div className="space-y-2 rounded-lg border p-3">
                   <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                     <input
                       type="checkbox"
