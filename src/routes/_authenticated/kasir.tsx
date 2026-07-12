@@ -1614,14 +1614,34 @@ function KasirPage() {
                   </div>
                 )}
 
-                {paymentMethod === "cash" && (
-                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <span className="text-sm">Kembalian</span>
-                    <span className="text-lg font-semibold">
-                      {formatRupiah(Math.max(0, Number(paid || 0) - totals.total))}
-                    </span>
-                  </div>
-                )}
+                {paymentMethod === "cash" && (() => {
+                  const paidN = Number(paid || 0);
+                  const kurang = Math.max(0, totals.total - paidN);
+                  const kembali = Math.max(0, paidN - totals.total);
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <span className="text-sm">{kurang > 0 ? "Kurang" : "Kembalian"}</span>
+                        <span className={`text-lg font-semibold ${kurang > 0 ? "text-destructive" : ""}`}>
+                          {formatRupiah(kurang > 0 ? kurang : kembali)}
+                        </span>
+                      </div>
+                      {kurang > 0 && (
+                        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/30">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={debtRemainder}
+                            onChange={(e) => setDebtRemainder(e.target.checked)}
+                          />
+                          <span>
+                            Catat sisa <b>{formatRupiah(kurang)}</b> sebagai hutang
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {paymentMethod === "split" &&
                   (() => {
