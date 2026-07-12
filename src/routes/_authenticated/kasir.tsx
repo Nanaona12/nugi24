@@ -132,12 +132,19 @@ function KasirPage() {
   const [paid, setPaid] = useState("");
   const [payOpen, setPayOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris" | "split">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris" | "split" | "debt">("cash");
   const [splitCash, setSplitCash] = useState("");
   const [splitQris, setSplitQris] = useState("");
   const [sendWa, setSendWa] = useState(false);
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
+  // Kasbon / hutang
+  const [debtRemainder, setDebtRemainder] = useState(false); // cash kurang → sisa jadi hutang
+  const [debtorName, setDebtorName] = useState("");
+  const [debtorPhone, setDebtorPhone] = useState("");
+  const [debtorType, setDebtorType] = useState<"customer" | "employee">("customer");
+  const [debtorCustomerId, setDebtorCustomerId] = useState<string | null>(null);
+  const [debtNote, setDebtNote] = useState("");
   const [lastReceipt, setLastReceipt] = useState<null | {
     id: string;
     total: number;
@@ -145,7 +152,7 @@ function KasirPage() {
     change: number;
     items: CartLine[];
     at: Date;
-    paymentMethod: "cash" | "qris" | "split";
+    paymentMethod: "cash" | "qris" | "split" | "debt";
     cashPart?: number;
     qrisPart?: number;
     customerPhone: string | null;
@@ -161,7 +168,7 @@ function KasirPage() {
     change: number;
     items: CartLine[];
     at: Date;
-    paymentMethod: "cash" | "qris" | "split";
+    paymentMethod: "cash" | "qris" | "split" | "debt";
     cashPart?: number;
     qrisPart?: number;
     customerPhone: string | null;
@@ -798,6 +805,7 @@ function KasirPage() {
     let paidNum: number;
     let cashPart = 0;
     let qrisPart = 0;
+    let debtAmount = 0;
     if (paymentMethod === "qris") {
       if (!qris || qris.status !== "paid") {
         toast.error("QRIS belum dibayar");
@@ -817,13 +825,30 @@ function KasirPage() {
         return;
       }
       paidNum = cashPart + qrisPart;
+    } else if (paymentMethod === "debt") {
+      // Full kasbon: seluruh total jadi hutang
+      paidNum = 0;
+      debtAmount = totals.total;
     } else {
       paidNum = Number(paid.replace(/[^\d]/g, ""));
       if (paidNum < totals.total) {
-        toast.error("Uang dibayar kurang");
+        if (debtRemainder) {
+          debtAmount = totals.total - paidNum;
+          cashPart = paidNum;
+        } else {
+          toast.error("Uang dibayar kurang");
+          return;
+        }
+      } else {
+        cashPart = paidNum;
+      }
+    }
+    // Validasi debtor bila ada hutang
+    if (debtAmount > 0) {
+      if (!debtorName.trim()) {
+        toast.error("Nama pengutang wajib diisi");
         return;
       }
-      cashPart = paidNum;
     }
     const phoneClean = normalizePhone(customerPhone);
     if (customerPhone && phoneClean.length < 8) {
@@ -871,7 +896,7 @@ function KasirPage() {
         toast.error("Gagal simpan pelanggan: " + (e?.message || "unknown"));
       }
     }
-    const change = paidNum - totals.total;
+    const change = Math.max(0, paidNum - totals.total);
     const { data: tx, error: txErr } = await supabase
       .from("transactions")
       .insert({
@@ -930,6 +955,29 @@ function KasirPage() {
       });
     } catch (e: any) {
       toast.error("Gagal kurangi stok: " + (e?.message || "unknown"));
+    }
+
+    // Catat hutang / kasbon jika ada
+    if (debtAmount > 0) {
+      const { error: debtErr } = await supabase.from("debts").insert({
+        tenant_id: tenantId,
+        transaction_id: tx.id,
+        customer_id: debtorCustomerId,
+        debtor_name: debtorName.trim(),
+        debtor_phone: debtorPhone.trim() || null,
+        debtor_type: debtorType,
+        original_amount: debtAmount,
+        paid_amount: 0,
+        status: "open",
+        note: debtNote.trim() || null,
+        cashier_id: activeShift.cashier_id,
+        shift_id: activeShift.shift_id,
+      } as any);
+      if (debtErr) {
+        toast.error("Transaksi tersimpan, tapi gagal catat hutang: " + debtErr.message);
+      } else {
+        toast.success(`Hutang ${formatRupiah(debtAmount)} atas nama ${debtorName.trim()} tercatat`);
+      }
     }
 
     const receipt = {
@@ -1020,6 +1068,12 @@ function KasirPage() {
     setCustomerPhone("");
     setCustomerName("");
     setPaymentMethod("cash");
+    setDebtRemainder(false);
+    setDebtorName("");
+    setDebtorPhone("");
+    setDebtorType("customer");
+    setDebtorCustomerId(null);
+    setDebtNote("");
     loadProducts();
   };
 
@@ -1486,7 +1540,7 @@ function KasirPage() {
 
                 <div>
                   <Label className="mb-1.5 block">Metode Pembayaran</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <Button
                       type="button"
                       variant={paymentMethod === "cash" ? "default" : "outline"}
@@ -1516,6 +1570,19 @@ function KasirPage() {
                       }}
                     >
                       🔀 Split
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={paymentMethod === "debt" ? "default" : "outline"}
+                      className={paymentMethod === "debt" ? "bg-amber-600 hover:bg-amber-700" : "border-amber-500 text-amber-700 hover:bg-amber-50 dark:text-amber-400"}
+                      onClick={() => {
+                        setPaymentMethod("debt");
+                        if (qris) handleCancelQris();
+                        setPaid("0");
+                        setDebtRemainder(false);
+                      }}
+                    >
+                      🧾 Kasbon
                     </Button>
                   </div>
                 </div>
@@ -1547,14 +1614,34 @@ function KasirPage() {
                   </div>
                 )}
 
-                {paymentMethod === "cash" && (
-                  <div className="flex items-center justify-between rounded-lg border p-3">
-                    <span className="text-sm">Kembalian</span>
-                    <span className="text-lg font-semibold">
-                      {formatRupiah(Math.max(0, Number(paid || 0) - totals.total))}
-                    </span>
-                  </div>
-                )}
+                {paymentMethod === "cash" && (() => {
+                  const paidN = Number(paid || 0);
+                  const kurang = Math.max(0, totals.total - paidN);
+                  const kembali = Math.max(0, paidN - totals.total);
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between rounded-lg border p-3">
+                        <span className="text-sm">{kurang > 0 ? "Kurang" : "Kembalian"}</span>
+                        <span className={`text-lg font-semibold ${kurang > 0 ? "text-destructive" : ""}`}>
+                          {formatRupiah(kurang > 0 ? kurang : kembali)}
+                        </span>
+                      </div>
+                      {kurang > 0 && (
+                        <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-amber-400 bg-amber-50 p-3 text-sm dark:border-amber-700 dark:bg-amber-950/30">
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4"
+                            checked={debtRemainder}
+                            onChange={(e) => setDebtRemainder(e.target.checked)}
+                          />
+                          <span>
+                            Catat sisa <b>{formatRupiah(kurang)}</b> sebagai hutang
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {paymentMethod === "split" &&
                   (() => {
@@ -1710,6 +1797,84 @@ function KasirPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Form pengutang — muncul saat kasbon penuh atau sisa cash jadi hutang */}
+                {(paymentMethod === "debt" || (paymentMethod === "cash" && debtRemainder)) && (
+                  <div className="space-y-2 rounded-lg border-2 border-amber-400 bg-amber-50/50 p-3 dark:bg-amber-950/20">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="h-4 w-4" />
+                      Data Pengutang (wajib)
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={debtorType === "customer" ? "default" : "outline"}
+                        onClick={() => setDebtorType("customer")}
+                      >
+                        👤 Pelanggan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={debtorType === "employee" ? "default" : "outline"}
+                        onClick={() => {
+                          setDebtorType("employee");
+                          setDebtorCustomerId(null);
+                        }}
+                      >
+                        🧑‍💼 Karyawan
+                      </Button>
+                    </div>
+                    {debtorType === "customer" && (
+                      <CustomerPicker
+                        customers={customers}
+                        name={debtorName}
+                        phone={debtorPhone}
+                        onPick={(c) => {
+                          setDebtorName(c.name);
+                          setDebtorCustomerId(c.id);
+                          if (c.phone) setDebtorPhone(c.phone.replace(/[^\d+]/g, ""));
+                        }}
+                        onChangeName={(v) => {
+                          setDebtorName(v);
+                          setDebtorCustomerId(null);
+                        }}
+                        onChangePhone={(v) => setDebtorPhone(v.replace(/[^\d+]/g, ""))}
+                      />
+                    )}
+                    {debtorType === "employee" && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Nama karyawan"
+                          value={debtorName}
+                          onChange={(e) => setDebtorName(e.target.value)}
+                        />
+                        <Input
+                          inputMode="numeric"
+                          placeholder="No. HP (opsional)"
+                          value={debtorPhone}
+                          onChange={(e) => setDebtorPhone(e.target.value.replace(/[^\d+]/g, ""))}
+                        />
+                      </div>
+                    )}
+                    <Input
+                      placeholder="Catatan (opsional, mis. bayar minggu depan)"
+                      value={debtNote}
+                      onChange={(e) => setDebtNote(e.target.value)}
+                    />
+                    <div className="rounded border border-amber-300 bg-amber-100 p-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-100">
+                      Nominal hutang:{" "}
+                      <b>
+                        {formatRupiah(
+                          paymentMethod === "debt"
+                            ? totals.total
+                            : Math.max(0, totals.total - Number(paid || 0)),
+                        )}
+                      </b>
+                    </div>
                   </div>
                 )}
 

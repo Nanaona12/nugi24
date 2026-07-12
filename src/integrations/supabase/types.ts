@@ -330,6 +330,168 @@ export type Database = {
           },
         ]
       }
+      debt_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          debt_id: string
+          id: string
+          method: string
+          note: string | null
+          shift_id: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          debt_id: string
+          id?: string
+          method?: string
+          note?: string | null
+          shift_id?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          debt_id?: string
+          id?: string
+          method?: string
+          note?: string | null
+          shift_id?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debt_payments_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "debts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_payments_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "cashier_shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debt_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      debts: {
+        Row: {
+          cashier_id: string | null
+          created_at: string
+          customer_id: string | null
+          debtor_name: string
+          debtor_phone: string | null
+          debtor_type: string
+          id: string
+          note: string | null
+          original_amount: number
+          paid_amount: number
+          shift_id: string | null
+          status: string
+          tenant_id: string
+          transaction_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          cashier_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          debtor_name: string
+          debtor_phone?: string | null
+          debtor_type?: string
+          id?: string
+          note?: string | null
+          original_amount?: number
+          paid_amount?: number
+          shift_id?: string | null
+          status?: string
+          tenant_id: string
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cashier_id?: string | null
+          created_at?: string
+          customer_id?: string | null
+          debtor_name?: string
+          debtor_phone?: string | null
+          debtor_type?: string
+          id?: string
+          note?: string | null
+          original_amount?: number
+          paid_amount?: number
+          shift_id?: string | null
+          status?: string
+          tenant_id?: string
+          transaction_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "debts_cashier_id_fkey"
+            columns: ["cashier_id"]
+            isOneToOne: false
+            referencedRelation: "cashiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debts_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debts_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "cashier_shifts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "debts_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           created_at: string

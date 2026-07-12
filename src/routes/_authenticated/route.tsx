@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users, AlarmClock, Home, UserCog, Layers, BookOpen } from "lucide-react";
+import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users, AlarmClock, Home, UserCog, Layers, BookOpen, Wallet } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
   Sidebar,
@@ -29,7 +30,7 @@ export const Route = createFileRoute("/_authenticated")({
 type SubInfo = { status: string; current_period_end: string; isSuperAdmin: boolean; plan?: string | null } | null;
 
 // Routes a cashier session is allowed to visit (everything else redirects to /kasir)
-const CASHIER_ALLOWED = ["/kasir", "/pelanggan", "/shift", "/riwayat", "/cek-koneksi"];
+const CASHIER_ALLOWED = ["/kasir", "/pelanggan", "/shift", "/riwayat", "/hutang", "/cek-koneksi"];
 // Routes locked for Paket Warung (only available on Paket Grosiran)
 const GROSIR_ONLY_ROUTES = ["/po", "/kadaluarsa", "/pengambilan", "/karyawan"];
 
@@ -50,6 +51,7 @@ function AuthedLayout() {
   const [tenantName, setTenantName] = useState<string>("");
   const [isCashierSession, setIsCashierSession] = useState(false);
   const [cashierName, setCashierName] = useState<string>("");
+  const [openDebts, setOpenDebts] = useState<number>(0);
   const [checking, setChecking] = useState(true);
 
   useEffect(() => {
@@ -155,6 +157,30 @@ function AuthedLayout() {
     };
   }, [router]);
 
+  // Poll & subscribe outstanding debts count
+  useEffect(() => {
+    if (!user || sub?.isSuperAdmin) return;
+    let alive = true;
+    const load = async () => {
+      const { count } = await supabase
+        .from("debts")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "open");
+      if (alive) setOpenDebts(count ?? 0);
+    };
+    load();
+    const ch = supabase
+      .channel("debts-badge")
+      .on("postgres_changes", { event: "*", schema: "public", table: "debts" }, () => load())
+      .on("postgres_changes", { event: "*", schema: "public", table: "debt_payments" }, () => load())
+      .subscribe();
+    return () => {
+      alive = false;
+      supabase.removeChannel(ch);
+    };
+  }, [user, sub?.isSuperAdmin]);
+
+
   useEffect(() => {
     if (!user || !sub?.isSuperAdmin) return;
     if (pathname === "/auth" || pathname.startsWith("/auth")) return;
@@ -241,6 +267,7 @@ function AuthedLayout() {
     ...(isGrosir ? [{ to: "/po", icon: ClipboardList, label: "PO" }] : []),
     ...(isGrosir ? [{ to: "/kadaluarsa", icon: AlarmClock, label: "Kadaluarsa" }] : []),
     { to: "/riwayat", icon: Receipt, label: "Riwayat" },
+    { to: "/hutang", icon: Wallet, label: "Hutang" },
     { to: "/shift", icon: Layers, label: "Riwayat Shift" },
     ...(isGrosir ? [{ to: "/pengambilan", icon: Home, label: "Pengambilan" }] : []),
     { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
@@ -256,6 +283,7 @@ function AuthedLayout() {
     ? [
         { to: "/kasir", icon: ShoppingCart, label: "Kasir" },
         { to: "/pelanggan", icon: Users, label: "Pelanggan" },
+        { to: "/hutang", icon: Wallet, label: "Hutang" },
         { to: "/shift", icon: Layers, label: "Shift Saya" },
         { to: "/riwayat", icon: Receipt, label: "Riwayat" },
       ]
@@ -282,12 +310,18 @@ function AuthedLayout() {
                   {navItems.map((item) => {
                     const Icon = item.icon;
                     const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                    const showDebtBadge = item.to === "/hutang" && openDebts > 0;
                     return (
                       <SidebarMenuItem key={item.to}>
                         <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
                           <Link to={item.to}>
                             <Icon className="h-4 w-4" />
-                            <span>{item.label}</span>
+                            <span className="flex-1">{item.label}</span>
+                            {showDebtBadge && (
+                              <Badge variant="destructive" className="ml-auto h-5 px-1.5 text-[10px] group-data-[collapsible=icon]:hidden">
+                                {openDebts}
+                              </Badge>
+                            )}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
@@ -359,6 +393,12 @@ function AuthedLayout() {
                   >Berlangganan Rp 14.900/bulan</Link>
                 </>
               )}
+            </div>
+          )}
+          {!sub?.isSuperAdmin && openDebts > 0 && !pathname.startsWith("/hutang") && (
+            <div className="flex items-center justify-center gap-2 bg-amber-500 px-4 py-1.5 text-center text-xs text-white sm:text-sm">
+              <span>⚠️ Ada <b>{openDebts}</b> hutang belum lunas.</span>
+              <Link to="/hutang" className="underline font-semibold">Lihat daftar hutang</Link>
             </div>
           )}
           <main className="mx-auto w-full max-w-7xl px-4 py-6">
