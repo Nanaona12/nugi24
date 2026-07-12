@@ -865,7 +865,7 @@ function POPage() {
         }}
       >
         <DialogContent
-          className="max-h-[calc(100dvh-2rem)] max-w-6xl overflow-y-auto pb-4"
+          className="max-h-[calc(100dvh-2rem)] w-[98vw] max-w-[98vw] sm:max-w-[96vw] overflow-y-auto pb-4"
           onInteractOutside={(e) => { if (aiOpen) e.preventDefault(); }}
           onPointerDownOutside={(e) => { if (aiOpen) e.preventDefault(); }}
           onFocusOutside={(e) => { if (aiOpen) e.preventDefault(); }}
