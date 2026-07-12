@@ -142,8 +142,10 @@ function AuthedLayout() {
     };
     window.addEventListener("billing:refresh", onBillingRefresh);
 
-    const { data: authSub } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === "SIGNED_OUT" || !session) router.navigate({ to: "/auth", replace: true });
+    const { data: authSub } = supabase.auth.onAuthStateChange((event) => {
+      // Hanya redirect saat sign-out eksplisit. Jangan redirect pada TOKEN_REFRESHED/INITIAL_SESSION
+      // agar login di device lain tidak menyebabkan device ini ikut logout.
+      if (event === "SIGNED_OUT") router.navigate({ to: "/auth", replace: true });
     });
     return () => {
       mounted = false;
