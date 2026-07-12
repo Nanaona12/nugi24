@@ -382,7 +382,7 @@ function RiwayatPage() {
                           paymentMethod,
                           cashPart,
                           qrisPart,
-                          customerName: null,
+                          customerName: tx.customer_name || null,
                           customerPhone: tx.customer_phone || null,
                         }, loadPrinterSettings());
                         toast.success("Struk dikirim ke printer");
