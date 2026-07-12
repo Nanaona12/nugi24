@@ -365,6 +365,14 @@ html.reduce-fx [class*="hover:-translate-y"]:hover {
   html { font-size: 14px; }
 }
 
-
-
+/* Hilangkan spinner arrow di input[type=number] agar tidak mengganggu tampilan */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
 
