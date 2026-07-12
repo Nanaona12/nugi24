@@ -33,7 +33,9 @@ type Tx = {
   payment_method?: string;
   qris_amount?: number;
   customer_phone?: string | null;
+  customer_name?: string | null;
 };
+
 
 type TxItem = {
   id: string;
@@ -69,9 +71,26 @@ function RiwayatPage() {
       .select("*")
       .order("created_at", { ascending: false })
       .limit(200);
-    if (error) toast.error(error.message);
-    else setTxs((data || []) as Tx[]);
+    if (error) { toast.error(error.message); return; }
+    const rows = (data || []) as Tx[];
+    const phones = Array.from(new Set(
+      rows.map((r) => (r.customer_phone || "").replace(/\D/g, "")).filter((p) => p.length > 0)
+    ));
+    if (phones.length > 0) {
+      const { data: custs } = await supabase.from("customers").select("name, phone");
+      const map = new Map<string, string>();
+      (custs || []).forEach((c: any) => {
+        const norm = String(c.phone || "").replace(/\D/g, "");
+        if (norm) map.set(norm, c.name);
+      });
+      rows.forEach((r) => {
+        const norm = (r.customer_phone || "").replace(/\D/g, "");
+        if (norm && map.has(norm)) r.customer_name = map.get(norm) || null;
+      });
+    }
+    setTxs(rows);
   };
+
 
   useEffect(() => {
     load();
@@ -115,9 +134,10 @@ function RiwayatPage() {
         paymentMethod,
         cashPart,
         qrisPart,
-        customerName: null,
+        customerName: tx.customer_name || null,
         customerPhone: tx.customer_phone || null,
       });
+
       setReceiptImg(dataUrl);
     } catch (e: any) {
       toast.error("Gagal membuat gambar struk");
@@ -142,6 +162,21 @@ function RiwayatPage() {
     setConfirmDelOpen(true);
   };
 
+  const restoreStockForTx = async (txId: string) => {
+    const { data: its } = await supabase
+      .from("transaction_items")
+      .select("product_id, qty, unit_conversion")
+      .eq("transaction_id", txId);
+    for (const it of (its || []) as any[]) {
+      if (!it.product_id) continue;
+      const add = Number(it.qty || 0) * Number(it.unit_conversion || 1);
+      if (add <= 0) continue;
+      const { data: prod } = await supabase.from("products").select("stock").eq("id", it.product_id).maybeSingle();
+      if (!prod) continue;
+      await supabase.from("products").update({ stock: Number(prod.stock || 0) + add }).eq("id", it.product_id);
+    }
+  };
+
   const confirmDelete = async () => {
     if (!delTarget) return;
     if (!delPassword) { toast.error("Masukkan password admin/tenant"); return; }
@@ -152,12 +187,13 @@ function RiwayatPage() {
     const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: delPassword });
     if (authErr) { setDeleting(false); toast.error("Password salah"); return; }
     const tx = delTarget;
+    await restoreStockForTx(tx.id);
     const { error: e1 } = await supabase.from("transaction_items").delete().eq("transaction_id", tx.id);
     if (e1) { setDeleting(false); return toast.error(e1.message); }
     const { error: e2 } = await supabase.from("transactions").delete().eq("id", tx.id);
     setDeleting(false);
     if (e2) return toast.error(e2.message);
-    toast.success("Transaksi dihapus");
+    toast.success("Transaksi dihapus, stok dikembalikan");
     setConfirmDelOpen(false);
     setDelTarget(null);
     setDelPassword("");
@@ -173,6 +209,22 @@ function RiwayatPage() {
     if (!email) { setClearing(false); toast.error("Sesi tidak ditemukan"); return; }
     const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: clearPassword });
     if (authErr) { setClearing(false); toast.error("Password salah"); return; }
+    // Restore stock for every transaction being wiped
+    const { data: allItems } = await supabase
+      .from("transaction_items")
+      .select("product_id, qty, unit_conversion");
+    const stockDelta = new Map<string, number>();
+    for (const it of (allItems || []) as any[]) {
+      if (!it.product_id) continue;
+      const add = Number(it.qty || 0) * Number(it.unit_conversion || 1);
+      if (add <= 0) continue;
+      stockDelta.set(it.product_id, (stockDelta.get(it.product_id) || 0) + add);
+    }
+    for (const [pid, add] of stockDelta.entries()) {
+      const { data: prod } = await supabase.from("products").select("stock").eq("id", pid).maybeSingle();
+      if (!prod) continue;
+      await supabase.from("products").update({ stock: Number(prod.stock || 0) + add }).eq("id", pid);
+    }
     const { error: e1 } = await supabase.from("transaction_items").delete().not("id", "is", null);
     if (e1) { setClearing(false); return toast.error(e1.message); }
     const { error: e2 } = await supabase.from("transactions").delete().not("id", "is", null);
@@ -180,10 +232,11 @@ function RiwayatPage() {
     if (e2) return toast.error(e2.message);
     setConfirmClearOpen(false);
     setClearPassword("");
-    toast.success("Riwayat dibersihkan");
+    toast.success("Riwayat dibersihkan, stok dikembalikan");
     setSelected(null);
     load();
   };
+
 
 
   const todayTotal = txs
@@ -264,6 +317,12 @@ function RiwayatPage() {
             <div className="space-y-3 text-sm">
               <div className="text-xs text-muted-foreground">
                 {new Date(selected.created_at).toLocaleString("id-ID")}
+                {(selected.customer_name || selected.customer_phone) && (
+                  <div className="mt-1 text-foreground">
+                    Pelanggan: <span className="font-medium">{selected.customer_name || "-"}</span>
+                    {selected.customer_phone && <span className="ml-1 text-muted-foreground">({selected.customer_phone})</span>}
+                  </div>
+                )}
               </div>
               <ul className="divide-y rounded border">
                 {items.map((it) => (
@@ -329,7 +388,7 @@ function RiwayatPage() {
                           paymentMethod,
                           cashPart,
                           qrisPart,
-                          customerName: null,
+                          customerName: tx.customer_name || null,
                           customerPhone: tx.customer_phone || null,
                         }, loadPrinterSettings());
                         toast.success("Struk dikirim ke printer");
