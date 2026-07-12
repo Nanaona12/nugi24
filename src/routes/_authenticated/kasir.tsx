@@ -1284,6 +1284,9 @@ function KasirPage() {
               </Button>
               {cart.length > 0 && (
                 <>
+                  <Button variant="outline" size="sm" onClick={() => setPreviewOpen(true)} title="Pratinjau struk">
+                    <ReceiptIcon className="mr-1 h-4 w-4" /> Pratinjau
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setSaveDraftOpen(true)}>
                     Simpan Draft
                   </Button>
