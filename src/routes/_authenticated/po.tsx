@@ -1214,7 +1214,29 @@ function POPage() {
                               <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 w-full text-sm text-right px-2" />
                             </td>
                             <td className="p-1">
-                              <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 w-full text-sm px-2" placeholder="pcs/dus/rcg" />
+                              {(() => {
+                                const units = it.product_id ? unitsByProduct[it.product_id] : undefined;
+                                if (units && units.length > 0) {
+                                  const known = units.some((u) => u.name.toLowerCase() === (it.unit_name || "").toLowerCase());
+                                  return (
+                                    <select
+                                      className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
+                                      value={known ? it.unit_name : "__custom"}
+                                      onChange={(e) => {
+                                        const v = e.target.value;
+                                        if (v === "__custom") { updateItem(i, { unit_name: "", unit_conversion: "1" }); return; }
+                                        changeUnit(i, v);
+                                      }}
+                                    >
+                                      {units.map((u) => (
+                                        <option key={u.id || u.name} value={u.name}>{u.name} (isi {u.conversion})</option>
+                                      ))}
+                                      <option value="__custom">Satuan lain…</option>
+                                    </select>
+                                  );
+                                }
+                                return <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 w-full text-sm px-2" placeholder="pcs/dus/rcg" />;
+                              })()}
                             </td>
 
                             <td className="p-1">
