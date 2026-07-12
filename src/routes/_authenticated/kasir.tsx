@@ -1800,7 +1800,85 @@ function KasirPage() {
                   </div>
                 )}
 
-                <div className="space-y-2 rounded-lg border p-3">
+                {/* Form pengutang — muncul saat kasbon penuh atau sisa cash jadi hutang */}
+                {(paymentMethod === "debt" || (paymentMethod === "cash" && debtRemainder)) && (
+                  <div className="space-y-2 rounded-lg border-2 border-amber-400 bg-amber-50/50 p-3 dark:bg-amber-950/20">
+                    <div className="flex items-center gap-2 text-sm font-semibold text-amber-800 dark:text-amber-200">
+                      <AlertTriangle className="h-4 w-4" />
+                      Data Pengutang (wajib)
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={debtorType === "customer" ? "default" : "outline"}
+                        onClick={() => setDebtorType("customer")}
+                      >
+                        👤 Pelanggan
+                      </Button>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant={debtorType === "employee" ? "default" : "outline"}
+                        onClick={() => {
+                          setDebtorType("employee");
+                          setDebtorCustomerId(null);
+                        }}
+                      >
+                        🧑‍💼 Karyawan
+                      </Button>
+                    </div>
+                    {debtorType === "customer" && (
+                      <CustomerPicker
+                        customers={customers}
+                        name={debtorName}
+                        phone={debtorPhone}
+                        onPick={(c) => {
+                          setDebtorName(c.name);
+                          setDebtorCustomerId(c.id);
+                          if (c.phone) setDebtorPhone(c.phone.replace(/[^\d+]/g, ""));
+                        }}
+                        onChangeName={(v) => {
+                          setDebtorName(v);
+                          setDebtorCustomerId(null);
+                        }}
+                        onChangePhone={(v) => setDebtorPhone(v.replace(/[^\d+]/g, ""))}
+                      />
+                    )}
+                    {debtorType === "employee" && (
+                      <div className="space-y-2">
+                        <Input
+                          placeholder="Nama karyawan"
+                          value={debtorName}
+                          onChange={(e) => setDebtorName(e.target.value)}
+                        />
+                        <Input
+                          inputMode="numeric"
+                          placeholder="No. HP (opsional)"
+                          value={debtorPhone}
+                          onChange={(e) => setDebtorPhone(e.target.value.replace(/[^\d+]/g, ""))}
+                        />
+                      </div>
+                    )}
+                    <Input
+                      placeholder="Catatan (opsional, mis. bayar minggu depan)"
+                      value={debtNote}
+                      onChange={(e) => setDebtNote(e.target.value)}
+                    />
+                    <div className="rounded border border-amber-300 bg-amber-100 p-2 text-xs text-amber-900 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-100">
+                      Nominal hutang:{" "}
+                      <b>
+                        {formatRupiah(
+                          paymentMethod === "debt"
+                            ? totals.total
+                            : Math.max(0, totals.total - Number(paid || 0)),
+                        )}
+                      </b>
+                    </div>
+                  </div>
+                )}
+
+
                   <label className="flex cursor-pointer items-center gap-2 text-sm font-medium">
                     <input
                       type="checkbox"
