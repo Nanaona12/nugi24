@@ -1540,7 +1540,7 @@ function KasirPage() {
 
                 <div>
                   <Label className="mb-1.5 block">Metode Pembayaran</Label>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                     <Button
                       type="button"
                       variant={paymentMethod === "cash" ? "default" : "outline"}
@@ -1570,6 +1570,19 @@ function KasirPage() {
                       }}
                     >
                       🔀 Split
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={paymentMethod === "debt" ? "default" : "outline"}
+                      className={paymentMethod === "debt" ? "bg-amber-600 hover:bg-amber-700" : "border-amber-500 text-amber-700 hover:bg-amber-50 dark:text-amber-400"}
+                      onClick={() => {
+                        setPaymentMethod("debt");
+                        if (qris) handleCancelQris();
+                        setPaid("0");
+                        setDebtRemainder(false);
+                      }}
+                    >
+                      🧾 Kasbon
                     </Button>
                   </div>
                 </div>
