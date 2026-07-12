@@ -44,6 +44,7 @@ import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
 import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
 import { ReceivingDialog } from "@/components/ReceivingDialog";
 import { PackageCheck } from "lucide-react";
+import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
 
 
 
