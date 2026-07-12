@@ -152,7 +152,7 @@ function KasirPage() {
     change: number;
     items: CartLine[];
     at: Date;
-    paymentMethod: "cash" | "qris" | "split";
+    paymentMethod: "cash" | "qris" | "split" | "debt";
     cashPart?: number;
     qrisPart?: number;
     customerPhone: string | null;
