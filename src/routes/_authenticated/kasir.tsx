@@ -1068,6 +1068,12 @@ function KasirPage() {
     setCustomerPhone("");
     setCustomerName("");
     setPaymentMethod("cash");
+    setDebtRemainder(false);
+    setDebtorName("");
+    setDebtorPhone("");
+    setDebtorType("customer");
+    setDebtorCustomerId(null);
+    setDebtNote("");
     loadProducts();
   };
 
