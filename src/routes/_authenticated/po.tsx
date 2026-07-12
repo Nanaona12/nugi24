@@ -1013,7 +1013,7 @@ function POPage() {
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Satuan</div>
-                          <Input value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-10 text-sm" placeholder="pcs/slove/dus" />
+                          <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-10 text-sm" placeholder="pcs/dus/rcg" />
                         </div>
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Isi (pcs)</div>
