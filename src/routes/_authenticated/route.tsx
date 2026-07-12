@@ -310,12 +310,18 @@ function AuthedLayout() {
                   {navItems.map((item) => {
                     const Icon = item.icon;
                     const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                    const showDebtBadge = item.to === "/hutang" && openDebts > 0;
                     return (
                       <SidebarMenuItem key={item.to}>
                         <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
                           <Link to={item.to}>
                             <Icon className="h-4 w-4" />
-                            <span>{item.label}</span>
+                            <span className="flex-1">{item.label}</span>
+                            {showDebtBadge && (
+                              <Badge variant="destructive" className="ml-auto h-5 px-1.5 text-[10px] group-data-[collapsible=icon]:hidden">
+                                {openDebts}
+                              </Badge>
+                            )}
                           </Link>
                         </SidebarMenuButton>
                       </SidebarMenuItem>
