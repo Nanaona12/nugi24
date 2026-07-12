@@ -28,6 +28,7 @@ import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authentic
 import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
 import { Route as AuthenticatedKaryawanRouteImport } from './routes/_authenticated/karyawan'
 import { Route as AuthenticatedKadaluarsaRouteImport } from './routes/_authenticated/kadaluarsa'
+import { Route as AuthenticatedHutangRouteImport } from './routes/_authenticated/hutang'
 import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiPublicMidtransWebhookRouteImport } from './routes/api/public/midtrans-webhook'
@@ -127,6 +128,11 @@ const AuthenticatedKadaluarsaRoute = AuthenticatedKadaluarsaRouteImport.update({
   path: '/kadaluarsa',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedHutangRoute = AuthenticatedHutangRouteImport.update({
+  id: '/hutang',
+  path: '/hutang',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedCekKoneksiRoute = AuthenticatedCekKoneksiRouteImport.update({
   id: '/cek-koneksi',
   path: '/cek-koneksi',
@@ -151,6 +157,7 @@ export interface FileRoutesByFullPath {
   '/showcase': typeof ShowcaseRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
+  '/hutang': typeof AuthenticatedHutangRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
   '/karyawan': typeof AuthenticatedKaryawanRoute
   '/kasir': typeof AuthenticatedKasirRoute
@@ -174,6 +181,7 @@ export interface FileRoutesByTo {
   '/showcase': typeof ShowcaseRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
+  '/hutang': typeof AuthenticatedHutangRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
   '/karyawan': typeof AuthenticatedKaryawanRoute
   '/kasir': typeof AuthenticatedKasirRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/showcase': typeof ShowcaseRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
   '/_authenticated/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
+  '/_authenticated/hutang': typeof AuthenticatedHutangRoute
   '/_authenticated/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
   '/_authenticated/karyawan': typeof AuthenticatedKaryawanRoute
   '/_authenticated/kasir': typeof AuthenticatedKasirRoute
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/showcase'
     | '/admin'
     | '/cek-koneksi'
+    | '/hutang'
     | '/kadaluarsa'
     | '/karyawan'
     | '/kasir'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/showcase'
     | '/admin'
     | '/cek-koneksi'
+    | '/hutang'
     | '/kadaluarsa'
     | '/karyawan'
     | '/kasir'
@@ -271,6 +282,7 @@ export interface FileRouteTypes {
     | '/showcase'
     | '/_authenticated/admin'
     | '/_authenticated/cek-koneksi'
+    | '/_authenticated/hutang'
     | '/_authenticated/kadaluarsa'
     | '/_authenticated/karyawan'
     | '/_authenticated/kasir'
@@ -432,6 +444,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKadaluarsaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/hutang': {
+      id: '/_authenticated/hutang'
+      path: '/hutang'
+      fullPath: '/hutang'
+      preLoaderRoute: typeof AuthenticatedHutangRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cek-koneksi': {
       id: '/_authenticated/cek-koneksi'
       path: '/cek-koneksi'
@@ -459,6 +478,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
   AuthenticatedCekKoneksiRoute: typeof AuthenticatedCekKoneksiRoute
+  AuthenticatedHutangRoute: typeof AuthenticatedHutangRoute
   AuthenticatedKadaluarsaRoute: typeof AuthenticatedKadaluarsaRoute
   AuthenticatedKaryawanRoute: typeof AuthenticatedKaryawanRoute
   AuthenticatedKasirRoute: typeof AuthenticatedKasirRoute
@@ -477,6 +497,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
   AuthenticatedCekKoneksiRoute: AuthenticatedCekKoneksiRoute,
+  AuthenticatedHutangRoute: AuthenticatedHutangRoute,
   AuthenticatedKadaluarsaRoute: AuthenticatedKadaluarsaRoute,
   AuthenticatedKaryawanRoute: AuthenticatedKaryawanRoute,
   AuthenticatedKasirRoute: AuthenticatedKasirRoute,

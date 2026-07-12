@@ -132,12 +132,19 @@ function KasirPage() {
   const [paid, setPaid] = useState("");
   const [payOpen, setPayOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris" | "split">("cash");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "qris" | "split" | "debt">("cash");
   const [splitCash, setSplitCash] = useState("");
   const [splitQris, setSplitQris] = useState("");
   const [sendWa, setSendWa] = useState(false);
   const [customerPhone, setCustomerPhone] = useState("");
   const [customerName, setCustomerName] = useState("");
+  // Kasbon / hutang
+  const [debtRemainder, setDebtRemainder] = useState(false); // cash kurang → sisa jadi hutang
+  const [debtorName, setDebtorName] = useState("");
+  const [debtorPhone, setDebtorPhone] = useState("");
+  const [debtorType, setDebtorType] = useState<"customer" | "employee">("customer");
+  const [debtorCustomerId, setDebtorCustomerId] = useState<string | null>(null);
+  const [debtNote, setDebtNote] = useState("");
   const [lastReceipt, setLastReceipt] = useState<null | {
     id: string;
     total: number;
