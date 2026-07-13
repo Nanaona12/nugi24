@@ -96,6 +96,22 @@ function RiwayatPage() {
     setTxs(rows);
   };
 
+  const loadProfits = async (rows: Tx[], admin: boolean) => {
+    if (!admin || rows.length === 0) return;
+    const ids = rows.map((r) => r.id);
+    const { data } = await supabase
+      .from("transaction_items")
+      .select("transaction_id, qty, unit_conversion, unit_cost, subtotal")
+      .in("transaction_id", ids);
+    const map: Record<string, number> = {};
+    for (const it of (data || []) as any[]) {
+      const p = Number(it.subtotal || 0) - Number(it.unit_cost || 0) * Number(it.qty || 0) * Number(it.unit_conversion || 1);
+      map[it.transaction_id] = (map[it.transaction_id] || 0) + p;
+    }
+    setTxProfits(map);
+  };
+
+
 
   useEffect(() => {
     load();
