@@ -381,40 +381,6 @@ function RiwayatPage() {
         </DialogContent>
       </Dialog>
 
-
-
-      <AlertDialog open={confirmClearOpen} onOpenChange={(o) => { setConfirmClearOpen(o); if (!o) setClearPassword(""); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus SEMUA riwayat transaksi?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini tidak bisa dibatalkan. Masukkan password akun Anda untuk konfirmasi.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password</label>
-            <Input
-              type="password"
-              autoComplete="current-password"
-              value={clearPassword}
-              onChange={(e) => setClearPassword(e.target.value)}
-              placeholder="Password akun Anda"
-              disabled={clearing}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={clearing}>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); clearAll(); }}
-              disabled={clearing || !clearPassword}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {clearing ? "Menghapus..." : "Ya, Hapus Semua"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <AlertDialog open={confirmDelOpen} onOpenChange={(o) => { setConfirmDelOpen(o); if (!o) { setDelPassword(""); setDelTarget(null); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
