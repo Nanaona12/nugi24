@@ -62,10 +62,8 @@ function RiwayatPage() {
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
   const [buildingImg, setBuildingImg] = useState(false);
 
-
-  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
-  const [clearPassword, setClearPassword] = useState("");
-  const [clearing, setClearing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [txProfits, setTxProfits] = useState<Record<string, number>>({});
 
   const [confirmDelOpen, setConfirmDelOpen] = useState(false);
   const [delTarget, setDelTarget] = useState<Tx | null>(null);
