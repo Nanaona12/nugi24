@@ -258,13 +258,14 @@ function RiwayatPage() {
                 <th className="p-3 text-right">Total</th>
                 <th className="p-3 text-right">Dibayar</th>
                 <th className="p-3 text-right">Kembali</th>
+                {isAdmin && <th className="p-3 text-right">Untung</th>}
                 <th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
               {txs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center text-muted-foreground">
+                  <td colSpan={isAdmin ? 8 : 7} className="p-12 text-center text-muted-foreground">
                     <Receipt className="mx-auto mb-3 h-12 w-12 opacity-30" />
                     Belum ada transaksi
                   </td>
@@ -278,6 +279,11 @@ function RiwayatPage() {
                     <td className="p-3 text-right font-semibold">{formatRupiah(Number(t.total))}</td>
                     <td className="p-3 text-right">{formatRupiah(Number(t.paid))}</td>
                     <td className="p-3 text-right">{formatRupiah(Number(t.change_amount))}</td>
+                    {isAdmin && (
+                      <td className={`p-3 text-right font-semibold ${(txProfits[t.id] ?? 0) >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                        {txProfits[t.id] === undefined ? "-" : formatRupiah(txProfits[t.id])}
+                      </td>
+                    )}
                     <td className="p-3">
                       <div className="flex justify-end gap-1">
                         <Button size="icon" variant="ghost" onClick={() => openDetail(t)}>
