@@ -114,13 +114,21 @@ function RiwayatPage() {
 
 
   useEffect(() => {
-    load();
     (async () => {
+      const { data: cashier } = await supabase.rpc("is_cashier_session");
+      const admin = !cashier;
+      setIsAdmin(admin);
+      await load();
       const { data } = await supabase.rpc("current_tenant_info");
       const row = Array.isArray(data) ? data[0] : data;
       if (row?.name) setStoreName(row.name as string);
     })();
   }, []);
+
+  useEffect(() => {
+    loadProfits(txs, isAdmin);
+  }, [txs, isAdmin]);
+
 
   const openDetail = async (tx: Tx) => {
     setSelected(tx);
