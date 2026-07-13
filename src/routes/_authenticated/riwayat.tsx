@@ -45,7 +45,14 @@ type TxItem = {
   unit_price: number;
   is_wholesale: boolean;
   subtotal: number;
+  unit_cost?: number | null;
+  unit_conversion?: number | null;
 };
+
+function itemProfit(it: TxItem) {
+  const cost = Number(it.unit_cost || 0) * Number(it.qty || 0) * Number(it.unit_conversion || 1);
+  return Number(it.subtotal || 0) - cost;
+}
 
 function RiwayatPage() {
   const [txs, setTxs] = useState<Tx[]>([]);
@@ -55,10 +62,8 @@ function RiwayatPage() {
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
   const [buildingImg, setBuildingImg] = useState(false);
 
-
-  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
-  const [clearPassword, setClearPassword] = useState("");
-  const [clearing, setClearing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [txProfits, setTxProfits] = useState<Record<string, number>>({});
 
   const [confirmDelOpen, setConfirmDelOpen] = useState(false);
   const [delTarget, setDelTarget] = useState<Tx | null>(null);
@@ -91,15 +96,39 @@ function RiwayatPage() {
     setTxs(rows);
   };
 
+  const loadProfits = async (rows: Tx[], admin: boolean) => {
+    if (!admin || rows.length === 0) return;
+    const ids = rows.map((r) => r.id);
+    const { data } = await supabase
+      .from("transaction_items")
+      .select("transaction_id, qty, unit_conversion, unit_cost, subtotal")
+      .in("transaction_id", ids);
+    const map: Record<string, number> = {};
+    for (const it of (data || []) as any[]) {
+      const p = Number(it.subtotal || 0) - Number(it.unit_cost || 0) * Number(it.qty || 0) * Number(it.unit_conversion || 1);
+      map[it.transaction_id] = (map[it.transaction_id] || 0) + p;
+    }
+    setTxProfits(map);
+  };
+
+
 
   useEffect(() => {
-    load();
     (async () => {
+      const { data: cashier } = await supabase.rpc("is_cashier_session");
+      const admin = !cashier;
+      setIsAdmin(admin);
+      await load();
       const { data } = await supabase.rpc("current_tenant_info");
       const row = Array.isArray(data) ? data[0] : data;
       if (row?.name) setStoreName(row.name as string);
     })();
   }, []);
+
+  useEffect(() => {
+    loadProfits(txs, isAdmin);
+  }, [txs, isAdmin]);
+
 
   const openDetail = async (tx: Tx) => {
     setSelected(tx);
@@ -201,41 +230,8 @@ function RiwayatPage() {
     load();
   };
 
-  const clearAll = async () => {
-    if (!clearPassword) { toast.error("Masukkan password untuk konfirmasi"); return; }
-    setClearing(true);
-    const { data: userData } = await supabase.auth.getUser();
-    const email = userData.user?.email;
-    if (!email) { setClearing(false); toast.error("Sesi tidak ditemukan"); return; }
-    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: clearPassword });
-    if (authErr) { setClearing(false); toast.error("Password salah"); return; }
-    // Restore stock for every transaction being wiped
-    const { data: allItems } = await supabase
-      .from("transaction_items")
-      .select("product_id, qty, unit_conversion");
-    const stockDelta = new Map<string, number>();
-    for (const it of (allItems || []) as any[]) {
-      if (!it.product_id) continue;
-      const add = Number(it.qty || 0) * Number(it.unit_conversion || 1);
-      if (add <= 0) continue;
-      stockDelta.set(it.product_id, (stockDelta.get(it.product_id) || 0) + add);
-    }
-    for (const [pid, add] of stockDelta.entries()) {
-      const { data: prod } = await supabase.from("products").select("stock").eq("id", pid).maybeSingle();
-      if (!prod) continue;
-      await supabase.from("products").update({ stock: Number(prod.stock || 0) + add }).eq("id", pid);
-    }
-    const { error: e1 } = await supabase.from("transaction_items").delete().not("id", "is", null);
-    if (e1) { setClearing(false); return toast.error(e1.message); }
-    const { error: e2 } = await supabase.from("transactions").delete().not("id", "is", null);
-    setClearing(false);
-    if (e2) return toast.error(e2.message);
-    setConfirmClearOpen(false);
-    setClearPassword("");
-    toast.success("Riwayat dibersihkan, stok dikembalikan");
-    setSelected(null);
-    load();
-  };
+
+
 
 
 
@@ -250,13 +246,6 @@ function RiwayatPage() {
         <Stat label="Transaksi Hari Ini" value={String(txs.filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString()).length)} />
         <Stat label="Total Transaksi" value={String(txs.length)} />
       </div>
-      {txs.length > 0 && (
-        <div className="flex justify-end">
-          <Button variant="outline" size="sm" onClick={() => setConfirmClearOpen(true)} className="text-destructive hover:text-destructive">
-            <Trash2 className="mr-2 h-4 w-4" /> Hapus Semua Riwayat
-          </Button>
-        </div>
-      )}
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
@@ -269,13 +258,14 @@ function RiwayatPage() {
                 <th className="p-3 text-right">Total</th>
                 <th className="p-3 text-right">Dibayar</th>
                 <th className="p-3 text-right">Kembali</th>
+                {isAdmin && <th className="p-3 text-right">Untung</th>}
                 <th className="p-3"></th>
               </tr>
             </thead>
             <tbody>
               {txs.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center text-muted-foreground">
+                  <td colSpan={isAdmin ? 8 : 7} className="p-12 text-center text-muted-foreground">
                     <Receipt className="mx-auto mb-3 h-12 w-12 opacity-30" />
                     Belum ada transaksi
                   </td>
@@ -289,6 +279,11 @@ function RiwayatPage() {
                     <td className="p-3 text-right font-semibold">{formatRupiah(Number(t.total))}</td>
                     <td className="p-3 text-right">{formatRupiah(Number(t.paid))}</td>
                     <td className="p-3 text-right">{formatRupiah(Number(t.change_amount))}</td>
+                    {isAdmin && (
+                      <td className={`p-3 text-right font-semibold ${(txProfits[t.id] ?? 0) >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                        {txProfits[t.id] === undefined ? "-" : formatRupiah(txProfits[t.id])}
+                      </td>
+                    )}
                     <td className="p-3">
                       <div className="flex justify-end gap-1">
                         <Button size="icon" variant="ghost" onClick={() => openDetail(t)}>
@@ -325,23 +320,43 @@ function RiwayatPage() {
                 )}
               </div>
               <ul className="divide-y rounded border">
-                {items.map((it) => (
-                  <li key={it.id} className="flex justify-between gap-2 p-2">
-                    <div>
-                      <div className="font-medium">{it.product_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {it.qty} × {formatRupiah(Number(it.unit_price))}
-                        {it.is_wholesale && <Badge variant="secondary" className="ml-2 text-[10px]">grosir</Badge>}
+                {items.map((it) => {
+                  const profit = itemProfit(it);
+                  return (
+                    <li key={it.id} className="flex justify-between gap-2 p-2">
+                      <div>
+                        <div className="font-medium">{it.product_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {it.qty} × {formatRupiah(Number(it.unit_price))}
+                          {it.is_wholesale && <Badge variant="secondary" className="ml-2 text-[10px]">grosir</Badge>}
+                        </div>
+                        {isAdmin && (
+                          <div className="text-xs text-muted-foreground">
+                            Modal: {formatRupiah(Number(it.unit_cost || 0) * Number(it.qty || 0) * Number(it.unit_conversion || 1))}
+                            {" · "}
+                            <span className={profit >= 0 ? "text-emerald-600" : "text-destructive"}>
+                              Untung: {formatRupiah(profit)}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="font-semibold">{formatRupiah(Number(it.subtotal))}</div>
-                  </li>
-                ))}
+                      <div className="font-semibold">{formatRupiah(Number(it.subtotal))}</div>
+                    </li>
+                  );
+                })}
               </ul>
               <div className="space-y-1 border-t pt-2">
                 <Row label="Total" value={formatRupiah(Number(selected.total))} bold />
                 <Row label="Dibayar" value={formatRupiah(Number(selected.paid))} />
                 <Row label="Kembali" value={formatRupiah(Number(selected.change_amount))} />
+                {isAdmin && (() => {
+                  const totalProfit = items.reduce((s, it) => s + itemProfit(it), 0);
+                  return (
+                    <div className={`flex justify-between font-semibold ${totalProfit >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                      <span>Keuntungan</span><span>{formatRupiah(totalProfit)}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-2 border-t pt-3">
@@ -415,40 +430,6 @@ function RiwayatPage() {
           )}
         </DialogContent>
       </Dialog>
-
-
-
-      <AlertDialog open={confirmClearOpen} onOpenChange={(o) => { setConfirmClearOpen(o); if (!o) setClearPassword(""); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus SEMUA riwayat transaksi?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini tidak bisa dibatalkan. Masukkan password akun Anda untuk konfirmasi.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password</label>
-            <Input
-              type="password"
-              autoComplete="current-password"
-              value={clearPassword}
-              onChange={(e) => setClearPassword(e.target.value)}
-              placeholder="Password akun Anda"
-              disabled={clearing}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={clearing}>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); clearAll(); }}
-              disabled={clearing || !clearPassword}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {clearing ? "Menghapus..." : "Ya, Hapus Semua"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       <AlertDialog open={confirmDelOpen} onOpenChange={(o) => { setConfirmDelOpen(o); if (!o) { setDelPassword(""); setDelTarget(null); } }}>
         <AlertDialogContent>
