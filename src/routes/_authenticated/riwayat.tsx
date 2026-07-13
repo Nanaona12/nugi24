@@ -45,7 +45,14 @@ type TxItem = {
   unit_price: number;
   is_wholesale: boolean;
   subtotal: number;
+  unit_cost?: number | null;
+  unit_conversion?: number | null;
 };
+
+function itemProfit(it: TxItem) {
+  const cost = Number(it.unit_cost || 0) * Number(it.qty || 0) * Number(it.unit_conversion || 1);
+  return Number(it.subtotal || 0) - cost;
+}
 
 function RiwayatPage() {
   const [txs, setTxs] = useState<Tx[]>([]);
