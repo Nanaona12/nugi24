@@ -320,23 +320,43 @@ function RiwayatPage() {
                 )}
               </div>
               <ul className="divide-y rounded border">
-                {items.map((it) => (
-                  <li key={it.id} className="flex justify-between gap-2 p-2">
-                    <div>
-                      <div className="font-medium">{it.product_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        {it.qty} × {formatRupiah(Number(it.unit_price))}
-                        {it.is_wholesale && <Badge variant="secondary" className="ml-2 text-[10px]">grosir</Badge>}
+                {items.map((it) => {
+                  const profit = itemProfit(it);
+                  return (
+                    <li key={it.id} className="flex justify-between gap-2 p-2">
+                      <div>
+                        <div className="font-medium">{it.product_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {it.qty} × {formatRupiah(Number(it.unit_price))}
+                          {it.is_wholesale && <Badge variant="secondary" className="ml-2 text-[10px]">grosir</Badge>}
+                        </div>
+                        {isAdmin && (
+                          <div className="text-xs text-muted-foreground">
+                            Modal: {formatRupiah(Number(it.unit_cost || 0) * Number(it.qty || 0) * Number(it.unit_conversion || 1))}
+                            {" · "}
+                            <span className={profit >= 0 ? "text-emerald-600" : "text-destructive"}>
+                              Untung: {formatRupiah(profit)}
+                            </span>
+                          </div>
+                        )}
                       </div>
-                    </div>
-                    <div className="font-semibold">{formatRupiah(Number(it.subtotal))}</div>
-                  </li>
-                ))}
+                      <div className="font-semibold">{formatRupiah(Number(it.subtotal))}</div>
+                    </li>
+                  );
+                })}
               </ul>
               <div className="space-y-1 border-t pt-2">
                 <Row label="Total" value={formatRupiah(Number(selected.total))} bold />
                 <Row label="Dibayar" value={formatRupiah(Number(selected.paid))} />
                 <Row label="Kembali" value={formatRupiah(Number(selected.change_amount))} />
+                {isAdmin && (() => {
+                  const totalProfit = items.reduce((s, it) => s + itemProfit(it), 0);
+                  return (
+                    <div className={`flex justify-between font-semibold ${totalProfit >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                      <span>Keuntungan</span><span>{formatRupiah(totalProfit)}</span>
+                    </div>
+                  );
+                })()}
               </div>
 
               <div className="space-y-2 border-t pt-3">
