@@ -547,13 +547,65 @@ function ProdukPage() {
           }),
         );
         const final = rows.filter((r) => r.code);
+
+        // Deteksi duplikat di dalam file Excel sendiri
+        const seenBarcode = new Map<string, string>(); // barcode -> nama
+        const dupInFile: { barcode: string; a: string; b: string }[] = [];
+        for (const r of final) {
+          if (!r.barcode) continue;
+          const bcs = parseBarcodes(r.barcode);
+          for (const bc of bcs) {
+            const prev = seenBarcode.get(bc);
+            if (prev && prev !== r.name) dupInFile.push({ barcode: bc, a: prev, b: r.name });
+            else seenBarcode.set(bc, r.name);
+          }
+        }
+        if (dupInFile.length > 0) {
+          const msg = dupInFile.slice(0, 3).map((d) => `${d.barcode}: "${d.a}" vs "${d.b}"`).join(" | ");
+          toast.error(`Barcode duplikat di dalam file Excel — ${msg}${dupInFile.length > 3 ? ` (+${dupInFile.length - 3} lainnya)` : ""}`);
+          setImporting(false);
+          return;
+        }
+
+        // Deteksi bentrok dgn produk yang sudah ada (barcode sama, kode beda)
+        const allBarcodes = Array.from(seenBarcode.keys());
+        if (allBarcodes.length > 0) {
+          const { data: existing } = await supabase
+            .from("products")
+            .select("code, name, barcode")
+            .in("barcode", allBarcodes);
+          const conflicts = (existing || []).filter((p: any) => {
+            const rowForBarcode = final.find((r) => parseBarcodes(r.barcode || "").includes(p.barcode));
+            return rowForBarcode && rowForBarcode.code !== p.code;
+          });
+          if (conflicts.length > 0) {
+            const msg = conflicts.slice(0, 3).map((c: any) => {
+              const row = final.find((r) => parseBarcodes(r.barcode || "").includes(c.barcode));
+              return `${c.barcode}: sudah dipakai "${c.name}" (${c.code}) — di Excel: "${row?.name}" (${row?.code})`;
+            }).join(" | ");
+            toast.error(`Barcode sudah dipakai produk lain — ${msg}${conflicts.length > 3 ? ` (+${conflicts.length - 3} lainnya)` : ""}`);
+            setImporting(false);
+            return;
+          }
+        }
+
         // Strip non-DB fields before upsert
         const dbRows = final.map(({ units, satuanStr, ...rest }) => rest);
         const { data: upserted, error } = await supabase
           .from("products")
           .upsert(dbRows, { onConflict: "code" })
           .select("id, code");
-        if (error) { toast.error(error.message); setImporting(false); return; }
+        if (error) {
+          // Fallback: coba deteksi barcode penyebab dari pesan Postgres
+          if (error.code === "23505" && /barcode/i.test(error.message)) {
+            const m = error.message.match(/\(barcode\)=\(([^)]+)\)/i);
+            toast.error(m ? `Barcode duplikat: "${m[1]}" — cek baris di Excel dengan barcode tsb` : `Barcode duplikat: ${error.message}`);
+          } else {
+            toast.error(error.message);
+          }
+          setImporting(false);
+          return;
+        }
         const idByCode = new Map((upserted || []).map((p: any) => [p.code, p.id]));
         let unitsApplied = 0;
         for (const r of final) {
@@ -565,6 +617,7 @@ function ProdukPage() {
         }
         toast.success(`${final.length} produk diimport${unitsApplied ? `, ${unitsApplied} dgn satuan` : ""}`);
       }
+
       setImportOpen(false);
       setImportPreview([]);
       load();
