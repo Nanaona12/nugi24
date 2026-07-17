@@ -1223,7 +1223,15 @@ function POPage() {
                               <Input value={it.product_code} onChange={(e) => updateItem(i, { product_code: e.target.value })} className="h-9 w-full text-xs px-2" disabled={!!it.product_id} title={it.product_code} />
                             </td>
                             <td className="p-1">
-                              <Input value={it.product_name} onChange={(e) => updateItem(i, { product_name: e.target.value })} className="h-9 w-full text-sm px-2" disabled={!!it.product_id} title={it.product_name} />
+                              <ProductNameCombobox
+                                value={it.product_name}
+                                disabled={!!it.product_id}
+                                products={products}
+                                onPick={(p) => pickExistingProduct(i, p)}
+                                onChangeText={(v) => updateItem(i, { product_name: v })}
+                                className="h-9 w-full text-sm px-2 pr-8"
+                                placeholder="Nama / pilih"
+                              />
                             </td>
                             <td className="p-1">
                               <Input list="po-cats" value={it.category} onChange={(e) => updateItem(i, { category: e.target.value })} className="h-9 w-full text-xs px-2" placeholder="Pilih/ketik" disabled={!!it.product_id} title={it.category} />
