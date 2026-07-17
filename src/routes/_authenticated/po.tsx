@@ -1036,12 +1036,14 @@ function POPage() {
                     <div key={i} className="rounded-lg border bg-card p-3 space-y-2 shadow-sm">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0 space-y-1.5">
-                          <Input
+                          <ProductNameCombobox
                             value={it.product_name}
-                            onChange={(e) => updateItem(i, { product_name: e.target.value })}
-                            className="h-10 text-sm font-semibold"
-                            placeholder="Nama barang"
                             disabled={!!it.product_id}
+                            products={products}
+                            onPick={(p) => pickExistingProduct(i, p)}
+                            onChangeText={(v) => updateItem(i, { product_name: v })}
+                            className="h-10 text-sm font-semibold pr-9"
+                            placeholder="Nama barang / pilih"
                           />
                           <Input
                             value={it.product_code}
