@@ -641,7 +641,8 @@ function KasirPage() {
         (p) =>
           p.code.toLowerCase().includes(q) ||
           barcodeIncludes(p.barcode, q) ||
-          p.name.toLowerCase().includes(q),
+          p.name.toLowerCase().includes(q) ||
+          (p.category || "").toLowerCase().includes(q),
       )
       .slice(0, 60);
   }, [products, query]);
