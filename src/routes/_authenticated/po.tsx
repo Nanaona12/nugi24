@@ -1576,52 +1576,50 @@ function ProductNameCombobox({
         placeholder={placeholder || "Nama barang"}
         title={value}
       />
-      {!disabled && (
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
-              aria-label="Pilih produk"
-            >
-              <ChevronsUpDown className="h-3.5 w-3.5 opacity-60" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent className="p-0 w-[320px]" align="start">
-            <Command
-              filter={(val, search) => {
-                if (!search) return 1;
-                return val.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
-              }}
-            >
-              <CommandInput placeholder="Cari nama / kode / kategori..." />
-              <CommandList>
-                <CommandEmpty>Tidak ada produk</CommandEmpty>
-                <CommandGroup>
-                  {products.map((p) => (
-                    <CommandItem
-                      key={p.id}
-                      value={`${p.name} ${p.code} ${p.category || ""}`}
-                      onSelect={() => {
-                        onPick(p);
-                        setOpen(false);
-                      }}
-                    >
-                      <div className="flex flex-col min-w-0">
-                        <span className="text-sm truncate">{p.name}</span>
-                        <span className="text-[10px] text-muted-foreground truncate">
-                          {p.code}
-                          {p.category ? ` • ${p.category}` : ""}
-                        </span>
-                      </div>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              </CommandList>
-            </Command>
-          </PopoverContent>
-        </Popover>
-      )}
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
+            aria-label="Pilih produk"
+          >
+            <ChevronsUpDown className="h-3.5 w-3.5 opacity-60" />
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-[320px]" align="start">
+          <Command
+            filter={(val, search) => {
+              if (!search) return 1;
+              return val.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+            }}
+          >
+            <CommandInput placeholder="Cari nama / kode / kategori..." />
+            <CommandList>
+              <CommandEmpty>Tidak ada produk</CommandEmpty>
+              <CommandGroup>
+                {products.map((p) => (
+                  <CommandItem
+                    key={p.id}
+                    value={`${p.name} ${p.code} ${p.category || ""}`}
+                    onSelect={() => {
+                      onPick(p);
+                      setOpen(false);
+                    }}
+                  >
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-sm truncate">{p.name}</span>
+                      <span className="text-[10px] text-muted-foreground truncate">
+                        {p.code}
+                        {p.category ? ` • ${p.category}` : ""}
+                      </span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
     </div>
   );
 }
