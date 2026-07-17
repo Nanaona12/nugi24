@@ -39,12 +39,15 @@ import {
   ImageIcon,
   X as XIcon,
 
+  ChevronsUpDown,
 } from "lucide-react";
 import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
 import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
 import { ReceivingDialog } from "@/components/ReceivingDialog";
 import { PackageCheck } from "lucide-react";
 import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 
 
@@ -366,6 +369,20 @@ function POPage() {
   const updateItem = (i: number, patch: Partial<DraftItem>) => {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   };
+
+  const pickExistingProduct = (i: number, p: Product) => {
+    if (items.some((it, idx) => idx !== i && it.product_id === p.id)) {
+      toast.info("Produk ini sudah ada di daftar");
+      return;
+    }
+    updateItem(i, {
+      product_id: p.id,
+      product_code: p.code,
+      product_name: p.name,
+      category: p.category || "",
+    });
+  };
+
 
   /** Ganti satuan pada baris. Jika satuan cocok dengan unit produk, isi conversion otomatis. */
   const changeUnit = (i: number, unitName: string) => {
@@ -1019,12 +1036,14 @@ function POPage() {
                     <div key={i} className="rounded-lg border bg-card p-3 space-y-2 shadow-sm">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0 space-y-1.5">
-                          <Input
+                          <ProductNameCombobox
                             value={it.product_name}
-                            onChange={(e) => updateItem(i, { product_name: e.target.value })}
-                            className="h-10 text-sm font-semibold"
-                            placeholder="Nama barang"
                             disabled={!!it.product_id}
+                            products={products}
+                            onPick={(p) => pickExistingProduct(i, p)}
+                            onChangeText={(v) => updateItem(i, { product_name: v })}
+                            className="h-10 text-sm font-semibold pr-9"
+                            placeholder="Nama barang / pilih"
                           />
                           <Input
                             value={it.product_code}
@@ -1204,7 +1223,15 @@ function POPage() {
                               <Input value={it.product_code} onChange={(e) => updateItem(i, { product_code: e.target.value })} className="h-9 w-full text-xs px-2" disabled={!!it.product_id} title={it.product_code} />
                             </td>
                             <td className="p-1">
-                              <Input value={it.product_name} onChange={(e) => updateItem(i, { product_name: e.target.value })} className="h-9 w-full text-sm px-2" disabled={!!it.product_id} title={it.product_name} />
+                              <ProductNameCombobox
+                                value={it.product_name}
+                                disabled={!!it.product_id}
+                                products={products}
+                                onPick={(p) => pickExistingProduct(i, p)}
+                                onChangeText={(v) => updateItem(i, { product_name: v })}
+                                className="h-9 w-full text-sm px-2 pr-8"
+                                placeholder="Nama / pilih"
+                              />
                             </td>
                             <td className="p-1">
                               <Input list="po-cats" value={it.category} onChange={(e) => updateItem(i, { category: e.target.value })} className="h-9 w-full text-xs px-2" placeholder="Pilih/ketik" disabled={!!it.product_id} title={it.category} />
@@ -1520,3 +1547,82 @@ function StatusBadge({ status }: { status: string }) {
   };
   return <Badge variant={variants[status] || "outline"}>{STATUS_LABEL[status] || status}</Badge>;
 }
+
+function ProductNameCombobox({
+  value,
+  disabled,
+  products,
+  onPick,
+  onChangeText,
+  className,
+  placeholder,
+}: {
+  value: string;
+  disabled?: boolean;
+  products: Product[];
+  onPick: (p: Product) => void;
+  onChangeText: (v: string) => void;
+  className?: string;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative">
+      <Input
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChangeText(e.target.value)}
+        className={className}
+        placeholder={placeholder || "Nama barang"}
+        title={value}
+      />
+      {!disabled && (
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 flex items-center justify-center rounded hover:bg-muted"
+              aria-label="Pilih produk"
+            >
+              <ChevronsUpDown className="h-3.5 w-3.5 opacity-60" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0 w-[320px]" align="start">
+            <Command
+              filter={(val, search) => {
+                if (!search) return 1;
+                return val.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+              }}
+            >
+              <CommandInput placeholder="Cari nama / kode / kategori..." />
+              <CommandList>
+                <CommandEmpty>Tidak ada produk</CommandEmpty>
+                <CommandGroup>
+                  {products.map((p) => (
+                    <CommandItem
+                      key={p.id}
+                      value={`${p.name} ${p.code} ${p.category || ""}`}
+                      onSelect={() => {
+                        onPick(p);
+                        setOpen(false);
+                      }}
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm truncate">{p.name}</span>
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          {p.code}
+                          {p.category ? ` • ${p.category}` : ""}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+      )}
+    </div>
+  );
+}
+
