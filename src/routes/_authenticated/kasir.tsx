@@ -641,7 +641,8 @@ function KasirPage() {
         (p) =>
           p.code.toLowerCase().includes(q) ||
           barcodeIncludes(p.barcode, q) ||
-          p.name.toLowerCase().includes(q),
+          p.name.toLowerCase().includes(q) ||
+          (p.category || "").toLowerCase().includes(q),
       )
       .slice(0, 60);
   }, [products, query]);
@@ -1303,6 +1304,11 @@ function KasirPage() {
                         <div className="min-w-0 flex-1">
                           <div className="line-clamp-3 text-sm font-medium leading-tight" title={p.name}>{p.name}</div>
                           <div className="mt-0.5 text-xs text-muted-foreground">{p.code}</div>
+                          {p.category && (
+                            <div className="mt-0.5 inline-block max-w-full truncate rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground" title={p.category}>
+                              {p.category}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="mt-2 flex w-full items-center justify-between">
