@@ -39,12 +39,15 @@ import {
   ImageIcon,
   X as XIcon,
 
+  ChevronsUpDown,
 } from "lucide-react";
 import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
 import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
 import { ReceivingDialog } from "@/components/ReceivingDialog";
 import { PackageCheck } from "lucide-react";
 import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 
 
