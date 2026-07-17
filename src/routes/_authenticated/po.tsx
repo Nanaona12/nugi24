@@ -370,6 +370,20 @@ function POPage() {
     setItems((prev) => prev.map((it, idx) => (idx === i ? { ...it, ...patch } : it)));
   };
 
+  const pickExistingProduct = (i: number, p: Product) => {
+    if (items.some((it, idx) => idx !== i && it.product_id === p.id)) {
+      toast.info("Produk ini sudah ada di daftar");
+      return;
+    }
+    updateItem(i, {
+      product_id: p.id,
+      product_code: p.code,
+      product_name: p.name,
+      category: p.category || "",
+    });
+  };
+
+
   /** Ganti satuan pada baris. Jika satuan cocok dengan unit produk, isi conversion otomatis. */
   const changeUnit = (i: number, unitName: string) => {
     const it = items[i];
