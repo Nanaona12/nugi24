@@ -849,6 +849,9 @@ function KeuntunganPage() {
               <Button size="sm" onClick={() => setWithdrawOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" /> Ambil Untung
               </Button>
+              <Button size="sm" variant="outline" onClick={resetWithdrawals} disabled={withdrawals.length === 0} className="text-destructive hover:text-destructive">
+                <Trash2 className="mr-1 h-4 w-4" /> Reset
+              </Button>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-md border p-3">
