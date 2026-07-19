@@ -978,6 +978,54 @@ export type Database = {
           },
         ]
       }
+      profit_activity_log: {
+        Row: {
+          action: string
+          actor_name: string | null
+          amount: number | null
+          created_at: string
+          id: string
+          note: string | null
+          tenant_id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          actor_name?: string | null
+          amount?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          tenant_id: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          actor_name?: string | null
+          amount?: number | null
+          created_at?: string
+          id?: string
+          note?: string | null
+          tenant_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profit_activity_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profit_activity_log_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           category: string | null
@@ -1416,6 +1464,7 @@ export type Database = {
           name: string
           owner_user_id: string
           phone: string | null
+          profit_reset_at: string | null
           showcase_description: string | null
           showcase_enabled: boolean
           slug: string | null
@@ -1434,6 +1483,7 @@ export type Database = {
           name: string
           owner_user_id: string
           phone?: string | null
+          profit_reset_at?: string | null
           showcase_description?: string | null
           showcase_enabled?: boolean
           slug?: string | null
@@ -1452,6 +1502,7 @@ export type Database = {
           name?: string
           owner_user_id?: string
           phone?: string | null
+          profit_reset_at?: string | null
           showcase_description?: string | null
           showcase_enabled?: boolean
           slug?: string | null
