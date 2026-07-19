@@ -203,6 +203,16 @@ function KeuntunganPage() {
     loadWithdrawals();
   };
 
+  const resetWithdrawals = async () => {
+    if (withdrawals.length === 0) { toast.info("Belum ada pengambilan untuk direset"); return; }
+    if (!confirm(`Reset keuntungan? Semua ${withdrawals.length} catatan pengambilan akan dihapus dan "Sudah Diambil" kembali ke Rp 0. Data transaksi tidak terpengaruh.`)) return;
+    const ids = withdrawals.map((w) => w.id);
+    const { error } = await (supabase as any).from("bookkeeping_entries").delete().in("id", ids);
+    if (error) { toast.error(error.message); return; }
+    toast.success("Keuntungan direset. Semua catatan pengambilan dihapus.");
+    loadWithdrawals();
+  };
+
 
   useEffect(() => {
     (async () => {
@@ -838,6 +848,9 @@ function KeuntunganPage() {
               </div>
               <Button size="sm" onClick={() => setWithdrawOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" /> Ambil Untung
+              </Button>
+              <Button size="sm" variant="outline" onClick={resetWithdrawals} disabled={withdrawals.length === 0} className="text-destructive hover:text-destructive">
+                <Trash2 className="mr-1 h-4 w-4" /> Reset
               </Button>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
