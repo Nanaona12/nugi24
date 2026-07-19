@@ -36,6 +36,16 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Textarea } from "@/components/ui/textarea";
 import {
   ResponsiveContainer,
@@ -117,6 +127,12 @@ function KeuntunganPage() {
   const [wSaving, setWSaving] = useState(false);
   const [resolvedLoss, setResolvedLoss] = useState<Record<string, { id: string; note: string | null; created_at: string }>>({});
   const [showResolvedLoss, setShowResolvedLoss] = useState(false);
+  const [profitResetAt, setProfitResetAt] = useState<string | null>(null);
+  type ActivityLog = { id: string; action: string; amount: number | null; note: string | null; actor_name: string | null; created_at: string };
+  const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetNote, setResetNote] = useState("");
+  const [resetting, setResetting] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
 
   const loadResolvedLoss = async () => {
@@ -166,11 +182,41 @@ function KeuntunganPage() {
     if (!error) setWithdrawals((data || []) as ProfitWithdrawal[]);
   };
 
+  const loadActivityLog = async () => {
+    const { data } = await (supabase as any)
+      .from("profit_activity_log")
+      .select("id, action, amount, note, actor_name, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setActivityLog((data || []) as ActivityLog[]);
+  };
+
+  const currentActorName = async (): Promise<string> => {
+    const { data } = await supabase.auth.getUser();
+    const u = data?.user;
+    return (u?.user_metadata as any)?.name || u?.email || "Pengguna";
+  };
+
+  const logActivity = async (tid: string, action: string, amount: number | null, note: string | null) => {
+    const { data } = await supabase.auth.getUser();
+    const u = data?.user;
+    await (supabase as any).from("profit_activity_log").insert({
+      tenant_id: tid,
+      user_id: u?.id ?? null,
+      actor_name: (u?.user_metadata as any)?.name || u?.email || null,
+      action, amount, note,
+    });
+  };
+
   useEffect(() => {
     (async () => {
-      const { data: t } = await supabase.from("tenants").select("id").limit(1).maybeSingle();
-      if (t?.id) setTenantId(t.id as string);
+      const { data: t } = await supabase.from("tenants").select("id, profit_reset_at").limit(1).maybeSingle();
+      if (t?.id) {
+        setTenantId(t.id as string);
+        setProfitResetAt(((t as any).profit_reset_at as string | null) ?? null);
+      }
       loadWithdrawals();
+      loadActivityLog();
     })();
   }, []);
 
@@ -189,28 +235,47 @@ function KeuntunganPage() {
     });
     setWSaving(false);
     if (error) { toast.error(error.message); return; }
+    await logActivity(tenantId, "withdraw", amt, wNote.trim() || null);
     toast.success("Pengambilan keuntungan dicatat. Data transaksi tidak berubah.");
     setWithdrawOpen(false);
     setWAmount(""); setWNote("");
     loadWithdrawals();
+    loadActivityLog();
   };
 
   const deleteWithdrawal = async (id: string) => {
     if (!confirm("Hapus catatan pengambilan ini?")) return;
+    const w = withdrawals.find((x) => x.id === id);
     const { error } = await (supabase as any).from("bookkeeping_entries").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
+    if (tenantId) await logActivity(tenantId, "delete_withdraw", w?.amount ?? null, w?.description ?? null);
     toast.success("Dihapus");
     loadWithdrawals();
+    loadActivityLog();
   };
 
-  const resetWithdrawals = async () => {
-    if (withdrawals.length === 0) { toast.info("Belum ada pengambilan untuk direset"); return; }
-    if (!confirm(`Reset keuntungan? Semua ${withdrawals.length} catatan pengambilan akan dihapus dan "Sudah Diambil" kembali ke Rp 0. Data transaksi tidak terpengaruh.`)) return;
-    const ids = withdrawals.map((w) => w.id);
-    const { error } = await (supabase as any).from("bookkeeping_entries").delete().in("id", ids);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Keuntungan direset. Semua catatan pengambilan dihapus.");
+  const performReset = async () => {
+    if (!tenantId) { toast.error("Toko belum terhubung"); return; }
+    setResetting(true);
+    const now = new Date().toISOString();
+    const { error: upErr } = await (supabase as any)
+      .from("tenants")
+      .update({ profit_reset_at: now })
+      .eq("id", tenantId);
+    if (upErr) { setResetting(false); toast.error(upErr.message); return; }
+    // hapus semua catatan pengambilan yang tercatat (sudah diambil kembali 0)
+    if (withdrawals.length > 0) {
+      const ids = withdrawals.map((w) => w.id);
+      await (supabase as any).from("bookkeeping_entries").delete().in("id", ids);
+    }
+    await logActivity(tenantId, "reset", null, resetNote.trim() || null);
+    setProfitResetAt(now);
+    setResetting(false);
+    setResetConfirmOpen(false);
+    setResetNote("");
+    toast.success("Keuntungan direset. Semua tampilan kembali ke Rp 0.");
     loadWithdrawals();
+    loadActivityLog();
   };
 
 
@@ -281,18 +346,26 @@ function KeuntunganPage() {
 
 
   const filteredItems = useMemo(() => {
-    if (!fromDate && !toDate) return items;
     const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
     const to = toDate ? new Date(toDate + "T23:59:59") : null;
+    const resetAt = profitResetAt ? new Date(profitResetAt) : null;
+    if (!from && !to && !resetAt) return items;
     return items.filter((it) => {
       const at = it.transactions?.created_at;
       if (!at) return false;
       const d = new Date(at);
+      if (resetAt && d < resetAt) return false;
       if (from && d < from) return false;
       if (to && d > to) return false;
       return true;
     });
-  }, [items, fromDate, toDate]);
+  }, [items, fromDate, toDate, profitResetAt]);
+
+  const visibleWithdrawals = useMemo(() => {
+    if (!profitResetAt) return withdrawals;
+    const r = new Date(profitResetAt);
+    return withdrawals.filter((w) => new Date(w.entry_date) >= r);
+  }, [withdrawals, profitResetAt]);
 
   const stats = useMemo(() => {
     const now = new Date();
@@ -837,7 +910,7 @@ function KeuntunganPage() {
 
       {/* Ambil Keuntungan (Prive) */}
       {(() => {
-        const totalTaken = withdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
+        const totalTaken = visibleWithdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
         const sisa = stats.allProfit - totalTaken;
         return (
           <Card className="p-4">
@@ -845,31 +918,38 @@ function KeuntunganPage() {
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Wallet className="h-4 w-4 text-emerald-600" />
                 Ambil Keuntungan (Prive Pemilik)
+                {profitResetAt && (
+                  <Badge variant="outline" className="ml-2 text-[10px]">
+                    Reset: {new Date(profitResetAt).toLocaleString("id-ID")}
+                  </Badge>
+                )}
               </div>
-              <Button size="sm" onClick={() => setWithdrawOpen(true)}>
-                <Plus className="mr-1 h-4 w-4" /> Ambil Untung
-              </Button>
-              <Button size="sm" variant="outline" onClick={resetWithdrawals} disabled={withdrawals.length === 0} className="text-destructive hover:text-destructive">
-                <Trash2 className="mr-1 h-4 w-4" /> Reset
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => setWithdrawOpen(true)}>
+                  <Plus className="mr-1 h-4 w-4" /> Ambil Untung
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setResetConfirmOpen(true)} className="text-destructive hover:text-destructive">
+                  <Trash2 className="mr-1 h-4 w-4" /> Reset
+                </Button>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Total Untung (Data)</div>
                 <div className="mt-1 text-xl font-bold text-primary">{formatRupiah(stats.allProfit)}</div>
-                <div className="text-[11px] text-muted-foreground">Tidak berubah walau diambil</div>
+                <div className="text-[11px] text-muted-foreground">Sejak reset terakhir</div>
               </div>
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Sudah Diambil</div>
                 <div className="mt-1 text-xl font-bold text-amber-600">{formatRupiah(totalTaken)}</div>
-                <div className="text-[11px] text-muted-foreground">{withdrawals.length} kali pengambilan</div>
+                <div className="text-[11px] text-muted-foreground">{visibleWithdrawals.length} kali pengambilan</div>
               </div>
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Sisa Belum Diambil</div>
                 <div className={`mt-1 text-xl font-bold ${sisa < 0 ? "text-destructive" : "text-emerald-600"}`}>{formatRupiah(sisa)}</div>
               </div>
             </div>
-            {withdrawals.length > 0 && (
+            {visibleWithdrawals.length > 0 && (
               <div className="mt-4 overflow-x-auto">
                 <div className="mb-2 text-xs font-semibold text-muted-foreground">Riwayat Pengambilan</div>
                 <table className="w-full text-sm">
@@ -882,7 +962,7 @@ function KeuntunganPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {withdrawals.slice(0, 10).map((w) => (
+                    {visibleWithdrawals.slice(0, 10).map((w) => (
                       <tr key={w.id} className="border-t">
                         <td className="p-2">{new Date(w.entry_date).toLocaleDateString("id-ID")}</td>
                         <td className="p-2">{w.description}</td>
@@ -901,6 +981,84 @@ function KeuntunganPage() {
           </Card>
         );
       })()}
+
+      {/* Riwayat Perubahan Keuntungan */}
+      <Card className="p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          Riwayat Perubahan Keuntungan
+          <span className="ml-auto text-xs font-normal text-muted-foreground">{activityLog.length} catatan</span>
+        </div>
+        {activityLog.length === 0 ? (
+          <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Belum ada aktivitas. Reset & pengambilan keuntungan akan tercatat di sini.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="p-2">Waktu</th>
+                  <th className="p-2">Aksi</th>
+                  <th className="p-2">Oleh</th>
+                  <th className="p-2 text-right">Nominal</th>
+                  <th className="p-2">Catatan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activityLog.map((a) => {
+                  const label =
+                    a.action === "reset" ? "Reset Keuntungan" :
+                    a.action === "withdraw" ? "Ambil Untung" :
+                    a.action === "delete_withdraw" ? "Hapus Pengambilan" : a.action;
+                  const tone =
+                    a.action === "reset" ? "text-destructive" :
+                    a.action === "withdraw" ? "text-amber-600" :
+                    a.action === "delete_withdraw" ? "text-muted-foreground" : "";
+                  return (
+                    <tr key={a.id} className="border-t">
+                      <td className="p-2 whitespace-nowrap">{new Date(a.created_at).toLocaleString("id-ID")}</td>
+                      <td className={`p-2 font-medium ${tone}`}>{label}</td>
+                      <td className="p-2">{a.actor_name || "-"}</td>
+                      <td className="p-2 text-right">{a.amount != null ? formatRupiah(Number(a.amount)) : "-"}</td>
+                      <td className="p-2 text-muted-foreground">{a.note || "-"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Konfirmasi Reset Keuntungan */}
+      <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Reset Keuntungan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Semua tampilan keuntungan (Hari Ini, Bulan Ini, Tahun Ini, Total) akan kembali ke <b>Rp 0</b> dan semua catatan pengambilan akan dihapus dari tampilan. Data transaksi lama <b>tidak dihapus</b> — hanya disembunyikan dari perhitungan keuntungan setelah titik reset ini.
+              <br /><br />
+              Aksi ini akan tercatat di Riwayat Perubahan Keuntungan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-1">
+            <Label className="text-xs">Catatan (opsional)</Label>
+            <Textarea value={resetNote} onChange={(e) => setResetNote(e.target.value)} rows={2} placeholder="mis. Reset akhir bulan / tutup buku" />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={resetting}
+              onClick={(e) => { e.preventDefault(); performReset(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {resetting ? "Mereset..." : "Ya, Reset Semua ke 0"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
 
       <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
         <DialogContent className="max-w-md">
