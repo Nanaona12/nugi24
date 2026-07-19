@@ -346,18 +346,26 @@ function KeuntunganPage() {
 
 
   const filteredItems = useMemo(() => {
-    if (!fromDate && !toDate) return items;
     const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
     const to = toDate ? new Date(toDate + "T23:59:59") : null;
+    const resetAt = profitResetAt ? new Date(profitResetAt) : null;
+    if (!from && !to && !resetAt) return items;
     return items.filter((it) => {
       const at = it.transactions?.created_at;
       if (!at) return false;
       const d = new Date(at);
+      if (resetAt && d < resetAt) return false;
       if (from && d < from) return false;
       if (to && d > to) return false;
       return true;
     });
-  }, [items, fromDate, toDate]);
+  }, [items, fromDate, toDate, profitResetAt]);
+
+  const visibleWithdrawals = useMemo(() => {
+    if (!profitResetAt) return withdrawals;
+    const r = new Date(profitResetAt);
+    return withdrawals.filter((w) => new Date(w.entry_date) >= r);
+  }, [withdrawals, profitResetAt]);
 
   const stats = useMemo(() => {
     const now = new Date();
