@@ -982,6 +982,84 @@ function KeuntunganPage() {
         );
       })()}
 
+      {/* Riwayat Perubahan Keuntungan */}
+      <Card className="p-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold">
+          <BarChart3 className="h-4 w-4 text-primary" />
+          Riwayat Perubahan Keuntungan
+          <span className="ml-auto text-xs font-normal text-muted-foreground">{activityLog.length} catatan</span>
+        </div>
+        {activityLog.length === 0 ? (
+          <div className="rounded-md border border-dashed p-6 text-center text-sm text-muted-foreground">
+            Belum ada aktivitas. Reset & pengambilan keuntungan akan tercatat di sini.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th className="p-2">Waktu</th>
+                  <th className="p-2">Aksi</th>
+                  <th className="p-2">Oleh</th>
+                  <th className="p-2 text-right">Nominal</th>
+                  <th className="p-2">Catatan</th>
+                </tr>
+              </thead>
+              <tbody>
+                {activityLog.map((a) => {
+                  const label =
+                    a.action === "reset" ? "Reset Keuntungan" :
+                    a.action === "withdraw" ? "Ambil Untung" :
+                    a.action === "delete_withdraw" ? "Hapus Pengambilan" : a.action;
+                  const tone =
+                    a.action === "reset" ? "text-destructive" :
+                    a.action === "withdraw" ? "text-amber-600" :
+                    a.action === "delete_withdraw" ? "text-muted-foreground" : "";
+                  return (
+                    <tr key={a.id} className="border-t">
+                      <td className="p-2 whitespace-nowrap">{new Date(a.created_at).toLocaleString("id-ID")}</td>
+                      <td className={`p-2 font-medium ${tone}`}>{label}</td>
+                      <td className="p-2">{a.actor_name || "-"}</td>
+                      <td className="p-2 text-right">{a.amount != null ? formatRupiah(Number(a.amount)) : "-"}</td>
+                      <td className="p-2 text-muted-foreground">{a.note || "-"}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+
+      {/* Konfirmasi Reset Keuntungan */}
+      <AlertDialog open={resetConfirmOpen} onOpenChange={setResetConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">Reset Keuntungan?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Semua tampilan keuntungan (Hari Ini, Bulan Ini, Tahun Ini, Total) akan kembali ke <b>Rp 0</b> dan semua catatan pengambilan akan dihapus dari tampilan. Data transaksi lama <b>tidak dihapus</b> — hanya disembunyikan dari perhitungan keuntungan setelah titik reset ini.
+              <br /><br />
+              Aksi ini akan tercatat di Riwayat Perubahan Keuntungan.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="grid gap-1">
+            <Label className="text-xs">Catatan (opsional)</Label>
+            <Textarea value={resetNote} onChange={(e) => setResetNote(e.target.value)} rows={2} placeholder="mis. Reset akhir bulan / tutup buku" />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={resetting}>Batal</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={resetting}
+              onClick={(e) => { e.preventDefault(); performReset(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {resetting ? "Mereset..." : "Ya, Reset Semua ke 0"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+
       <Dialog open={withdrawOpen} onOpenChange={setWithdrawOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
