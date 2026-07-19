@@ -182,11 +182,41 @@ function KeuntunganPage() {
     if (!error) setWithdrawals((data || []) as ProfitWithdrawal[]);
   };
 
+  const loadActivityLog = async () => {
+    const { data } = await (supabase as any)
+      .from("profit_activity_log")
+      .select("id, action, amount, note, actor_name, created_at")
+      .order("created_at", { ascending: false })
+      .limit(100);
+    setActivityLog((data || []) as ActivityLog[]);
+  };
+
+  const currentActorName = async (): Promise<string> => {
+    const { data } = await supabase.auth.getUser();
+    const u = data?.user;
+    return (u?.user_metadata as any)?.name || u?.email || "Pengguna";
+  };
+
+  const logActivity = async (tid: string, action: string, amount: number | null, note: string | null) => {
+    const { data } = await supabase.auth.getUser();
+    const u = data?.user;
+    await (supabase as any).from("profit_activity_log").insert({
+      tenant_id: tid,
+      user_id: u?.id ?? null,
+      actor_name: (u?.user_metadata as any)?.name || u?.email || null,
+      action, amount, note,
+    });
+  };
+
   useEffect(() => {
     (async () => {
-      const { data: t } = await supabase.from("tenants").select("id").limit(1).maybeSingle();
-      if (t?.id) setTenantId(t.id as string);
+      const { data: t } = await supabase.from("tenants").select("id, profit_reset_at").limit(1).maybeSingle();
+      if (t?.id) {
+        setTenantId(t.id as string);
+        setProfitResetAt(((t as any).profit_reset_at as string | null) ?? null);
+      }
       loadWithdrawals();
+      loadActivityLog();
     })();
   }, []);
 
@@ -205,28 +235,47 @@ function KeuntunganPage() {
     });
     setWSaving(false);
     if (error) { toast.error(error.message); return; }
+    await logActivity(tenantId, "withdraw", amt, wNote.trim() || null);
     toast.success("Pengambilan keuntungan dicatat. Data transaksi tidak berubah.");
     setWithdrawOpen(false);
     setWAmount(""); setWNote("");
     loadWithdrawals();
+    loadActivityLog();
   };
 
   const deleteWithdrawal = async (id: string) => {
     if (!confirm("Hapus catatan pengambilan ini?")) return;
+    const w = withdrawals.find((x) => x.id === id);
     const { error } = await (supabase as any).from("bookkeeping_entries").delete().eq("id", id);
     if (error) { toast.error(error.message); return; }
+    if (tenantId) await logActivity(tenantId, "delete_withdraw", w?.amount ?? null, w?.description ?? null);
     toast.success("Dihapus");
     loadWithdrawals();
+    loadActivityLog();
   };
 
-  const resetWithdrawals = async () => {
-    if (withdrawals.length === 0) { toast.info("Belum ada pengambilan untuk direset"); return; }
-    if (!confirm(`Reset keuntungan? Semua ${withdrawals.length} catatan pengambilan akan dihapus dan "Sudah Diambil" kembali ke Rp 0. Data transaksi tidak terpengaruh.`)) return;
-    const ids = withdrawals.map((w) => w.id);
-    const { error } = await (supabase as any).from("bookkeeping_entries").delete().in("id", ids);
-    if (error) { toast.error(error.message); return; }
-    toast.success("Keuntungan direset. Semua catatan pengambilan dihapus.");
+  const performReset = async () => {
+    if (!tenantId) { toast.error("Toko belum terhubung"); return; }
+    setResetting(true);
+    const now = new Date().toISOString();
+    const { error: upErr } = await (supabase as any)
+      .from("tenants")
+      .update({ profit_reset_at: now })
+      .eq("id", tenantId);
+    if (upErr) { setResetting(false); toast.error(upErr.message); return; }
+    // hapus semua catatan pengambilan yang tercatat (sudah diambil kembali 0)
+    if (withdrawals.length > 0) {
+      const ids = withdrawals.map((w) => w.id);
+      await (supabase as any).from("bookkeeping_entries").delete().in("id", ids);
+    }
+    await logActivity(tenantId, "reset", null, resetNote.trim() || null);
+    setProfitResetAt(now);
+    setResetting(false);
+    setResetConfirmOpen(false);
+    setResetNote("");
+    toast.success("Keuntungan direset. Semua tampilan kembali ke Rp 0.");
     loadWithdrawals();
+    loadActivityLog();
   };
 
 
