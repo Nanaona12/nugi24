@@ -910,7 +910,7 @@ function KeuntunganPage() {
 
       {/* Ambil Keuntungan (Prive) */}
       {(() => {
-        const totalTaken = withdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
+        const totalTaken = visibleWithdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
         const sisa = stats.allProfit - totalTaken;
         return (
           <Card className="p-4">
@@ -918,31 +918,38 @@ function KeuntunganPage() {
               <div className="flex items-center gap-2 text-sm font-semibold">
                 <Wallet className="h-4 w-4 text-emerald-600" />
                 Ambil Keuntungan (Prive Pemilik)
+                {profitResetAt && (
+                  <Badge variant="outline" className="ml-2 text-[10px]">
+                    Reset: {new Date(profitResetAt).toLocaleString("id-ID")}
+                  </Badge>
+                )}
               </div>
-              <Button size="sm" onClick={() => setWithdrawOpen(true)}>
-                <Plus className="mr-1 h-4 w-4" /> Ambil Untung
-              </Button>
-              <Button size="sm" variant="outline" onClick={resetWithdrawals} disabled={withdrawals.length === 0} className="text-destructive hover:text-destructive">
-                <Trash2 className="mr-1 h-4 w-4" /> Reset
-              </Button>
+              <div className="flex flex-wrap gap-2">
+                <Button size="sm" onClick={() => setWithdrawOpen(true)}>
+                  <Plus className="mr-1 h-4 w-4" /> Ambil Untung
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setResetConfirmOpen(true)} className="text-destructive hover:text-destructive">
+                  <Trash2 className="mr-1 h-4 w-4" /> Reset
+                </Button>
+              </div>
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Total Untung (Data)</div>
                 <div className="mt-1 text-xl font-bold text-primary">{formatRupiah(stats.allProfit)}</div>
-                <div className="text-[11px] text-muted-foreground">Tidak berubah walau diambil</div>
+                <div className="text-[11px] text-muted-foreground">Sejak reset terakhir</div>
               </div>
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Sudah Diambil</div>
                 <div className="mt-1 text-xl font-bold text-amber-600">{formatRupiah(totalTaken)}</div>
-                <div className="text-[11px] text-muted-foreground">{withdrawals.length} kali pengambilan</div>
+                <div className="text-[11px] text-muted-foreground">{visibleWithdrawals.length} kali pengambilan</div>
               </div>
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Sisa Belum Diambil</div>
                 <div className={`mt-1 text-xl font-bold ${sisa < 0 ? "text-destructive" : "text-emerald-600"}`}>{formatRupiah(sisa)}</div>
               </div>
             </div>
-            {withdrawals.length > 0 && (
+            {visibleWithdrawals.length > 0 && (
               <div className="mt-4 overflow-x-auto">
                 <div className="mb-2 text-xs font-semibold text-muted-foreground">Riwayat Pengambilan</div>
                 <table className="w-full text-sm">
@@ -955,7 +962,7 @@ function KeuntunganPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {withdrawals.slice(0, 10).map((w) => (
+                    {visibleWithdrawals.slice(0, 10).map((w) => (
                       <tr key={w.id} className="border-t">
                         <td className="p-2">{new Date(w.entry_date).toLocaleDateString("id-ID")}</td>
                         <td className="p-2">{w.description}</td>
