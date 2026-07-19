@@ -127,6 +127,12 @@ function KeuntunganPage() {
   const [wSaving, setWSaving] = useState(false);
   const [resolvedLoss, setResolvedLoss] = useState<Record<string, { id: string; note: string | null; created_at: string }>>({});
   const [showResolvedLoss, setShowResolvedLoss] = useState(false);
+  const [profitResetAt, setProfitResetAt] = useState<string | null>(null);
+  type ActivityLog = { id: string; action: string; amount: number | null; note: string | null; actor_name: string | null; created_at: string };
+  const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
+  const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
+  const [resetNote, setResetNote] = useState("");
+  const [resetting, setResetting] = useState(false);
   const chartsRef = useRef<HTMLDivElement>(null);
 
   const loadResolvedLoss = async () => {
