@@ -845,8 +845,10 @@ function POPage() {
         </Card>
       )}
 
+      <ProductPurchaseHistoryCard products={products} />
 
       <Card className="overflow-hidden">
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
