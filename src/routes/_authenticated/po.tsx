@@ -38,7 +38,7 @@ import {
   Sparkles,
   ImageIcon,
   X as XIcon,
-
+  CalendarIcon,
   ChevronsUpDown,
 } from "lucide-react";
 import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
@@ -48,6 +48,9 @@ import { PackageCheck } from "lucide-react";
 import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 
 
