@@ -1649,16 +1649,31 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
   const [rows, setRows] = useState<PurchaseHistoryRow[]>([]);
   const [soldQty, setSoldQty] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [endDate, setEndDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d;
+  });
 
   useEffect(() => {
     if (!picked) { setRows([]); setSoldQty(0); return; }
     (async () => {
       setLoading(true);
       try {
+        const startIso = startDate.toISOString();
+        const endIso = endDate.toISOString();
         const { data: items } = await (supabase as any)
           .from("purchase_order_items")
           .select("po_id,qty,qty_received,unit_name,unit_conversion,unit_cost,subtotal,product_code,purchase_orders:po_id(id,supplier,notes,created_at,received_status)")
           .or(`product_id.eq.${picked.id},product_code.eq.${picked.code}`)
+          .gte("purchase_orders.created_at", startIso)
+          .lte("purchase_orders.created_at", endIso)
           .order("po_id", { ascending: false });
         const list: PurchaseHistoryRow[] = ((items as any[]) || [])
           .map((r) => ({
@@ -1681,7 +1696,9 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
         const { data: sold } = await (supabase as any)
           .from("transaction_items")
           .select("qty,unit_conversion")
-          .or(`product_id.eq.${picked.id},product_code.eq.${picked.code}`);
+          .or(`product_id.eq.${picked.id},product_code.eq.${picked.code}`)
+          .gte("created_at", startIso)
+          .lte("created_at", endIso);
         const totalSold = ((sold as any[]) || []).reduce(
           (s, r) => s + Number(r.qty || 0) * Number(r.unit_conversion || 1),
           0,
@@ -1693,7 +1710,7 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
         setLoading(false);
       }
     })();
-  }, [picked]);
+  }, [picked, startDate, endDate]);
 
   const totalPurchased = rows.reduce((s, r) => s + r.qty_received * r.unit_conversion, 0);
   const totalSpent = rows.reduce((s, r) => s + r.subtotal, 0);
