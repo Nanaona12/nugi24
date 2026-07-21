@@ -1715,6 +1715,42 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
   const totalPurchased = rows.reduce((s, r) => s + r.qty_received * r.unit_conversion, 0);
   const totalSpent = rows.reduce((s, r) => s + r.subtotal, 0);
 
+  const DatePickerButton = ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: Date;
+    onChange: (d: Date) => void;
+    placeholder: string;
+  }) => {
+    const [open, setOpen] = useState(false);
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="min-w-[140px] justify-start text-left font-normal">
+            <CalendarIcon className="mr-2 h-3.5 w-3.5 opacity-60" />
+            {format(value, "d MMM yyyy", { locale: idLocale })}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value}
+            onSelect={(d) => {
+              if (d) {
+                onChange(d);
+                setOpen(false);
+              }
+            }}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  };
+
   return (
     <Card className="overflow-hidden">
       <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 p-3">
@@ -1758,9 +1794,15 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
           </PopoverContent>
         </Popover>
         {picked && (
-          <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
-            <XIcon className="h-4 w-4" />
-          </Button>
+          <>
+            <span className="text-xs text-muted-foreground hidden sm:inline">Dari</span>
+            <DatePickerButton value={startDate} onChange={setStartDate} placeholder="Dari" />
+            <span className="text-xs text-muted-foreground hidden sm:inline">Sampai</span>
+            <DatePickerButton value={endDate} onChange={setEndDate} placeholder="Sampai" />
+            <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
+              <XIcon className="h-4 w-4" />
+            </Button>
+          </>
         )}
       </div>
 
