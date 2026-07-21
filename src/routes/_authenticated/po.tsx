@@ -38,7 +38,7 @@ import {
   Sparkles,
   ImageIcon,
   X as XIcon,
-
+  CalendarIcon,
   ChevronsUpDown,
 } from "lucide-react";
 import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
@@ -48,6 +48,9 @@ import { PackageCheck } from "lucide-react";
 import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Calendar } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { id as idLocale } from "date-fns/locale";
 
 
 
@@ -1646,16 +1649,31 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
   const [rows, setRows] = useState<PurchaseHistoryRow[]>([]);
   const [soldQty, setSoldQty] = useState<number>(0);
   const [loading, setLoading] = useState(false);
+  const [startDate, setStartDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    d.setHours(0, 0, 0, 0);
+    return d;
+  });
+  const [endDate, setEndDate] = useState<Date>(() => {
+    const d = new Date();
+    d.setHours(23, 59, 59, 999);
+    return d;
+  });
 
   useEffect(() => {
     if (!picked) { setRows([]); setSoldQty(0); return; }
     (async () => {
       setLoading(true);
       try {
+        const startIso = startDate.toISOString();
+        const endIso = endDate.toISOString();
         const { data: items } = await (supabase as any)
           .from("purchase_order_items")
           .select("po_id,qty,qty_received,unit_name,unit_conversion,unit_cost,subtotal,product_code,purchase_orders:po_id(id,supplier,notes,created_at,received_status)")
           .or(`product_id.eq.${picked.id},product_code.eq.${picked.code}`)
+          .gte("purchase_orders.created_at", startIso)
+          .lte("purchase_orders.created_at", endIso)
           .order("po_id", { ascending: false });
         const list: PurchaseHistoryRow[] = ((items as any[]) || [])
           .map((r) => ({
@@ -1678,7 +1696,9 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
         const { data: sold } = await (supabase as any)
           .from("transaction_items")
           .select("qty,unit_conversion")
-          .or(`product_id.eq.${picked.id},product_code.eq.${picked.code}`);
+          .or(`product_id.eq.${picked.id},product_code.eq.${picked.code}`)
+          .gte("created_at", startIso)
+          .lte("created_at", endIso);
         const totalSold = ((sold as any[]) || []).reduce(
           (s, r) => s + Number(r.qty || 0) * Number(r.unit_conversion || 1),
           0,
@@ -1690,10 +1710,46 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
         setLoading(false);
       }
     })();
-  }, [picked]);
+  }, [picked, startDate, endDate]);
 
   const totalPurchased = rows.reduce((s, r) => s + r.qty_received * r.unit_conversion, 0);
   const totalSpent = rows.reduce((s, r) => s + r.subtotal, 0);
+
+  const DatePickerButton = ({
+    value,
+    onChange,
+    placeholder,
+  }: {
+    value: Date;
+    onChange: (d: Date) => void;
+    placeholder: string;
+  }) => {
+    const [open, setOpen] = useState(false);
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="sm" className="min-w-[140px] justify-start text-left font-normal">
+            <CalendarIcon className="mr-2 h-3.5 w-3.5 opacity-60" />
+            {format(value, "d MMM yyyy", { locale: idLocale })}
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            selected={value}
+            onSelect={(d) => {
+              if (d) {
+                onChange(d);
+                setOpen(false);
+              }
+            }}
+            initialFocus
+            className="p-3 pointer-events-auto"
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  };
 
   return (
     <Card className="overflow-hidden">
@@ -1738,9 +1794,15 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
           </PopoverContent>
         </Popover>
         {picked && (
-          <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
-            <XIcon className="h-4 w-4" />
-          </Button>
+          <>
+            <span className="text-xs text-muted-foreground hidden sm:inline">Dari</span>
+            <DatePickerButton value={startDate} onChange={setStartDate} placeholder="Dari" />
+            <span className="text-xs text-muted-foreground hidden sm:inline">Sampai</span>
+            <DatePickerButton value={endDate} onChange={setEndDate} placeholder="Sampai" />
+            <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
+              <XIcon className="h-4 w-4" />
+            </Button>
+          </>
         )}
       </div>
 
