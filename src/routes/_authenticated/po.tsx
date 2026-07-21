@@ -845,8 +845,10 @@ function POPage() {
         </Card>
       )}
 
+      <ProductPurchaseHistoryCard products={products} />
 
       <Card className="overflow-hidden">
+
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted text-left text-xs uppercase text-muted-foreground">
@@ -1621,6 +1623,198 @@ function ProductNameCombobox({
         </PopoverContent>
       </Popover>
     </div>
+  );
+}
+
+type PurchaseHistoryRow = {
+  po_id: string;
+  created_at: string;
+  supplier: string;
+  notes: string | null;
+  received_status: string;
+  qty: number;
+  qty_received: number;
+  unit_name: string | null;
+  unit_conversion: number;
+  unit_cost: number;
+  subtotal: number;
+};
+
+function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
+  const [open, setOpen] = useState(false);
+  const [picked, setPicked] = useState<Product | null>(null);
+  const [rows, setRows] = useState<PurchaseHistoryRow[]>([]);
+  const [soldQty, setSoldQty] = useState<number>(0);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!picked) { setRows([]); setSoldQty(0); return; }
+    (async () => {
+      setLoading(true);
+      try {
+        const { data: items } = await (supabase as any)
+          .from("purchase_order_items")
+          .select("po_id,qty,qty_received,unit_name,unit_conversion,unit_cost,subtotal,product_code,purchase_orders:po_id(id,supplier,notes,created_at,received_status)")
+          .or(`product_id.eq.${picked.id},product_code.eq.${picked.code}`)
+          .order("po_id", { ascending: false });
+        const list: PurchaseHistoryRow[] = ((items as any[]) || [])
+          .map((r) => ({
+            po_id: r.po_id,
+            created_at: r.purchase_orders?.created_at || "",
+            supplier: r.purchase_orders?.supplier || "-",
+            notes: r.purchase_orders?.notes || null,
+            received_status: r.purchase_orders?.received_status || "pending",
+            qty: Number(r.qty || 0),
+            qty_received: Number(r.qty_received || 0),
+            unit_name: r.unit_name || null,
+            unit_conversion: Number(r.unit_conversion || 1),
+            unit_cost: Number(r.unit_cost || 0),
+            subtotal: Number(r.subtotal || 0),
+          }))
+          .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
+        setRows(list);
+
+        // Total terjual (dari transaction_items - refund otomatis diperhitungkan trigger)
+        const { data: sold } = await (supabase as any)
+          .from("transaction_items")
+          .select("qty,unit_conversion")
+          .or(`product_id.eq.${picked.id},product_code.eq.${picked.code}`);
+        const totalSold = ((sold as any[]) || []).reduce(
+          (s, r) => s + Number(r.qty || 0) * Number(r.unit_conversion || 1),
+          0,
+        );
+        setSoldQty(totalSold);
+      } catch (e: any) {
+        toast.error(e.message || "Gagal memuat riwayat");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [picked]);
+
+  const totalPurchased = rows.reduce((s, r) => s + r.qty_received * r.unit_conversion, 0);
+  const totalSpent = rows.reduce((s, r) => s + r.subtotal, 0);
+
+  return (
+    <Card className="overflow-hidden">
+      <div className="flex flex-wrap items-center gap-2 border-b bg-muted/30 p-3">
+        <Search className="h-4 w-4 text-muted-foreground" />
+        <div className="text-sm font-semibold flex-1 min-w-[160px]">Riwayat Pembelian Produk</div>
+        <Popover open={open} onOpenChange={setOpen}>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="sm" className="min-w-[220px] justify-between">
+              <span className="truncate">{picked ? picked.name : "Pilih produk..."}</span>
+              <ChevronsUpDown className="ml-2 h-3.5 w-3.5 opacity-60" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="p-0 w-[320px]" align="end">
+            <Command
+              filter={(val, search) => {
+                if (!search) return 1;
+                return val.toLowerCase().includes(search.toLowerCase()) ? 1 : 0;
+              }}
+            >
+              <CommandInput placeholder="Cari nama / kode / kategori..." />
+              <CommandList>
+                <CommandEmpty>Tidak ada produk</CommandEmpty>
+                <CommandGroup>
+                  {products.map((p) => (
+                    <CommandItem
+                      key={p.id}
+                      value={`${p.name} ${p.code} ${p.category || ""}`}
+                      onSelect={() => { setPicked(p); setOpen(false); }}
+                    >
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-sm truncate">{p.name}</span>
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          {p.code}{p.category ? ` • ${p.category}` : ""}
+                        </span>
+                      </div>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
+        {picked && (
+          <Button variant="ghost" size="sm" onClick={() => setPicked(null)}>
+            <XIcon className="h-4 w-4" />
+          </Button>
+        )}
+      </div>
+
+      {!picked ? (
+        <div className="p-6 text-center text-sm text-muted-foreground">
+          Pilih produk untuk melihat kapan dibeli, dari supplier mana, berapa banyak, dan sudah terjual berapa.
+        </div>
+      ) : loading ? (
+        <div className="p-6 text-center text-sm text-muted-foreground">Memuat...</div>
+      ) : (
+        <div>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 border-b bg-muted/10 text-xs">
+            <div>
+              <div className="text-muted-foreground">Stok Sekarang</div>
+              <div className="font-semibold text-sm">{picked.stock} pcs</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Total Dibeli (diterima)</div>
+              <div className="font-semibold text-sm">{totalPurchased} pcs</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Total Terjual</div>
+              <div className="font-semibold text-sm text-emerald-600">{soldQty} pcs</div>
+            </div>
+            <div>
+              <div className="text-muted-foreground">Total Belanja</div>
+              <div className="font-semibold text-sm">{formatRupiah(totalSpent)}</div>
+            </div>
+          </div>
+
+          <div className="max-h-80 overflow-auto">
+            {rows.length === 0 ? (
+              <div className="p-6 text-center text-sm text-muted-foreground">
+                Belum ada riwayat PO untuk produk ini.
+              </div>
+            ) : (
+              <table className="w-full text-sm">
+                <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground sticky top-0">
+                  <tr>
+                    <th className="p-2">Tanggal</th>
+                    <th className="p-2">Supplier</th>
+                    <th className="p-2">Catatan</th>
+                    <th className="p-2 text-right">Pesan / Terima</th>
+                    <th className="p-2 text-right">Harga</th>
+                    <th className="p-2 text-right">Subtotal</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r, i) => (
+                    <tr key={`${r.po_id}-${i}`} className="border-t hover:bg-muted/40">
+                      <td className="p-2 whitespace-nowrap text-xs">
+                        {r.created_at ? new Date(r.created_at).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : "-"}
+                      </td>
+                      <td className="p-2 font-medium">{r.supplier}</td>
+                      <td className="p-2 text-xs text-muted-foreground max-w-[220px] truncate" title={r.notes || ""}>
+                        {r.notes || "-"}
+                      </td>
+                      <td className="p-2 text-right text-xs">
+                        {r.qty} / <span className="text-primary">{r.qty_received}</span> {r.unit_name || "pcs"}
+                        {r.unit_conversion > 1 && (
+                          <div className="text-[10px] text-muted-foreground">= {r.qty_received * r.unit_conversion} pcs</div>
+                        )}
+                      </td>
+                      <td className="p-2 text-right text-xs">{formatRupiah(r.unit_cost)}</td>
+                      <td className="p-2 text-right font-medium">{formatRupiah(r.subtotal)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
+      )}
+    </Card>
   );
 }
 
