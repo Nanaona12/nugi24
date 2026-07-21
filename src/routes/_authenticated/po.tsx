@@ -1648,6 +1648,8 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
   const [picked, setPicked] = useState<Product | null>(null);
   const [rows, setRows] = useState<PurchaseHistoryRow[]>([]);
   const [soldQty, setSoldQty] = useState<number>(0);
+  const [totalPurchased, setTotalPurchased] = useState<number>(0);
+  const [totalSpent, setTotalSpent] = useState<number>(0);
   const [loading, setLoading] = useState(false);
   const [startDate, setStartDate] = useState<Date>(() => {
     const d = new Date();
@@ -1662,7 +1664,13 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
   });
 
   useEffect(() => {
-    if (!picked) { setRows([]); setSoldQty(0); return; }
+    if (!picked) {
+      setRows([]);
+      setSoldQty(0);
+      setTotalPurchased(0);
+      setTotalSpent(0);
+      return;
+    }
     (async () => {
       setLoading(true);
       try {
@@ -1691,6 +1699,8 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
           }))
           .sort((a, b) => (b.created_at || "").localeCompare(a.created_at || ""));
         setRows(list);
+        setTotalPurchased(list.reduce((s, r) => s + r.qty_received * r.unit_conversion, 0));
+        setTotalSpent(list.reduce((s, r) => s + r.subtotal, 0));
 
         // Total terjual (dari transaction_items - refund otomatis diperhitungkan trigger)
         const { data: sold } = await (supabase as any)
@@ -1711,9 +1721,6 @@ function ProductPurchaseHistoryCard({ products }: { products: Product[] }) {
       }
     })();
   }, [picked, startDate, endDate]);
-
-  const totalPurchased = rows.reduce((s, r) => s + r.qty_received * r.unit_conversion, 0);
-  const totalSpent = rows.reduce((s, r) => s + r.subtotal, 0);
 
   const DatePickerButton = ({
     value,
