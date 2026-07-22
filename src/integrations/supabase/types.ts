@@ -1367,6 +1367,42 @@ export type Database = {
           },
         ]
       }
+      stock_movements: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          delta: number
+          id: string
+          new_stock: number
+          old_stock: number
+          product_id: string
+          source: string | null
+          tenant_id: string
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          delta?: number
+          id?: string
+          new_stock?: number
+          old_stock?: number
+          product_id: string
+          source?: string | null
+          tenant_id: string
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          delta?: number
+          id?: string
+          new_stock?: number
+          old_stock?: number
+          product_id?: string
+          source?: string | null
+          tenant_id?: string
+        }
+        Relationships: []
+      }
       subscriptions: {
         Row: {
           created_at: string
