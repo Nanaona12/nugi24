@@ -589,39 +589,14 @@ function POPage() {
       .eq("id", po.id);
     if (error) return toast.error(error.message);
 
-    // When received, increment stock for items mapped to products
-    if (status === "received") {
-      const { data: poItems } = await supabase
-        .from("purchase_order_items")
-        .select("product_id, qty, unit_cost, sell_price, unit_conversion")
-        .eq("po_id", po.id);
-      for (const it of (poItems as { product_id: string | null; qty: number; unit_cost: number | null; sell_price: number | null; unit_conversion: number | null }[]) || []) {
-        if (!it.product_id) continue;
-        const { data: prod } = await supabase
-          .from("products")
-          .select("stock")
-          .eq("id", it.product_id)
-          .single();
-        if (prod) {
-          const conv = Math.max(1, Number(it.unit_conversion || 1));
-          const addStock = (it.qty || 0) * conv;
-          const perPcsCost = it.unit_cost && it.unit_cost > 0 ? Number(it.unit_cost) / conv : 0;
-          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (prod.stock || 0) + addStock };
-          if (perPcsCost > 0) upd.cost_price = perPcsCost;
-          if (it.sell_price && it.sell_price > 0) upd.price = it.sell_price;
-          await supabase.from("products").update(upd).eq("id", it.product_id);
-        }
-
-      }
-
-      toast.success("PO diterima — stok & harga diperbarui");
-
-    } else {
-      toast.success(`Status: ${STATUS_LABEL[status] || status}`);
-    }
+    // Catatan: penambahan stok HANYA dilakukan lewat Receiving Dialog
+    // (agar tidak dobel dengan qty_received + batch + expiry).
+    // Perubahan status di sini tidak menyentuh products.stock / cost_price / price.
+    toast.success(`Status: ${STATUS_LABEL[status] || status}`);
     setDetailOpen(null);
     load();
   };
+
 
   const removePO = async (po: PO) => {
     if (!confirm(`Hapus PO untuk "${po.supplier}"?`)) return;
