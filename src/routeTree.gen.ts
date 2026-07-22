@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShowcaseSlugRouteImport } from './routes/showcase.$slug'
+import { Route as AuthenticatedStokLogRouteImport } from './routes/_authenticated/stok-log'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
 import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated/produk'
@@ -61,6 +62,11 @@ const ShowcaseSlugRoute = ShowcaseSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => ShowcaseRoute,
+} as any)
+const AuthenticatedStokLogRoute = AuthenticatedStokLogRouteImport.update({
+  id: '/stok-log',
+  path: '/stok-log',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
   id: '/shift',
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/shift': typeof AuthenticatedShiftRoute
+  '/stok-log': typeof AuthenticatedStokLogRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
@@ -195,6 +202,7 @@ export interface FileRoutesByTo {
   '/produk': typeof AuthenticatedProdukRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/shift': typeof AuthenticatedShiftRoute
+  '/stok-log': typeof AuthenticatedStokLogRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/_authenticated/produk': typeof AuthenticatedProdukRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
+  '/_authenticated/stok-log': typeof AuthenticatedStokLogRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
 }
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
     | '/produk'
     | '/riwayat'
     | '/shift'
+    | '/stok-log'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/produk'
     | '/riwayat'
     | '/shift'
+    | '/stok-log'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
   id:
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/_authenticated/produk'
     | '/_authenticated/riwayat'
     | '/_authenticated/shift'
+    | '/_authenticated/stok-log'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
   fileRoutesById: FileRoutesById
@@ -352,6 +364,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/showcase/$slug'
       preLoaderRoute: typeof ShowcaseSlugRouteImport
       parentRoute: typeof ShowcaseRoute
+    }
+    '/_authenticated/stok-log': {
+      id: '/_authenticated/stok-log'
+      path: '/stok-log'
+      fullPath: '/stok-log'
+      preLoaderRoute: typeof AuthenticatedStokLogRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/shift': {
       id: '/_authenticated/shift'
@@ -492,6 +511,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedProdukRoute: typeof AuthenticatedProdukRoute
   AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
+  AuthenticatedStokLogRoute: typeof AuthenticatedStokLogRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -511,6 +531,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedProdukRoute: AuthenticatedProdukRoute,
   AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
+  AuthenticatedStokLogRoute: AuthenticatedStokLogRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
