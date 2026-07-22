@@ -262,6 +262,7 @@ function AuthedLayout() {
   const isGrosir = ownerPlan === "grosir";
   const ownerNav: Array<{ to: string; icon: any; label: string }> = [
     { to: "/produk", icon: Package, label: "Produk" },
+    { to: "/stok-log", icon: History, label: "Log Stok" },
     { to: "/pelanggan", icon: Users, label: "Pelanggan" },
     ...(isGrosir ? [{ to: "/karyawan", icon: UserCog, label: "Karyawan" }] : []),
     ...(isGrosir ? [{ to: "/po", icon: ClipboardList, label: "PO" }] : []),
