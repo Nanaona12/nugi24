@@ -1,58 +1,52 @@
-## Masalah
+## Ringkasan masalah
 
-Transaksi **SPLIT** (bayar sebagian tunai + sebagian QRIS) tidak dihitung dengan benar di ringkasan shift.
+Stok naik ~65 padahal kemarin ada penjualan 65 pcs (harusnya 120 − 65 = 55, bukan 185). Setelah menelusuri kode, saya menemukan **satu penyebab pasti** di alur PO dan **beberapa hal yang perlu diverifikasi lewat log stok** untuk memastikan tidak ada penyebab lain.
 
-Contoh dari screenshot Anda:
-- Struk #74778990 SPLIT: Total Rp 409.300 → Cash Rp 244.000 + QRIS Rp 165.300.
-- Di closing shift muncul QRIS hanya Rp 42.500 (padahal harusnya ≥ Rp 200 rb) dan tunai kurang ~Rp 300 rb, sehingga setoran ke pembukuan jadi Rp 2.423.100 bukan Rp 2.725.900.
+## Penyebab utama (confirmed di kode): stok PO ditambahkan dobel
 
-### Penyebab
+Ada dua jalur berbeda yang sama-sama menambah `products.stock` saat PO diterima:
 
-Di `src/lib/cashier.functions.ts` (fungsi `getShiftSummary` dan `closeShift`), penjumlahan dilakukan seperti ini:
+1. `ReceivingDialog.saveAll` (`src/components/ReceivingDialog.tsx` baris 133–178):
+   - Menambah stok = `qty_terima × unit_conversion`
+   - Membuat batch di `product_batches`
+   - Jika semua item selesai diterima → set `purchase_orders.status = 'received'`
 
-```
-if payment_method === "cash"  → masuk total_cash
-else if payment_method === "qris" → masuk total_qris
-else                              → masuk total_other   ← SPLIT nyangkut di sini
-```
+2. `updateStatus(po, "received")` (`src/routes/_authenticated/po.tsx` baris 585–624):
+   - Saat status PO dipindah ke "received" (dari tombol status manual di detail PO), fungsi ini **mengulang semua PO item** dan menambah stok lagi = `it.qty × unit_conversion` (pakai qty **pesanan**, bukan `qty_received`).
+   - Tidak ada flag "sudah pernah ditambahkan", jadi setiap kali status diubah ke `received` stok ditambah lagi.
 
-Padahal tabel `transactions` menyimpan porsi QRIS di kolom terpisah `qris_amount`. Untuk transaksi `split`:
-- Porsi QRIS ada di `qris_amount` — sekarang **diabaikan** (tidak masuk `total_qris`).
-- Porsi tunai = `total - qris_amount` — sekarang **tidak masuk** `total_cash`, jadi `expected_cash` (setoran) kurang.
+Akibatnya, urutan yang wajar ini sudah bikin dobel:
+- User buka Receiving Dialog → isi qty terima → simpan (stok +N via dialog, status otomatis jadi `received`).
+- User lalu klik tombol "Tandai diterima" / ganti status di detail PO → `updateStatus("received")` jalan lagi → stok +N kedua kalinya.
 
-Transaksi **kasbon/hutang** juga sebaiknya tidak dihitung sebagai kas masuk (tidak ada uang diterima).
+Dan bahkan tanpa klik ulang, kalau alur user melewati `updateStatus("received")` (misal dari tombol status cepat) setelah ReceivingDialog, jumlahnya jadi 2× qty pesanan.
 
-## Perbaikan
+Ini konsisten dengan gejala: kemarin stok 120, ada penjualan 65 (harusnya turun ke 55), lalu PO diterima X pcs — kalau ada dobel-add di PO, hasilnya bisa naik jauh melebihi yang dipesan.
 
-Ubah logika pembagian di dua fungsi (`getShiftSummary` dan `closeShift`) di `src/lib/cashier.functions.ts` — juga tarik kolom `qris_amount` di query — menjadi:
+## Hal lain yang saya cek dan **tidak** jadi penyebab
 
-```
-qris_portion = Number(t.qris_amount) || 0
-if payment_method === "cash":
-    cash_portion = total
-elif payment_method === "qris":
-    cash_portion = 0            (qris_portion fallback = total kalau kolom kosong)
-elif payment_method === "split":
-    cash_portion = max(0, total - qris_portion)
-elif payment_method === "debt" (kasbon):
-    cash_portion = 0, qris_portion = 0     # tidak ada uang diterima
-else:  # transfer / lainnya
-    cash_portion = 0
-    other_portion = total - qris_portion
+- Pengurangan stok kasir: `deductProductStock` di server (`cashier.functions.ts`) sudah benar, satu kali per transaksi, pakai qty base unit. Refund punya trigger `refund_restore_stock` yang mengembalikan stok — juga benar (dan bukan sumber kenaikan misterius karena tidak ada refund otomatis).
+- Trigger DB: hanya `hw_reduce_stock` (pengambilan rumah tangga, mengurangi) dan `refund_restore_stock` (menambah saat refund). Tidak ada trigger yang menambah stok dari PO — semua penambahan lewat kode aplikasi (dua jalur di atas).
 
-total_cash  += cash_portion
-total_qris  += qris_portion
-total_other += other_portion (kalau ada)
-```
+## Perbaikan yang saya usulkan
 
-`expected_cash = opening_cash + total_cash − total_expenses` akan otomatis benar → setoran otomatis ke pembukuan juga kembali sesuai.
+1. **Hapus penambahan stok dari `updateStatus` di `po.tsx`.**
+   Penambahan stok hanya boleh terjadi lewat Receiving Dialog (karena di sanalah user mengisi qty yang benar-benar diterima + expiry + batch). `updateStatus` cukup mengubah kolom status saja, tanpa menyentuh `products.stock` / `cost_price` / `price`.
 
-## Verifikasi setelah fix
+2. **Tandai status `received` cukup diatur oleh Receiving Dialog** (sudah begitu saat `allReceived`). Untuk transisi status manual lain (draft/ordered/cancelled/partial), tidak perlu mengubah stok.
 
-1. Buka closing shift hari ini → QRIS harus ≥ Rp 200 rb, tunai naik ~Rp 300 rb, total penjualan tetap Rp 2.725.900.
-2. Cek Pembukuan → entri "Setoran kasir" ikut menyesuaikan pada shift berikutnya (entri lama yang sudah tercatat tidak berubah otomatis — bisa dikoreksi manual bila perlu, saya tidak akan menyentuh data pembukuan lama tanpa persetujuan).
+3. **Tambahkan audit stok cepat**: di halaman **Log Stok** yang sudah ada, tandai baris `stock_movements` yang tidak punya `source` (delta besar tanpa sumber = kandidat penambahan liar dari `updateStatus` lama). Ini membantu user menemukan sisa efek bug lama pada data mereka.
+
+4. **Koreksi manual atas kejadian kemarin**: setelah fix dipasang, saya tidak akan otomatis mengubah stok produk yang sudah terlanjur ke 185 — user perlu koreksi manual (edit stok produk atau catat pengambilan/penyesuaian) karena kita tidak tahu pasti berapa qty PO yang seharusnya. Log stok bisa dipakai untuk melihat delta yang dobel.
 
 ## Yang TIDAK diubah
 
-- Alur pencatatan transaksi di kasir (data `qris_amount` sudah benar tersimpan).
-- Data pembukuan/shift lama yang sudah ditutup.
+- Alur ReceivingDialog (satu-satunya pintu masuk penambahan stok PO — sudah benar).
+- Alur pengurangan stok di kasir & refund.
+- Data historis `products.stock` — tidak disentuh otomatis.
+
+## Verifikasi setelah fix
+
+1. Buat PO, terima via Receiving Dialog dengan qty misal 10 → cek stok produk naik tepat 10 (bukan 20).
+2. Coba ubah status PO ke "received" lagi manual (kalau UI-nya ada) → stok **tidak** berubah lagi.
+3. Buka Log Stok → penambahan hanya muncul 1× dengan `source` menunjuk ke PO.
