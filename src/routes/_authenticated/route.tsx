@@ -272,6 +272,7 @@ function AuthedLayout() {
     { to: "/shift", icon: Layers, label: "Riwayat Shift" },
     ...(isGrosir ? [{ to: "/pengambilan", icon: Home, label: "Pengambilan" }] : []),
     { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
+    { to: "/promo", icon: Gift, label: "Promo" },
     { to: "/pembukuan", icon: BookOpen, label: "Pembukuan" },
     { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
     { to: "/langganan", icon: CreditCard, label: "Langganan" },
