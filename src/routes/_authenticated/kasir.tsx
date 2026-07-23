@@ -535,10 +535,61 @@ function KasirPage() {
       toast.error(error.message);
       return;
     }
-    const prods = (data || []) as Product[];
+    let prods = (data || []) as Product[];
+
+    // Load promo aktif dalam window waktu
+    const nowIso = new Date().toISOString();
+    const { data: promoData } = await (supabase as any)
+      .from("promos")
+      .select("*")
+      .eq("active", true)
+      .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+      .or(`ends_at.is.null,ends_at.gte.${nowIso}`);
+    const promos = (promoData || []) as any[];
+
+    // Terapkan harga cuci gudang: override products[].price untuk produk clearance
+    const clearance: Record<string, { promoId: string; price: number; normalPrice: number }> = {};
+    for (const pr of promos) {
+      if (pr.type === "clearance" && pr.clearance_product_id && pr.clearance_price != null) {
+        const target = prods.find((x) => x.id === pr.clearance_product_id);
+        if (target) {
+          clearance[pr.clearance_product_id] = {
+            promoId: pr.id,
+            price: Number(pr.clearance_price),
+            normalPrice: Number(target.price),
+          };
+        }
+      }
+    }
+    if (Object.keys(clearance).length > 0) {
+      prods = prods.map((p) => (clearance[p.id] ? { ...p, price: clearance[p.id].price } : p));
+    }
+    setClearanceMap(clearance);
+    setBxgyPromos(
+      promos
+        .filter((p) => p.type === "bxgy" && p.buy_product_id && p.free_product_id && p.buy_qty && p.free_qty)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          buy_product_id: p.buy_product_id,
+          buy_qty: Number(p.buy_qty),
+          free_product_id: p.free_product_id,
+          free_qty: Number(p.free_qty),
+        })),
+    );
+
     setProducts(prods);
     try {
       const map = await loadUnitsForProducts(prods.map((p) => p.id));
+      // Terapkan harga cuci gudang ke tier semua unit (semua tier -> clearance_price × conversion)
+      for (const [pid, cl] of Object.entries(clearance)) {
+        const units = map[pid];
+        if (!units) continue;
+        for (const u of units) {
+          const conv = Math.max(1, u.conversion);
+          u.tiers = [{ min_qty: 1, price: cl.price * conv }];
+        }
+      }
       setUnitsByProduct(map);
     } catch (e: any) {
       toast.error("Gagal memuat satuan: " + e.message);
