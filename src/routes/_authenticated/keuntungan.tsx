@@ -232,6 +232,7 @@ function KeuntunganPage() {
       }
       loadWithdrawals();
       loadActivityLog();
+      loadShiftShortages();
     })();
   }, []);
 
