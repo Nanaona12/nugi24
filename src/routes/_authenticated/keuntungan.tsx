@@ -999,6 +999,26 @@ function KeuntunganPage() {
         </Card>
       )}
 
+      {stats.promoLossAll > 0 && (
+        <Card className="border-orange-500/40 bg-orange-500/5 p-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-medium text-orange-600">
+              <AlertTriangle className="h-4 w-4" />
+              Kerugian Promo (Beli X Gratis Y & Cuci Gudang)
+            </div>
+            <div className="flex flex-wrap gap-3 text-muted-foreground">
+              <span>Hari ini: <b className="text-orange-600">-{formatRupiah(stats.promoLossToday)}</b></span>
+              <span>Bulan ini: <b className="text-orange-600">-{formatRupiah(stats.promoLossMonth)}</b></span>
+              <span>Tahun ini: <b className="text-orange-600">-{formatRupiah(stats.promoLossYear)}</b></span>
+              <span>Total: <b className="text-orange-600">-{formatRupiah(stats.promoLossAll)}</b></span>
+            </div>
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            Sudah otomatis mengurangi keuntungan lewat modal barang gratis & diskon cuci gudang.
+          </div>
+        </Card>
+      )}
+
       {/* Ambil Keuntungan (Prive) */}
       {(() => {
         const totalTaken = visibleWithdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
