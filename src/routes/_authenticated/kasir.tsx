@@ -1006,6 +1006,8 @@ function KasirPage() {
     const items = cart.map((l) => {
       const c = computeLine(l, getUnits(l.product, unitsByProduct));
       const avgUnitPrice = l.qty > 0 ? c.total / l.qty : 0;
+      const cl = clearanceMap[l.product.id];
+      const discountAmount = cl ? Math.max(0, (cl.normalPrice - cl.price) * l.qty) : 0;
       return {
         tenant_id: tenantId,
         transaction_id: tx.id,
@@ -1021,17 +1023,43 @@ function KasirPage() {
         unit_name: l.mode === "grosiran" ? `${l.unit.name}+pcs` : l.baseUnit.name,
         unit_qty: l.qty,
         unit_conversion: 1,
+        promo_id: cl?.promoId ?? null,
+        is_free: false,
+        discount_amount: discountAmount,
       };
     });
+    // Item hadiah (BXGY) — subtotal 0, ditandai is_free
+    for (const f of freebies) {
+      items.push({
+        tenant_id: tenantId,
+        transaction_id: tx.id,
+        product_id: f.product.id,
+        product_code: f.product.code,
+        product_barcode: f.product.barcode || null,
+        product_name: `[GRATIS] ${f.product.name}`,
+        qty: f.qty,
+        unit_price: 0,
+        unit_cost: Number(f.product.cost_price || 0),
+        is_wholesale: false,
+        subtotal: 0,
+        unit_name: "pcs",
+        unit_qty: f.qty,
+        unit_conversion: 1,
+        promo_id: f.promoId,
+        is_free: true,
+        discount_amount: 0,
+      } as any);
+    }
     const { error: itErr } = await supabase.from("transaction_items").insert(items as any);
     if (itErr) {
       toast.error(itErr.message);
       setSubmitting(false);
       return;
     }
-    // gabung pengurangan stok per produk — dikerjakan di server (cashier tidak bisa UPDATE products)
+    // gabung pengurangan stok per produk — termasuk barang hadiah
     const stockMap = new Map<string, number>();
     for (const l of cart) stockMap.set(l.product.id, (stockMap.get(l.product.id) || 0) + l.qty);
+    for (const f of freebies) stockMap.set(f.product.id, (stockMap.get(f.product.id) || 0) + f.qty);
     try {
       await deductStockFn({
         data: {
