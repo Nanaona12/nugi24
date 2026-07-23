@@ -414,6 +414,43 @@ export const closeShift = createServerFn({ method: "POST" })
       } as any);
     }
 
+    // Selisih kurang kasir: catat sebagai kas keluar + kurangi keuntungan
+    if (difference < 0) {
+      const shortage = Math.abs(difference);
+      const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
+      // Ambil nama kasir untuk deskripsi
+      let cashierName = "";
+      const { data: shiftRow } = await context.supabase
+        .from("cashier_shifts")
+        .select("cashier_id")
+        .eq("id", data.shift_id)
+        .maybeSingle();
+      if (shiftRow?.cashier_id) {
+        const { data: cRow } = await context.supabase
+          .from("cashiers")
+          .select("name")
+          .eq("id", (shiftRow as any).cashier_id)
+          .maybeSingle();
+        cashierName = (cRow as any)?.name || "";
+      }
+      await context.supabase.from("bookkeeping_entries").insert({
+        tenant_id: tenantId,
+        entry_date: new Date().toISOString(),
+        kind: "out",
+        description: `Selisih kurang kasir (closing shift ${shortId})${cashierName ? " - " + cashierName : ""}`,
+        ref: data.shift_id,
+        amount: shortage,
+      } as any);
+      await (context.supabase as any).from("profit_activity_log").insert({
+        tenant_id: tenantId,
+        user_id: context.userId ?? null,
+        actor_name: cashierName || null,
+        action: "shift_shortage",
+        amount: shortage,
+        note: `Selisih kurang closing shift ${shortId}${data.notes?.trim() ? " - " + data.notes.trim() : ""}`,
+      });
+    }
+
     return { ok: true, totals: { opening_cash, total_sales, total_cash, total_qris, total_other, total_transactions, total_expenses, expected_cash, actual_cash, difference } };
   });
 

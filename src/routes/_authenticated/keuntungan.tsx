@@ -130,6 +130,7 @@ function KeuntunganPage() {
   const [profitResetAt, setProfitResetAt] = useState<string | null>(null);
   type ActivityLog = { id: string; action: string; amount: number | null; note: string | null; actor_name: string | null; created_at: string };
   const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
+  const [shiftShortages, setShiftShortages] = useState<{ closed_at: string; amount: number }[]>([]);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetNote, setResetNote] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -191,6 +192,20 @@ function KeuntunganPage() {
     setActivityLog((data || []) as ActivityLog[]);
   };
 
+  const loadShiftShortages = async () => {
+    const { data } = await (supabase as any)
+      .from("cashier_shifts")
+      .select("closed_at, difference")
+      .eq("status", "closed")
+      .lt("difference", 0)
+      .order("closed_at", { ascending: false })
+      .limit(500);
+    const rows = ((data || []) as any[])
+      .filter((r) => r.closed_at)
+      .map((r) => ({ closed_at: r.closed_at as string, amount: Math.abs(Number(r.difference) || 0) }));
+    setShiftShortages(rows);
+  };
+
   const currentActorName = async (): Promise<string> => {
     const { data } = await supabase.auth.getUser();
     const u = data?.user;
@@ -217,6 +232,7 @@ function KeuntunganPage() {
       }
       loadWithdrawals();
       loadActivityLog();
+      loadShiftShortages();
     })();
   }, []);
 
@@ -463,6 +479,34 @@ function KeuntunganPage() {
       }
     }
 
+    // Kurangi keuntungan dari selisih kurang closing shift (dalam range & setelah reset)
+    const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
+    const to = toDate ? new Date(toDate + "T23:59:59") : null;
+    const resetAt = profitResetAt ? new Date(profitResetAt) : null;
+    let shortageAll = 0, shortageToday = 0, shortageMonth = 0, shortageYear = 0;
+    for (const s of shiftShortages) {
+      const d = new Date(s.closed_at);
+      if (resetAt && d < resetAt) continue;
+      if (from && d < from) continue;
+      if (to && d > to) continue;
+      const amt = Number(s.amount) || 0;
+      shortageAll += amt;
+      const dk = ymd(d);
+      const mk = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+      const yk = String(d.getFullYear());
+      if (dk === todayKey) shortageToday += amt;
+      if (mk === monthKey) shortageMonth += amt;
+      if (yk === yearKey) shortageYear += amt;
+      // Kurangi bucket harian/bulanan/tahunan jika ada, atau buat entri baru
+      const dayB = dailyMap.get(dk); if (dayB) dayB.profit -= amt; else dailyMap.set(dk, { key: dk, label: dk, revenue: 0, cost: 0, profit: -amt, count: 0 });
+      const monB = monthlyMap.get(mk); if (monB) monB.profit -= amt; else monthlyMap.set(mk, { key: mk, label: mk, revenue: 0, cost: 0, profit: -amt, count: 0 });
+      const yrB = yearlyMap.get(yk); if (yrB) yrB.profit -= amt; else yearlyMap.set(yk, { key: yk, label: yk, revenue: 0, cost: 0, profit: -amt, count: 0 });
+    }
+    allProfit -= shortageAll;
+    todayProfit -= shortageToday;
+    monthProfit -= shortageMonth;
+    yearProfit -= shortageYear;
+
     const daily = Array.from(dailyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const monthly = Array.from(monthlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const yearly = Array.from(yearlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
@@ -487,8 +531,13 @@ function KeuntunganPage() {
       yearly,
       topProducts,
       lossMakers,
+      shortageAll,
+      shortageToday,
+      shortageMonth,
+      shortageYear,
     };
-  }, [filteredItems]);
+  }, [filteredItems, shiftShortages, fromDate, toDate, profitResetAt]);
+
 
   function exportExcel() {
     const wb = XLSX.utils.book_new();
@@ -907,6 +956,23 @@ function KeuntunganPage() {
           sub={`${stats.txCount} transaksi • ${stats.totalQty} item`}
         />
       </div>
+
+      {stats.shortageAll > 0 && (
+        <Card className="border-destructive/40 bg-destructive/5 p-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-medium text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              Selisih Kurang Kasir (mengurangi keuntungan)
+            </div>
+            <div className="flex flex-wrap gap-3 text-muted-foreground">
+              <span>Hari ini: <b className="text-destructive">-{formatRupiah(stats.shortageToday)}</b></span>
+              <span>Bulan ini: <b className="text-destructive">-{formatRupiah(stats.shortageMonth)}</b></span>
+              <span>Tahun ini: <b className="text-destructive">-{formatRupiah(stats.shortageYear)}</b></span>
+              <span>Total: <b className="text-destructive">-{formatRupiah(stats.shortageAll)}</b></span>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Ambil Keuntungan (Prive) */}
       {(() => {
