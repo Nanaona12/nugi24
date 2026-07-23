@@ -74,6 +74,8 @@ type Item = {
   unit_cost: number;
   subtotal: number;
   product_name: string;
+  is_free?: boolean | null;
+  discount_amount?: number | null;
   transactions: { created_at: string } | null;
 };
 
@@ -308,7 +310,7 @@ function KeuntunganPage() {
         supabase
           .from("transaction_items")
           .select(
-            "qty, unit_price, unit_cost, subtotal, product_name, product_id, products(category), transactions(created_at)",
+            "qty, unit_price, unit_cost, subtotal, product_name, product_id, is_free, discount_amount, products(category), transactions(created_at)",
           )
           .order("id", { ascending: false })
           .limit(5000),
@@ -507,6 +509,25 @@ function KeuntunganPage() {
     monthProfit -= shortageMonth;
     yearProfit -= shortageYear;
 
+    // Ringkasan Kerugian Promo (informasi saja — sudah otomatis mengurangi profit lewat subtotal/cost item)
+    let promoLossAll = 0, promoLossToday = 0, promoLossMonth = 0, promoLossYear = 0;
+    for (const it of filteredItems) {
+      const at = it.transactions?.created_at;
+      if (!at) continue;
+      const d = new Date(at);
+      const freebieCost = it.is_free ? (Number(it.unit_cost) || 0) * (Number(it.qty) || 0) : 0;
+      const clearanceDisc = Number(it.discount_amount) || 0;
+      const loss = freebieCost + clearanceDisc;
+      if (loss <= 0) continue;
+      promoLossAll += loss;
+      const dk = ymd(d);
+      const mk = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+      const yk = String(d.getFullYear());
+      if (dk === todayKey) promoLossToday += loss;
+      if (mk === monthKey) promoLossMonth += loss;
+      if (yk === yearKey) promoLossYear += loss;
+    }
+
     const daily = Array.from(dailyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const monthly = Array.from(monthlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const yearly = Array.from(yearlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
@@ -535,6 +556,10 @@ function KeuntunganPage() {
       shortageToday,
       shortageMonth,
       shortageYear,
+      promoLossAll,
+      promoLossToday,
+      promoLossMonth,
+      promoLossYear,
     };
   }, [filteredItems, shiftShortages, fromDate, toDate, profitResetAt]);
 
@@ -970,6 +995,26 @@ function KeuntunganPage() {
               <span>Tahun ini: <b className="text-destructive">-{formatRupiah(stats.shortageYear)}</b></span>
               <span>Total: <b className="text-destructive">-{formatRupiah(stats.shortageAll)}</b></span>
             </div>
+          </div>
+        </Card>
+      )}
+
+      {stats.promoLossAll > 0 && (
+        <Card className="border-orange-500/40 bg-orange-500/5 p-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-medium text-orange-600">
+              <AlertTriangle className="h-4 w-4" />
+              Kerugian Promo (Beli X Gratis Y & Cuci Gudang)
+            </div>
+            <div className="flex flex-wrap gap-3 text-muted-foreground">
+              <span>Hari ini: <b className="text-orange-600">-{formatRupiah(stats.promoLossToday)}</b></span>
+              <span>Bulan ini: <b className="text-orange-600">-{formatRupiah(stats.promoLossMonth)}</b></span>
+              <span>Tahun ini: <b className="text-orange-600">-{formatRupiah(stats.promoLossYear)}</b></span>
+              <span>Total: <b className="text-orange-600">-{formatRupiah(stats.promoLossAll)}</b></span>
+            </div>
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            Sudah otomatis mengurangi keuntungan lewat modal barang gratis & diskon cuci gudang.
           </div>
         </Card>
       )}

@@ -127,6 +127,8 @@ function KasirPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
   const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
+  const [clearanceMap, setClearanceMap] = useState<Record<string, { promoId: string; price: number; normalPrice: number }>>({});
+  const [bxgyPromos, setBxgyPromos] = useState<{ id: string; name: string; buy_product_id: string; buy_qty: number; free_product_id: string; free_qty: number }[]>([]);
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
   const [paid, setPaid] = useState("");
@@ -533,10 +535,61 @@ function KasirPage() {
       toast.error(error.message);
       return;
     }
-    const prods = (data || []) as Product[];
+    let prods = (data || []) as Product[];
+
+    // Load promo aktif dalam window waktu
+    const nowIso = new Date().toISOString();
+    const { data: promoData } = await (supabase as any)
+      .from("promos")
+      .select("*")
+      .eq("active", true)
+      .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+      .or(`ends_at.is.null,ends_at.gte.${nowIso}`);
+    const promos = (promoData || []) as any[];
+
+    // Terapkan harga cuci gudang: override products[].price untuk produk clearance
+    const clearance: Record<string, { promoId: string; price: number; normalPrice: number }> = {};
+    for (const pr of promos) {
+      if (pr.type === "clearance" && pr.clearance_product_id && pr.clearance_price != null) {
+        const target = prods.find((x) => x.id === pr.clearance_product_id);
+        if (target) {
+          clearance[pr.clearance_product_id] = {
+            promoId: pr.id,
+            price: Number(pr.clearance_price),
+            normalPrice: Number(target.price),
+          };
+        }
+      }
+    }
+    if (Object.keys(clearance).length > 0) {
+      prods = prods.map((p) => (clearance[p.id] ? { ...p, price: clearance[p.id].price } : p));
+    }
+    setClearanceMap(clearance);
+    setBxgyPromos(
+      promos
+        .filter((p) => p.type === "bxgy" && p.buy_product_id && p.free_product_id && p.buy_qty && p.free_qty)
+        .map((p) => ({
+          id: p.id,
+          name: p.name,
+          buy_product_id: p.buy_product_id,
+          buy_qty: Number(p.buy_qty),
+          free_product_id: p.free_product_id,
+          free_qty: Number(p.free_qty),
+        })),
+    );
+
     setProducts(prods);
     try {
       const map = await loadUnitsForProducts(prods.map((p) => p.id));
+      // Terapkan harga cuci gudang ke tier semua unit (semua tier -> clearance_price × conversion)
+      for (const [pid, cl] of Object.entries(clearance)) {
+        const units = map[pid];
+        if (!units) continue;
+        for (const u of units) {
+          const conv = Math.max(1, u.conversion);
+          u.tiers = [{ min_qty: 1, price: cl.price * conv }];
+        }
+      }
       setUnitsByProduct(map);
     } catch (e: any) {
       toast.error("Gagal memuat satuan: " + e.message);
@@ -664,6 +717,29 @@ function KasirPage() {
     }
     return { total, items };
   }, [cart, unitsByProduct]);
+
+  // Hitung barang gratis dari promo Beli X Gratis Y berdasarkan isi keranjang
+  const freebies = useMemo(() => {
+    if (bxgyPromos.length === 0 || cart.length === 0) return [] as { promoId: string; promoName: string; product: Product; qty: number }[];
+    const buyQtyByProduct = new Map<string, number>();
+    for (const l of cart) buyQtyByProduct.set(l.product.id, (buyQtyByProduct.get(l.product.id) || 0) + l.qty);
+    const out: { promoId: string; promoName: string; product: Product; qty: number }[] = [];
+    for (const promo of bxgyPromos) {
+      const inCart = buyQtyByProduct.get(promo.buy_product_id) || 0;
+      let bundles = Math.floor(inCart / promo.buy_qty);
+      if (bundles <= 0) continue;
+      // Jika produk beli = produk gratis, kurangi bundles agar tidak menghitung item gratis sebagai pembelian
+      if (promo.buy_product_id === promo.free_product_id) {
+        bundles = Math.floor(inCart / (promo.buy_qty + promo.free_qty));
+        if (bundles <= 0) continue;
+      }
+      const freeProduct = products.find((p) => p.id === promo.free_product_id);
+      if (!freeProduct) continue;
+      const freeTotal = bundles * promo.free_qty;
+      if (freeTotal > 0) out.push({ promoId: promo.id, promoName: promo.name, product: freeProduct, qty: freeTotal });
+    }
+    return out;
+  }, [cart, bxgyPromos, products]);
 
   const currentBaseQty = (pid: string, currentCart: CartLine[] = cart) =>
     currentCart.filter((l) => l.product.id === pid).reduce((s, l) => s + l.qty, 0);
@@ -930,6 +1006,8 @@ function KasirPage() {
     const items = cart.map((l) => {
       const c = computeLine(l, getUnits(l.product, unitsByProduct));
       const avgUnitPrice = l.qty > 0 ? c.total / l.qty : 0;
+      const cl = clearanceMap[l.product.id];
+      const discountAmount = cl ? Math.max(0, (cl.normalPrice - cl.price) * l.qty) : 0;
       return {
         tenant_id: tenantId,
         transaction_id: tx.id,
@@ -945,17 +1023,43 @@ function KasirPage() {
         unit_name: l.mode === "grosiran" ? `${l.unit.name}+pcs` : l.baseUnit.name,
         unit_qty: l.qty,
         unit_conversion: 1,
+        promo_id: cl?.promoId ?? null,
+        is_free: false,
+        discount_amount: discountAmount,
       };
     });
+    // Item hadiah (BXGY) — subtotal 0, ditandai is_free
+    for (const f of freebies) {
+      items.push({
+        tenant_id: tenantId,
+        transaction_id: tx.id,
+        product_id: f.product.id,
+        product_code: f.product.code,
+        product_barcode: f.product.barcode || null,
+        product_name: `[GRATIS] ${f.product.name}`,
+        qty: f.qty,
+        unit_price: 0,
+        unit_cost: Number(f.product.cost_price || 0),
+        is_wholesale: false,
+        subtotal: 0,
+        unit_name: "pcs",
+        unit_qty: f.qty,
+        unit_conversion: 1,
+        promo_id: f.promoId,
+        is_free: true,
+        discount_amount: 0,
+      } as any);
+    }
     const { error: itErr } = await supabase.from("transaction_items").insert(items as any);
     if (itErr) {
       toast.error(itErr.message);
       setSubmitting(false);
       return;
     }
-    // gabung pengurangan stok per produk — dikerjakan di server (cashier tidak bisa UPDATE products)
+    // gabung pengurangan stok per produk — termasuk barang hadiah
     const stockMap = new Map<string, number>();
     for (const l of cart) stockMap.set(l.product.id, (stockMap.get(l.product.id) || 0) + l.qty);
+    for (const f of freebies) stockMap.set(f.product.id, (stockMap.get(f.product.id) || 0) + f.qty);
     try {
       await deductStockFn({
         data: {
@@ -1467,6 +1571,24 @@ function KasirPage() {
                     </li>
                   );
                 })}
+              </ul>
+            )}
+            {freebies.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {freebies.map((f) => (
+                  <li key={`free-${f.promoId}-${f.product.id}`} className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">GRATIS</span>
+                          <span className="truncate text-sm font-medium">{f.product.name}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{f.qty} pcs • Promo: {f.promoName}</div>
+                      </div>
+                      <span className="text-sm font-semibold text-emerald-600">Rp 0</span>
+                    </div>
+                  </li>
+                ))}
               </ul>
             )}
           </ScrollArea>
