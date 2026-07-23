@@ -556,6 +556,10 @@ function KeuntunganPage() {
       shortageToday,
       shortageMonth,
       shortageYear,
+      promoLossAll,
+      promoLossToday,
+      promoLossMonth,
+      promoLossYear,
     };
   }, [filteredItems, shiftShortages, fromDate, toDate, profitResetAt]);
 
