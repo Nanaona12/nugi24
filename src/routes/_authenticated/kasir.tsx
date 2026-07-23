@@ -718,6 +718,29 @@ function KasirPage() {
     return { total, items };
   }, [cart, unitsByProduct]);
 
+  // Hitung barang gratis dari promo Beli X Gratis Y berdasarkan isi keranjang
+  const freebies = useMemo(() => {
+    if (bxgyPromos.length === 0 || cart.length === 0) return [] as { promoId: string; promoName: string; product: Product; qty: number }[];
+    const buyQtyByProduct = new Map<string, number>();
+    for (const l of cart) buyQtyByProduct.set(l.product.id, (buyQtyByProduct.get(l.product.id) || 0) + l.qty);
+    const out: { promoId: string; promoName: string; product: Product; qty: number }[] = [];
+    for (const promo of bxgyPromos) {
+      const inCart = buyQtyByProduct.get(promo.buy_product_id) || 0;
+      let bundles = Math.floor(inCart / promo.buy_qty);
+      if (bundles <= 0) continue;
+      // Jika produk beli = produk gratis, kurangi bundles agar tidak menghitung item gratis sebagai pembelian
+      if (promo.buy_product_id === promo.free_product_id) {
+        bundles = Math.floor(inCart / (promo.buy_qty + promo.free_qty));
+        if (bundles <= 0) continue;
+      }
+      const freeProduct = products.find((p) => p.id === promo.free_product_id);
+      if (!freeProduct) continue;
+      const freeTotal = bundles * promo.free_qty;
+      if (freeTotal > 0) out.push({ promoId: promo.id, promoName: promo.name, product: freeProduct, qty: freeTotal });
+    }
+    return out;
+  }, [cart, bxgyPromos, products]);
+
   const currentBaseQty = (pid: string, currentCart: CartLine[] = cart) =>
     currentCart.filter((l) => l.product.id === pid).reduce((s, l) => s + l.qty, 0);
 
