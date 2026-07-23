@@ -636,14 +636,22 @@ function KasirPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products.slice(0, 60);
+    const tokens = q.split(/\s+/).filter(Boolean);
+    const wordsOf = (s: string) =>
+      s.toLowerCase().split(/[\s\-_/.,()]+/).filter(Boolean);
     return products
-      .filter(
-        (p) =>
-          p.code.toLowerCase().includes(q) ||
-          barcodeIncludes(p.barcode, q) ||
-          p.name.toLowerCase().includes(q) ||
-          (p.category || "").toLowerCase().includes(q),
-      )
+      .filter((p) => {
+        const words = [
+          ...wordsOf(p.name),
+          ...wordsOf(p.category || ""),
+          ...wordsOf(p.code),
+        ];
+        // Setiap token harus cocok sebagai awalan salah satu kata.
+        const tokensMatch = tokens.every((t) => words.some((w) => w.startsWith(t)));
+        if (tokensMatch) return true;
+        // Fallback: kode/barcode substring supaya scan barcode tetap jalan.
+        return p.code.toLowerCase().includes(q) || barcodeIncludes(p.barcode, q);
+      })
       .slice(0, 60);
   }, [products, query]);
 
