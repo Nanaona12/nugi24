@@ -310,7 +310,7 @@ function KeuntunganPage() {
         supabase
           .from("transaction_items")
           .select(
-            "qty, unit_price, unit_cost, subtotal, product_name, product_id, products(category), transactions(created_at)",
+            "qty, unit_price, unit_cost, subtotal, product_name, product_id, is_free, discount_amount, products(category), transactions(created_at)",
           )
           .order("id", { ascending: false })
           .limit(5000),
