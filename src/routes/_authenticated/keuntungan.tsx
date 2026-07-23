@@ -74,6 +74,8 @@ type Item = {
   unit_cost: number;
   subtotal: number;
   product_name: string;
+  is_free?: boolean | null;
+  discount_amount?: number | null;
   transactions: { created_at: string } | null;
 };
 
