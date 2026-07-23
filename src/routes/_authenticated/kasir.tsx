@@ -1573,6 +1573,24 @@ function KasirPage() {
                 })}
               </ul>
             )}
+            {freebies.length > 0 && (
+              <ul className="mt-2 space-y-2">
+                {freebies.map((f) => (
+                  <li key={`free-${f.promoId}-${f.product.id}`} className="rounded-lg border border-emerald-500/40 bg-emerald-500/5 p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="rounded bg-emerald-600 px-1.5 py-0.5 text-[10px] font-bold text-white">GRATIS</span>
+                          <span className="truncate text-sm font-medium">{f.product.name}</span>
+                        </div>
+                        <div className="text-xs text-muted-foreground">{f.qty} pcs • Promo: {f.promoName}</div>
+                      </div>
+                      <span className="text-sm font-semibold text-emerald-600">Rp 0</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
           </ScrollArea>
 
           <div className="mt-4 space-y-2 border-t pt-4">
