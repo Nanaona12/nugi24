@@ -509,6 +509,25 @@ function KeuntunganPage() {
     monthProfit -= shortageMonth;
     yearProfit -= shortageYear;
 
+    // Ringkasan Kerugian Promo (informasi saja — sudah otomatis mengurangi profit lewat subtotal/cost item)
+    let promoLossAll = 0, promoLossToday = 0, promoLossMonth = 0, promoLossYear = 0;
+    for (const it of filteredItems) {
+      const at = it.transactions?.created_at;
+      if (!at) continue;
+      const d = new Date(at);
+      const freebieCost = it.is_free ? (Number(it.unit_cost) || 0) * (Number(it.qty) || 0) : 0;
+      const clearanceDisc = Number(it.discount_amount) || 0;
+      const loss = freebieCost + clearanceDisc;
+      if (loss <= 0) continue;
+      promoLossAll += loss;
+      const dk = ymd(d);
+      const mk = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+      const yk = String(d.getFullYear());
+      if (dk === todayKey) promoLossToday += loss;
+      if (mk === monthKey) promoLossMonth += loss;
+      if (yk === yearKey) promoLossYear += loss;
+    }
+
     const daily = Array.from(dailyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const monthly = Array.from(monthlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const yearly = Array.from(yearlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
