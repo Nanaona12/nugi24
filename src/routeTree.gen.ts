@@ -18,6 +18,7 @@ import { Route as ShowcaseSlugRouteImport } from './routes/showcase.$slug'
 import { Route as AuthenticatedStokLogRouteImport } from './routes/_authenticated/stok-log'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
+import { Route as AuthenticatedPromoRouteImport } from './routes/_authenticated/promo'
 import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated/produk'
 import { Route as AuthenticatedPoRouteImport } from './routes/_authenticated/po'
 import { Route as AuthenticatedPengaturanRouteImport } from './routes/_authenticated/pengaturan'
@@ -76,6 +77,11 @@ const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
 const AuthenticatedRiwayatRoute = AuthenticatedRiwayatRouteImport.update({
   id: '/riwayat',
   path: '/riwayat',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedPromoRoute = AuthenticatedPromoRouteImport.update({
+  id: '/promo',
+  path: '/promo',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedProdukRoute = AuthenticatedProdukRouteImport.update({
@@ -175,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/pengaturan': typeof AuthenticatedPengaturanRoute
   '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
+  '/promo': typeof AuthenticatedPromoRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/stok-log': typeof AuthenticatedStokLogRoute
@@ -200,6 +207,7 @@ export interface FileRoutesByTo {
   '/pengaturan': typeof AuthenticatedPengaturanRoute
   '/po': typeof AuthenticatedPoRoute
   '/produk': typeof AuthenticatedProdukRoute
+  '/promo': typeof AuthenticatedPromoRoute
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/stok-log': typeof AuthenticatedStokLogRoute
@@ -227,6 +235,7 @@ export interface FileRoutesById {
   '/_authenticated/pengaturan': typeof AuthenticatedPengaturanRoute
   '/_authenticated/po': typeof AuthenticatedPoRoute
   '/_authenticated/produk': typeof AuthenticatedProdukRoute
+  '/_authenticated/promo': typeof AuthenticatedPromoRoute
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/stok-log': typeof AuthenticatedStokLogRoute
@@ -254,6 +263,7 @@ export interface FileRouteTypes {
     | '/pengaturan'
     | '/po'
     | '/produk'
+    | '/promo'
     | '/riwayat'
     | '/shift'
     | '/stok-log'
@@ -279,6 +289,7 @@ export interface FileRouteTypes {
     | '/pengaturan'
     | '/po'
     | '/produk'
+    | '/promo'
     | '/riwayat'
     | '/shift'
     | '/stok-log'
@@ -305,6 +316,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pengaturan'
     | '/_authenticated/po'
     | '/_authenticated/produk'
+    | '/_authenticated/promo'
     | '/_authenticated/riwayat'
     | '/_authenticated/shift'
     | '/_authenticated/stok-log'
@@ -384,6 +396,13 @@ declare module '@tanstack/react-router' {
       path: '/riwayat'
       fullPath: '/riwayat'
       preLoaderRoute: typeof AuthenticatedRiwayatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/promo': {
+      id: '/_authenticated/promo'
+      path: '/promo'
+      fullPath: '/promo'
+      preLoaderRoute: typeof AuthenticatedPromoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/produk': {
@@ -509,6 +528,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedPengaturanRoute: typeof AuthenticatedPengaturanRoute
   AuthenticatedPoRoute: typeof AuthenticatedPoRoute
   AuthenticatedProdukRoute: typeof AuthenticatedProdukRoute
+  AuthenticatedPromoRoute: typeof AuthenticatedPromoRoute
   AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
   AuthenticatedStokLogRoute: typeof AuthenticatedStokLogRoute
@@ -529,6 +549,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedPengaturanRoute: AuthenticatedPengaturanRoute,
   AuthenticatedPoRoute: AuthenticatedPoRoute,
   AuthenticatedProdukRoute: AuthenticatedProdukRoute,
+  AuthenticatedPromoRoute: AuthenticatedPromoRoute,
   AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
   AuthenticatedStokLogRoute: AuthenticatedStokLogRoute,
