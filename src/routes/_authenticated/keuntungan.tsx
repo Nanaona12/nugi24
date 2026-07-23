@@ -479,6 +479,34 @@ function KeuntunganPage() {
       }
     }
 
+    // Kurangi keuntungan dari selisih kurang closing shift (dalam range & setelah reset)
+    const from = fromDate ? new Date(fromDate + "T00:00:00") : null;
+    const to = toDate ? new Date(toDate + "T23:59:59") : null;
+    const resetAt = profitResetAt ? new Date(profitResetAt) : null;
+    let shortageAll = 0, shortageToday = 0, shortageMonth = 0, shortageYear = 0;
+    for (const s of shiftShortages) {
+      const d = new Date(s.closed_at);
+      if (resetAt && d < resetAt) continue;
+      if (from && d < from) continue;
+      if (to && d > to) continue;
+      const amt = Number(s.amount) || 0;
+      shortageAll += amt;
+      const dk = ymd(d);
+      const mk = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+      const yk = String(d.getFullYear());
+      if (dk === todayKey) shortageToday += amt;
+      if (mk === monthKey) shortageMonth += amt;
+      if (yk === yearKey) shortageYear += amt;
+      // Kurangi bucket harian/bulanan/tahunan jika ada, atau buat entri baru
+      const dayB = dailyMap.get(dk); if (dayB) dayB.profit -= amt; else dailyMap.set(dk, { key: dk, label: dk, revenue: 0, cost: 0, profit: -amt, count: 0 });
+      const monB = monthlyMap.get(mk); if (monB) monB.profit -= amt; else monthlyMap.set(mk, { key: mk, label: mk, revenue: 0, cost: 0, profit: -amt, count: 0 });
+      const yrB = yearlyMap.get(yk); if (yrB) yrB.profit -= amt; else yearlyMap.set(yk, { key: yk, label: yk, revenue: 0, cost: 0, profit: -amt, count: 0 });
+    }
+    allProfit -= shortageAll;
+    todayProfit -= shortageToday;
+    monthProfit -= shortageMonth;
+    yearProfit -= shortageYear;
+
     const daily = Array.from(dailyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const monthly = Array.from(monthlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
     const yearly = Array.from(yearlyMap.values()).sort((a, b) => a.key.localeCompare(b.key));
@@ -503,8 +531,13 @@ function KeuntunganPage() {
       yearly,
       topProducts,
       lossMakers,
+      shortageAll,
+      shortageToday,
+      shortageMonth,
+      shortageYear,
     };
-  }, [filteredItems]);
+  }, [filteredItems, shiftShortages, fromDate, toDate, profitResetAt]);
+
 
   function exportExcel() {
     const wb = XLSX.utils.book_new();
