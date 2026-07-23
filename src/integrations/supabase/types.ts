@@ -1026,6 +1026,96 @@ export type Database = {
           },
         ]
       }
+      promos: {
+        Row: {
+          active: boolean
+          buy_product_id: string | null
+          buy_qty: number | null
+          clearance_price: number | null
+          clearance_product_id: string | null
+          created_at: string
+          ends_at: string | null
+          free_product_id: string | null
+          free_qty: number | null
+          id: string
+          name: string
+          starts_at: string | null
+          tenant_id: string
+          type: Database["public"]["Enums"]["promo_type"]
+          updated_at: string
+        }
+        Insert: {
+          active?: boolean
+          buy_product_id?: string | null
+          buy_qty?: number | null
+          clearance_price?: number | null
+          clearance_product_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          free_product_id?: string | null
+          free_qty?: number | null
+          id?: string
+          name: string
+          starts_at?: string | null
+          tenant_id: string
+          type: Database["public"]["Enums"]["promo_type"]
+          updated_at?: string
+        }
+        Update: {
+          active?: boolean
+          buy_product_id?: string | null
+          buy_qty?: number | null
+          clearance_price?: number | null
+          clearance_product_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          free_product_id?: string | null
+          free_qty?: number | null
+          id?: string
+          name?: string
+          starts_at?: string | null
+          tenant_id?: string
+          type?: Database["public"]["Enums"]["promo_type"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promos_buy_product_id_fkey"
+            columns: ["buy_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promos_clearance_product_id_fkey"
+            columns: ["clearance_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promos_free_product_id_fkey"
+            columns: ["free_product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promos_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "promos_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       purchase_order_items: {
         Row: {
           category: string | null
@@ -1549,12 +1639,15 @@ export type Database = {
       }
       transaction_items: {
         Row: {
+          discount_amount: number
           id: string
+          is_free: boolean
           is_wholesale: boolean
           product_barcode: string | null
           product_code: string
           product_id: string | null
           product_name: string
+          promo_id: string | null
           qty: number
           subtotal: number
           tenant_id: string
@@ -1566,12 +1659,15 @@ export type Database = {
           unit_qty: number | null
         }
         Insert: {
+          discount_amount?: number
           id?: string
+          is_free?: boolean
           is_wholesale?: boolean
           product_barcode?: string | null
           product_code: string
           product_id?: string | null
           product_name: string
+          promo_id?: string | null
           qty: number
           subtotal: number
           tenant_id?: string
@@ -1583,12 +1679,15 @@ export type Database = {
           unit_qty?: number | null
         }
         Update: {
+          discount_amount?: number
           id?: string
+          is_free?: boolean
           is_wholesale?: boolean
           product_barcode?: string | null
           product_code?: string
           product_id?: string | null
           product_name?: string
+          promo_id?: string | null
           qty?: number
           subtotal?: number
           tenant_id?: string
@@ -1605,6 +1704,13 @@ export type Database = {
             columns: ["product_id"]
             isOneToOne: false
             referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transaction_items_promo_id_fkey"
+            columns: ["promo_id"]
+            isOneToOne: false
+            referencedRelation: "promos"
             referencedColumns: ["id"]
           },
           {
@@ -1792,6 +1898,7 @@ export type Database = {
     Enums: {
       app_role: "super_admin"
       payment_status: "pending" | "paid" | "failed" | "expired"
+      promo_type: "bxgy" | "clearance"
       subscription_status: "trialing" | "active" | "past_due" | "canceled"
     }
     CompositeTypes: {
@@ -1922,6 +2029,7 @@ export const Constants = {
     Enums: {
       app_role: ["super_admin"],
       payment_status: ["pending", "paid", "failed", "expired"],
+      promo_type: ["bxgy", "clearance"],
       subscription_status: ["trialing", "active", "past_due", "canceled"],
     },
   },
