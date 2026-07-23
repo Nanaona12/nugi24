@@ -957,6 +957,23 @@ function KeuntunganPage() {
         />
       </div>
 
+      {stats.shortageAll > 0 && (
+        <Card className="border-destructive/40 bg-destructive/5 p-3 text-xs">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 font-medium text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              Selisih Kurang Kasir (mengurangi keuntungan)
+            </div>
+            <div className="flex flex-wrap gap-3 text-muted-foreground">
+              <span>Hari ini: <b className="text-destructive">-{formatRupiah(stats.shortageToday)}</b></span>
+              <span>Bulan ini: <b className="text-destructive">-{formatRupiah(stats.shortageMonth)}</b></span>
+              <span>Tahun ini: <b className="text-destructive">-{formatRupiah(stats.shortageYear)}</b></span>
+              <span>Total: <b className="text-destructive">-{formatRupiah(stats.shortageAll)}</b></span>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Ambil Keuntungan (Prive) */}
       {(() => {
         const totalTaken = visibleWithdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
