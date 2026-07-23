@@ -192,6 +192,20 @@ function KeuntunganPage() {
     setActivityLog((data || []) as ActivityLog[]);
   };
 
+  const loadShiftShortages = async () => {
+    const { data } = await (supabase as any)
+      .from("cashier_shifts")
+      .select("closed_at, difference")
+      .eq("status", "closed")
+      .lt("difference", 0)
+      .order("closed_at", { ascending: false })
+      .limit(500);
+    const rows = ((data || []) as any[])
+      .filter((r) => r.closed_at)
+      .map((r) => ({ closed_at: r.closed_at as string, amount: Math.abs(Number(r.difference) || 0) }));
+    setShiftShortages(rows);
+  };
+
   const currentActorName = async (): Promise<string> => {
     const { data } = await supabase.auth.getUser();
     const u = data?.user;
