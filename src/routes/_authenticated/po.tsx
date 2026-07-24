@@ -302,12 +302,15 @@ function POPage() {
 
 
 
-  const openCreateForLowStock = (mode: "out" | "low") => {
+  const openCreateForLowStock = (mode: "out" | "low" | "selected") => {
+    const base = lowCategoryFilter ? filteredLowStock : lowStockProducts;
     const pool = mode === "out"
-      ? lowStockProducts.filter((p) => (p.stock ?? 0) <= 0)
-      : lowStockProducts;
+      ? base.filter((p) => (p.stock ?? 0) <= 0)
+      : mode === "selected"
+        ? selectedLowProducts
+        : base;
     if (pool.length === 0) {
-      toast.info("Tidak ada produk yang perlu di-restock");
+      toast.info(mode === "selected" ? "Pilih produk dulu" : "Tidak ada produk yang perlu di-restock");
       return;
     }
     resetForm();
