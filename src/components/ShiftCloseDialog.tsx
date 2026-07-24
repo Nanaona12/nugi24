@@ -263,7 +263,7 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className={`${dialogScrollContent} max-w-xl`}>
         <DialogHeader>
           <DialogTitle>{closed ? "Shift Ditutup" : "Closing Shift"}</DialogTitle>
           <DialogDescription>
