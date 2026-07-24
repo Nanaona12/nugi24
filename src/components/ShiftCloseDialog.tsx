@@ -271,6 +271,7 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
           </DialogDescription>
         </DialogHeader>
 
+        <DialogScrollBody className="space-y-3">
         {loading || !summary ? (
           <div className="flex items-center justify-center py-8 text-sm text-muted-foreground">
             <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Memuat ringkasan...
