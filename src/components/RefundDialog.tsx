@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import { Loader2, Search, Undo2 } from "lucide-react";
+import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-scroll";
 
 type Tx = { id: string; total: number; created_at: string; item_count: number; tenant_id: string };
 type TxItem = {
