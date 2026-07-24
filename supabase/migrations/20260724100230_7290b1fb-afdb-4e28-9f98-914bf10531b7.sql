@@ -1,0 +1,1 @@
+ALTER TABLE public.tenants ADD COLUMN IF NOT EXISTS profit_reserve_percent numeric NOT NULL DEFAULT 20;

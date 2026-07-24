@@ -1590,6 +1590,7 @@ export type Database = {
           name: string
           owner_user_id: string
           phone: string | null
+          profit_reserve_percent: number
           profit_reset_at: string | null
           showcase_description: string | null
           showcase_enabled: boolean
@@ -1609,6 +1610,7 @@ export type Database = {
           name: string
           owner_user_id: string
           phone?: string | null
+          profit_reserve_percent?: number
           profit_reset_at?: string | null
           showcase_description?: string | null
           showcase_enabled?: boolean
@@ -1628,6 +1630,7 @@ export type Database = {
           name?: string
           owner_user_id?: string
           phone?: string | null
+          profit_reserve_percent?: number
           profit_reset_at?: string | null
           showcase_description?: string | null
           showcase_enabled?: boolean
