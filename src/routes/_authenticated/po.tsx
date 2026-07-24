@@ -234,6 +234,25 @@ function POPage() {
   const outOfStockCount = lowStockProducts.filter((p) => (p.stock ?? 0) <= 0).length;
   const customThresholdCount = products.filter((p) => p.min_stock != null).length;
 
+  const lowStockCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of lowStockProducts) set.add((p.category || "").trim() || "Tanpa Kategori");
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [lowStockProducts]);
+
+  const filteredLowStock = useMemo(() => {
+    if (!lowCategoryFilter) return lowStockProducts;
+    return lowStockProducts.filter((p) => {
+      const c = (p.category || "").trim() || "Tanpa Kategori";
+      return c === lowCategoryFilter;
+    });
+  }, [lowStockProducts, lowCategoryFilter]);
+
+  const selectedLowProducts = useMemo(
+    () => filteredLowStock.filter((p) => selectedLowIds.has(p.id)),
+    [filteredLowStock, selectedLowIds],
+  );
+
 
   const pricingIssueProducts = useMemo(() => {
     return products.filter((p) => {
