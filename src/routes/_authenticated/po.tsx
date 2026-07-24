@@ -132,6 +132,8 @@ function POPage() {
     const v = parseInt(localStorage.getItem("po_low_threshold") || "5", 10);
     return isNaN(v) ? 5 : v;
   });
+  const [lowCategoryFilter, setLowCategoryFilter] = useState<string>("");
+  const [selectedLowIds, setSelectedLowIds] = useState<Set<string>>(new Set());
 
   // Form
   const [supplier, setSupplier] = useState("");
@@ -232,6 +234,25 @@ function POPage() {
   const outOfStockCount = lowStockProducts.filter((p) => (p.stock ?? 0) <= 0).length;
   const customThresholdCount = products.filter((p) => p.min_stock != null).length;
 
+  const lowStockCategories = useMemo(() => {
+    const set = new Set<string>();
+    for (const p of lowStockProducts) set.add((p.category || "").trim() || "Tanpa Kategori");
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [lowStockProducts]);
+
+  const filteredLowStock = useMemo(() => {
+    if (!lowCategoryFilter) return lowStockProducts;
+    return lowStockProducts.filter((p) => {
+      const c = (p.category || "").trim() || "Tanpa Kategori";
+      return c === lowCategoryFilter;
+    });
+  }, [lowStockProducts, lowCategoryFilter]);
+
+  const selectedLowProducts = useMemo(
+    () => filteredLowStock.filter((p) => selectedLowIds.has(p.id)),
+    [filteredLowStock, selectedLowIds],
+  );
+
 
   const pricingIssueProducts = useMemo(() => {
     return products.filter((p) => {
@@ -281,12 +302,15 @@ function POPage() {
 
 
 
-  const openCreateForLowStock = (mode: "out" | "low") => {
+  const openCreateForLowStock = (mode: "out" | "low" | "selected") => {
+    const base = lowCategoryFilter ? filteredLowStock : lowStockProducts;
     const pool = mode === "out"
-      ? lowStockProducts.filter((p) => (p.stock ?? 0) <= 0)
-      : lowStockProducts;
+      ? base.filter((p) => (p.stock ?? 0) <= 0)
+      : mode === "selected"
+        ? selectedLowProducts
+        : base;
     if (pool.length === 0) {
-      toast.info("Tidak ada produk yang perlu di-restock");
+      toast.info(mode === "selected" ? "Pilih produk dulu" : "Tidak ada produk yang perlu di-restock");
       return;
     }
     resetForm();
@@ -736,6 +760,29 @@ function POPage() {
               />
 
             </div>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs whitespace-nowrap">Kategori</Label>
+              <select
+                className="h-8 rounded-md border bg-background px-2 text-xs"
+                value={lowCategoryFilter}
+                onChange={(e) => { setLowCategoryFilter(e.target.value); setSelectedLowIds(new Set()); }}
+              >
+                <option value="">Semua ({lowStockProducts.length})</option>
+                {lowStockCategories.map((c) => {
+                  const n = lowStockProducts.filter((p) => ((p.category || "").trim() || "Tanpa Kategori") === c).length;
+                  return <option key={c} value={c}>{c} ({n})</option>;
+                })}
+              </select>
+            </div>
+            {selectedLowProducts.length > 0 && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => openCreateForLowStock("selected")}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Buat PO Terpilih ({selectedLowProducts.length})
+              </Button>
+            )}
             {outOfStockCount > 0 && (
               <Button
                 size="sm"
@@ -747,17 +794,34 @@ function POPage() {
             )}
             <Button
               size="sm"
+              variant="outline"
               onClick={() => openCreateForLowStock("low")}
             >
-              <Plus className="mr-2 h-4 w-4" /> Buat PO Semua ({lowStockProducts.length})
+              <Plus className="mr-2 h-4 w-4" /> Buat PO {lowCategoryFilter ? `Kategori (${filteredLowStock.length})` : `Semua (${lowStockProducts.length})`}
             </Button>
           </div>
           <div className="max-h-72 overflow-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
                 <tr>
+                  <th className="p-2 w-8">
+                    <input
+                      type="checkbox"
+                      aria-label="Pilih semua"
+                      checked={filteredLowStock.length > 0 && filteredLowStock.every((p) => selectedLowIds.has(p.id))}
+                      onChange={(e) => {
+                        setSelectedLowIds((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) filteredLowStock.forEach((p) => next.add(p.id));
+                          else filteredLowStock.forEach((p) => next.delete(p.id));
+                          return next;
+                        });
+                      }}
+                    />
+                  </th>
                   <th className="p-2">Kode</th>
                   <th className="p-2">Nama</th>
+                  <th className="p-2">Kategori</th>
                   <th className="p-2 text-right">Stok</th>
                   <th className="p-2 text-right w-24">Batas</th>
                   <th className="p-2 text-right">Harga</th>
@@ -765,14 +829,28 @@ function POPage() {
                 </tr>
               </thead>
               <tbody>
-                {lowStockProducts.map((p) => {
+                {filteredLowStock.map((p) => {
                   const out = (p.stock ?? 0) <= 0;
-                  const eff = effectiveThreshold(p);
                   const isCustom = p.min_stock != null;
+                  const checked = selectedLowIds.has(p.id);
                   return (
                     <tr key={p.id} className="border-t hover:bg-muted/40">
+                      <td className="p-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setSelectedLowIds((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(p.id); else next.delete(p.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </td>
                       <td className="p-2 font-mono text-xs">{p.code}</td>
                       <td className="p-2 font-medium">{p.name}</td>
+                      <td className="p-2 text-xs text-muted-foreground">{p.category || "-"}</td>
                       <td className="p-2 text-right">
                         <Badge variant={out ? "destructive" : "secondary"}>
                           {out ? "Habis" : `${p.stock} tersisa`}
