@@ -1044,6 +1044,8 @@ function KeuntunganPage() {
       {/* Ambil Keuntungan (Prive) */}
       {(() => {
         const totalTaken = visibleWithdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
+        const reserveAmount = Math.max(0, (Number(stats.allProfit) || 0) * (reservePercent / 100));
+        const available = stats.allProfit - totalTaken - reserveAmount;
         const sisa = stats.allProfit - totalTaken;
         return (
           <Card className="p-4">
@@ -1066,11 +1068,40 @@ function KeuntunganPage() {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-sky-500/30 bg-sky-500/5 p-3">
+              <div className="flex-1 min-w-[180px]">
+                <div className="text-xs font-medium text-sky-700 dark:text-sky-400">Cadangan Pengembangan Toko</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Persen dari total untung yang <b>disisihkan</b> agar toko bisa berkembang (beli stok, alat, ekspansi). Sisanya baru boleh diambil sebagai prive.
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={100}
+                  value={reserveInput}
+                  onChange={(e) => setReserveInput(e.target.value)}
+                  onBlur={saveReservePercent}
+                  disabled={savingReserve}
+                  className="h-8 w-20 text-right"
+                />
+                <span className="text-sm font-semibold">%</span>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Total Untung (Data)</div>
                 <div className="mt-1 text-xl font-bold text-primary">{formatRupiah(stats.allProfit)}</div>
                 <div className="text-[11px] text-muted-foreground">Sejak reset terakhir</div>
+              </div>
+              <div className="rounded-md border border-sky-500/30 bg-sky-500/5 p-3">
+                <div className="text-xs uppercase text-sky-700 dark:text-sky-400">Cadangan Toko ({reservePercent}%)</div>
+                <div className="mt-1 text-xl font-bold text-sky-600">{formatRupiah(reserveAmount)}</div>
+                <div className="text-[11px] text-muted-foreground">Disisihkan untuk pengembangan</div>
               </div>
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Sudah Diambil</div>
@@ -1078,10 +1109,12 @@ function KeuntunganPage() {
                 <div className="text-[11px] text-muted-foreground">{visibleWithdrawals.length} kali pengambilan</div>
               </div>
               <div className="rounded-md border p-3">
-                <div className="text-xs uppercase text-muted-foreground">Sisa Belum Diambil</div>
-                <div className={`mt-1 text-xl font-bold ${sisa < 0 ? "text-destructive" : "text-emerald-600"}`}>{formatRupiah(sisa)}</div>
+                <div className="text-xs uppercase text-muted-foreground">Bisa Diambil (Aman)</div>
+                <div className={`mt-1 text-xl font-bold ${available < 0 ? "text-destructive" : "text-emerald-600"}`}>{formatRupiah(available)}</div>
+                <div className="text-[11px] text-muted-foreground">Setelah kurangi cadangan · Sisa kotor: {formatRupiah(sisa)}</div>
               </div>
             </div>
+
             {visibleWithdrawals.length > 0 && (
               <div className="mt-4 overflow-x-auto">
                 <div className="mb-2 text-xs font-semibold text-muted-foreground">Riwayat Pengambilan</div>
