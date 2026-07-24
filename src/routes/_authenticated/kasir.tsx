@@ -2243,7 +2243,7 @@ function KasirPage() {
                 </div>
               </div>
             )}
-            <DialogFooter>
+            <DialogFooter className="mt-2 shrink-0 border-t pt-3">
               <Button
                 onClick={() => {
                   setLastReceipt(null);
