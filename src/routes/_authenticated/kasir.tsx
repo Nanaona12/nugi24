@@ -52,6 +52,7 @@ import { Printer } from "lucide-react";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
+import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-scroll";
 import { AIOrderDialog, type AiOrderItem } from "@/components/AIOrderDialog";
 import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
 
