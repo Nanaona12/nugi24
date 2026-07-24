@@ -622,7 +622,7 @@ function KeuntunganPage() {
       promoLossMonth,
       promoLossYear,
     };
-  }, [filteredItems, shiftShortages, fromDate, toDate, profitResetAt]);
+  }, [filteredItems, shiftShortages, shiftSurpluses, fromDate, toDate, profitResetAt]);
 
 
   function exportExcel() {
