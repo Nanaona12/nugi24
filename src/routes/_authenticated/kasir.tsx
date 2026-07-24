@@ -52,6 +52,7 @@ import { Printer } from "lucide-react";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
+import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-scroll";
 import { AIOrderDialog, type AiOrderItem } from "@/components/AIOrderDialog";
 import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
 
@@ -1663,11 +1664,11 @@ function KasirPage() {
             }
           }}
         >
-          <DialogContent className="max-h-[90vh] overflow-hidden">
+          <DialogContent className={dialogScrollContent}>
             <DialogHeader>
               <DialogTitle>Pembayaran</DialogTitle>
             </DialogHeader>
-            <div className="mt-4 flex-1 min-h-0 overflow-y-auto pr-2">
+            <DialogScrollBody className="mt-4 pr-2">
               <div className="space-y-4">
                 <div className="rounded-lg bg-muted p-4 text-center">
                   <div className="text-sm text-muted-foreground">Total Belanja</div>
@@ -2044,7 +2045,7 @@ function KasirPage() {
                   )}
                 </div>
               </div>
-            </div>
+            </DialogScrollBody>
             <DialogFooter className="mt-4 shrink-0 border-t pt-4">
               <Button variant="outline" onClick={() => setPayOpen(false)}>
                 Batal
@@ -2069,14 +2070,14 @@ function KasirPage() {
             }
           }}
         >
-          <DialogContent className="flex max-h-[90vh] max-w-md flex-col">
+          <DialogContent className={`${dialogScrollContent} max-w-md`}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <ReceiptIcon className="h-5 w-5 text-success" /> Transaksi Berhasil
               </DialogTitle>
             </DialogHeader>
             {lastReceipt && (
-              <div className="flex-1 space-y-3 overflow-y-auto pr-1 text-sm">
+              <DialogScrollBody className="space-y-3 text-sm">
                 {receiptImg ? (
                   <div className="overflow-hidden rounded-md border bg-white">
                     <img src={receiptImg} alt="Struk" className="block w-full" />
@@ -2241,7 +2242,7 @@ function KasirPage() {
                     </Button>
                   )}
                 </div>
-              </div>
+              </DialogScrollBody>
             )}
             <DialogFooter className="mt-2 shrink-0 border-t pt-3">
               <Button

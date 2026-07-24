@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import { Loader2, Search, Undo2 } from "lucide-react";
+import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-scroll";
 
 type Tx = { id: string; total: number; created_at: string; item_count: number; tenant_id: string };
 type TxItem = {
@@ -103,13 +104,13 @@ export function RefundDialog({ open, onOpenChange, onDone, cashierId }: { open: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-xl flex-col">
+      <DialogContent className={`${dialogScrollContent} max-w-xl`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Undo2 className="h-5 w-5" /> Refund Barang</DialogTitle>
           <DialogDescription>Cari transaksi berdasarkan nomor struk lalu pilih item & jumlah yang dikembalikan.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+        <DialogScrollBody className="space-y-3">
           <div className="flex gap-2">
             <Input
               placeholder="Nomor struk (mis. 7a3b1f9c atau lengkap)"
@@ -170,7 +171,7 @@ export function RefundDialog({ open, onOpenChange, onDone, cashierId }: { open: 
               </div>
             </Card>
           )}
-        </div>
+        </DialogScrollBody>
 
         <DialogFooter className="mt-2 shrink-0 border-t pt-3">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Tutup</Button>

@@ -136,6 +136,7 @@ function KeuntunganPage() {
   type ActivityLog = { id: string; action: string; amount: number | null; note: string | null; actor_name: string | null; created_at: string };
   const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
   const [shiftShortages, setShiftShortages] = useState<{ closed_at: string; amount: number }[]>([]);
+  const [shiftSurpluses, setShiftSurpluses] = useState<{ closed_at: string; amount: number }[]>([]);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetNote, setResetNote] = useState("");
   const [resetting, setResetting] = useState(false);
@@ -211,6 +212,19 @@ function KeuntunganPage() {
     setShiftShortages(rows);
   };
 
+  const loadShiftSurpluses = async () => {
+    const { data } = await (supabase as any)
+      .from("profit_activity_log")
+      .select("created_at, amount")
+      .eq("action", "shift_surplus")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const rows = ((data || []) as any[])
+      .filter((r) => r.created_at)
+      .map((r) => ({ closed_at: r.created_at as string, amount: Number(r.amount) || 0 }));
+    setShiftSurpluses(rows);
+  };
+
   const currentActorName = async (): Promise<string> => {
     const { data } = await supabase.auth.getUser();
     const u = data?.user;
@@ -242,6 +256,7 @@ function KeuntunganPage() {
       loadWithdrawals();
       loadActivityLog();
       loadShiftShortages();
+      loadShiftSurpluses();
     })();
   }, []);
 
@@ -531,6 +546,30 @@ function KeuntunganPage() {
     monthProfit -= shortageMonth;
     yearProfit -= shortageYear;
 
+    // Tambahkan keuntungan dari selisih lebih closing shift
+    let surplusAll = 0, surplusToday = 0, surplusMonth = 0, surplusYear = 0;
+    for (const s of shiftSurpluses) {
+      const d = new Date(s.closed_at);
+      if (resetAt && d < resetAt) continue;
+      if (from && d < from) continue;
+      if (to && d > to) continue;
+      const amt = Number(s.amount) || 0;
+      surplusAll += amt;
+      const dk = ymd(d);
+      const mk = `${d.getFullYear()}-${pad(d.getMonth() + 1)}`;
+      const yk = String(d.getFullYear());
+      if (dk === todayKey) surplusToday += amt;
+      if (mk === monthKey) surplusMonth += amt;
+      if (yk === yearKey) surplusYear += amt;
+      const dayB = dailyMap.get(dk); if (dayB) dayB.profit += amt; else dailyMap.set(dk, { key: dk, label: dk, revenue: 0, cost: 0, profit: amt, count: 0 });
+      const monB = monthlyMap.get(mk); if (monB) monB.profit += amt; else monthlyMap.set(mk, { key: mk, label: mk, revenue: 0, cost: 0, profit: amt, count: 0 });
+      const yrB = yearlyMap.get(yk); if (yrB) yrB.profit += amt; else yearlyMap.set(yk, { key: yk, label: yk, revenue: 0, cost: 0, profit: amt, count: 0 });
+    }
+    allProfit += surplusAll;
+    todayProfit += surplusToday;
+    monthProfit += surplusMonth;
+    yearProfit += surplusYear;
+
     // Ringkasan Kerugian Promo (informasi saja — sudah otomatis mengurangi profit lewat subtotal/cost item)
     let promoLossAll = 0, promoLossToday = 0, promoLossMonth = 0, promoLossYear = 0;
     for (const it of filteredItems) {
@@ -583,7 +622,7 @@ function KeuntunganPage() {
       promoLossMonth,
       promoLossYear,
     };
-  }, [filteredItems, shiftShortages, fromDate, toDate, profitResetAt]);
+  }, [filteredItems, shiftShortages, shiftSurpluses, fromDate, toDate, profitResetAt]);
 
 
   function exportExcel() {

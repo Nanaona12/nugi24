@@ -451,6 +451,34 @@ export const closeShift = createServerFn({ method: "POST" })
       });
     }
 
+    // Selisih lebih kasir: catat sebagai tambahan keuntungan
+    if (difference > 0) {
+      const surplus = difference;
+      const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
+      let cashierName = "";
+      const { data: shiftRow } = await context.supabase
+        .from("cashier_shifts")
+        .select("cashier_id")
+        .eq("id", data.shift_id)
+        .maybeSingle();
+      if (shiftRow?.cashier_id) {
+        const { data: cRow } = await context.supabase
+          .from("cashiers")
+          .select("name")
+          .eq("id", (shiftRow as any).cashier_id)
+          .maybeSingle();
+        cashierName = (cRow as any)?.name || "";
+      }
+      await (context.supabase as any).from("profit_activity_log").insert({
+        tenant_id: tenantId,
+        user_id: context.userId ?? null,
+        actor_name: cashierName || null,
+        action: "shift_surplus",
+        amount: surplus,
+        note: `Selisih lebih closing shift ${shortId}${data.notes?.trim() ? " - " + data.notes.trim() : ""}`,
+      });
+    }
+
     return { ok: true, totals: { opening_cash, total_sales, total_cash, total_qris, total_other, total_transactions, total_expenses, expected_cash, actual_cash, difference } };
   });
 
