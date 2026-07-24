@@ -1234,20 +1234,39 @@ function KeuntunganPage() {
               Catat pengambilan uang oleh pemilik. Data transaksi & laba tetap utuh — hanya dicatat di pembukuan sebagai pengeluaran (Prive).
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3">
-            <div className="grid gap-1">
-              <Label className="text-xs">Tanggal</Label>
-              <Input type="date" value={wDate} onChange={(e) => setWDate(e.target.value)} />
-            </div>
-            <div className="grid gap-1">
-              <Label className="text-xs">Nominal (Rp)</Label>
-              <Input type="number" inputMode="decimal" value={wAmount} onChange={(e) => setWAmount(e.target.value)} placeholder="0" />
-            </div>
-            <div className="grid gap-1">
-              <Label className="text-xs">Keterangan (opsional)</Label>
-              <Textarea value={wNote} onChange={(e) => setWNote(e.target.value)} placeholder="mis. Ambil untung bulan Juli" rows={2} />
-            </div>
-          </div>
+          {(() => {
+            const totalTaken = visibleWithdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
+            const reserveAmount = Math.max(0, (Number(stats.allProfit) || 0) * (reservePercent / 100));
+            const available = stats.allProfit - totalTaken - reserveAmount;
+            const amt = Number(wAmount) || 0;
+            const overLimit = amt > 0 && amt > available;
+            const overBy = overLimit ? amt - available : 0;
+            return (
+              <div className="grid gap-3">
+                <div className="rounded-md border bg-muted/40 p-2 text-[11px] leading-relaxed">
+                  <div>Cadangan toko: <b className="text-sky-600">{formatRupiah(reserveAmount)}</b> ({reservePercent}%)</div>
+                  <div>Aman diambil sekarang: <b className={available < 0 ? "text-destructive" : "text-emerald-600"}>{formatRupiah(available)}</b></div>
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs">Tanggal</Label>
+                  <Input type="date" value={wDate} onChange={(e) => setWDate(e.target.value)} />
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs">Nominal (Rp)</Label>
+                  <Input type="number" inputMode="decimal" value={wAmount} onChange={(e) => setWAmount(e.target.value)} placeholder="0" />
+                  {overLimit && (
+                    <div className="mt-1 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+                      ⚠️ Melebihi batas aman sebesar <b>{formatRupiah(overBy)}</b>. Ini akan memakan cadangan pengembangan toko. Kamu tetap bisa lanjut jika memang perlu.
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs">Keterangan (opsional)</Label>
+                  <Textarea value={wNote} onChange={(e) => setWNote(e.target.value)} placeholder="mis. Ambil untung bulan Juli" rows={2} />
+                </div>
+              </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setWithdrawOpen(false)} disabled={wSaving}>Batal</Button>
             <Button onClick={submitWithdrawal} disabled={wSaving}>{wSaving ? "Menyimpan..." : "Catat Pengambilan"}</Button>
