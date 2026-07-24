@@ -760,6 +760,29 @@ function POPage() {
               />
 
             </div>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs whitespace-nowrap">Kategori</Label>
+              <select
+                className="h-8 rounded-md border bg-background px-2 text-xs"
+                value={lowCategoryFilter}
+                onChange={(e) => { setLowCategoryFilter(e.target.value); setSelectedLowIds(new Set()); }}
+              >
+                <option value="">Semua ({lowStockProducts.length})</option>
+                {lowStockCategories.map((c) => {
+                  const n = lowStockProducts.filter((p) => ((p.category || "").trim() || "Tanpa Kategori") === c).length;
+                  return <option key={c} value={c}>{c} ({n})</option>;
+                })}
+              </select>
+            </div>
+            {selectedLowProducts.length > 0 && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => openCreateForLowStock("selected")}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Buat PO Terpilih ({selectedLowProducts.length})
+              </Button>
+            )}
             {outOfStockCount > 0 && (
               <Button
                 size="sm"
@@ -771,9 +794,10 @@ function POPage() {
             )}
             <Button
               size="sm"
+              variant="outline"
               onClick={() => openCreateForLowStock("low")}
             >
-              <Plus className="mr-2 h-4 w-4" /> Buat PO Semua ({lowStockProducts.length})
+              <Plus className="mr-2 h-4 w-4" /> Buat PO {lowCategoryFilter ? `Kategori (${filteredLowStock.length})` : `Semua (${lowStockProducts.length})`}
             </Button>
           </div>
           <div className="max-h-72 overflow-auto">
