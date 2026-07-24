@@ -230,10 +230,14 @@ function KeuntunganPage() {
 
   useEffect(() => {
     (async () => {
-      const { data: t } = await supabase.from("tenants").select("id, profit_reset_at").limit(1).maybeSingle();
+      const { data: t } = await supabase.from("tenants").select("id, profit_reset_at, profit_reserve_percent").limit(1).maybeSingle();
       if (t?.id) {
         setTenantId(t.id as string);
         setProfitResetAt(((t as any).profit_reset_at as string | null) ?? null);
+        const pct = Number((t as any).profit_reserve_percent ?? 20);
+        const safe = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 20;
+        setReservePercent(safe);
+        setReserveInput(String(safe));
       }
       loadWithdrawals();
       loadActivityLog();
