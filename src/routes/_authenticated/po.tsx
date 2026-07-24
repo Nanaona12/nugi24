@@ -804,8 +804,24 @@ function POPage() {
             <table className="w-full text-sm">
               <thead className="bg-muted/60 text-left text-xs uppercase text-muted-foreground">
                 <tr>
+                  <th className="p-2 w-8">
+                    <input
+                      type="checkbox"
+                      aria-label="Pilih semua"
+                      checked={filteredLowStock.length > 0 && filteredLowStock.every((p) => selectedLowIds.has(p.id))}
+                      onChange={(e) => {
+                        setSelectedLowIds((prev) => {
+                          const next = new Set(prev);
+                          if (e.target.checked) filteredLowStock.forEach((p) => next.add(p.id));
+                          else filteredLowStock.forEach((p) => next.delete(p.id));
+                          return next;
+                        });
+                      }}
+                    />
+                  </th>
                   <th className="p-2">Kode</th>
                   <th className="p-2">Nama</th>
+                  <th className="p-2">Kategori</th>
                   <th className="p-2 text-right">Stok</th>
                   <th className="p-2 text-right w-24">Batas</th>
                   <th className="p-2 text-right">Harga</th>
@@ -813,14 +829,28 @@ function POPage() {
                 </tr>
               </thead>
               <tbody>
-                {lowStockProducts.map((p) => {
+                {filteredLowStock.map((p) => {
                   const out = (p.stock ?? 0) <= 0;
-                  const eff = effectiveThreshold(p);
                   const isCustom = p.min_stock != null;
+                  const checked = selectedLowIds.has(p.id);
                   return (
                     <tr key={p.id} className="border-t hover:bg-muted/40">
+                      <td className="p-2">
+                        <input
+                          type="checkbox"
+                          checked={checked}
+                          onChange={(e) => {
+                            setSelectedLowIds((prev) => {
+                              const next = new Set(prev);
+                              if (e.target.checked) next.add(p.id); else next.delete(p.id);
+                              return next;
+                            });
+                          }}
+                        />
+                      </td>
                       <td className="p-2 font-mono text-xs">{p.code}</td>
                       <td className="p-2 font-medium">{p.name}</td>
+                      <td className="p-2 text-xs text-muted-foreground">{p.category || "-"}</td>
                       <td className="p-2 text-right">
                         <Badge variant={out ? "destructive" : "secondary"}>
                           {out ? "Habis" : `${p.stock} tersisa`}
