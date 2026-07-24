@@ -132,6 +132,8 @@ function POPage() {
     const v = parseInt(localStorage.getItem("po_low_threshold") || "5", 10);
     return isNaN(v) ? 5 : v;
   });
+  const [lowCategoryFilter, setLowCategoryFilter] = useState<string>("");
+  const [selectedLowIds, setSelectedLowIds] = useState<Set<string>>(new Set());
 
   // Form
   const [supplier, setSupplier] = useState("");
