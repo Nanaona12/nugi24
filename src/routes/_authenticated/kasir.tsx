@@ -2242,7 +2242,7 @@ function KasirPage() {
                     </Button>
                   )}
                 </div>
-              </div>
+              </DialogScrollBody>
             )}
             <DialogFooter className="mt-2 shrink-0 border-t pt-3">
               <Button
