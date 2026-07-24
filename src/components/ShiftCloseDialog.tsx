@@ -354,6 +354,8 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
             )}
           </>
         )}
+        </DialogScrollBody>
+
 
         <DialogFooter>
           {!closed ? (
