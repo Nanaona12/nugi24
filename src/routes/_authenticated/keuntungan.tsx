@@ -256,6 +256,7 @@ function KeuntunganPage() {
       loadWithdrawals();
       loadActivityLog();
       loadShiftShortages();
+      loadShiftSurpluses();
     })();
   }, []);
 
