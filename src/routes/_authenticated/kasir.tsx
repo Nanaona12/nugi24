@@ -2069,14 +2069,14 @@ function KasirPage() {
             }
           }}
         >
-          <DialogContent className="max-w-md">
+          <DialogContent className="flex max-h-[90vh] max-w-md flex-col">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <ReceiptIcon className="h-5 w-5 text-success" /> Transaksi Berhasil
               </DialogTitle>
             </DialogHeader>
             {lastReceipt && (
-              <div className="space-y-3 text-sm">
+              <div className="flex-1 space-y-3 overflow-y-auto pr-1 text-sm">
                 {receiptImg ? (
                   <div className="overflow-hidden rounded-md border bg-white">
                     <img src={receiptImg} alt="Struk" className="block w-full" />
@@ -2243,7 +2243,7 @@ function KasirPage() {
                 </div>
               </div>
             )}
-            <DialogFooter>
+            <DialogFooter className="mt-2 shrink-0 border-t pt-3">
               <Button
                 onClick={() => {
                   setLastReceipt(null);

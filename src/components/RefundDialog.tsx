@@ -103,74 +103,76 @@ export function RefundDialog({ open, onOpenChange, onDone, cashierId }: { open: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="flex max-h-[90vh] max-w-xl flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Undo2 className="h-5 w-5" /> Refund Barang</DialogTitle>
           <DialogDescription>Cari transaksi berdasarkan nomor struk lalu pilih item & jumlah yang dikembalikan.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-2">
-          <Input
-            placeholder="Nomor struk (mis. 7a3b1f9c atau lengkap)"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") findTx(); }}
-            autoFocus
-          />
-          <Button onClick={findTx} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-          </Button>
+        <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Nomor struk (mis. 7a3b1f9c atau lengkap)"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") findTx(); }}
+              autoFocus
+            />
+            <Button onClick={findTx} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+            </Button>
+          </div>
+
+          {tx && (
+            <Card className="p-3 text-sm">
+              <div className="mb-2 flex items-center justify-between">
+                <div>
+                  <div className="font-semibold">#{tx.id.slice(0, 8)}</div>
+                  <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("id-ID")}</div>
+                </div>
+                <Badge variant="secondary">Total {formatRupiah(Number(tx.total))}</Badge>
+              </div>
+              <ul className="divide-y rounded border">
+                {items.map((it) => {
+                  const q = refundQty[it.id] || 0;
+                  return (
+                    <li key={it.id} className="flex items-center justify-between gap-2 p-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{it.product_name}</div>
+                        <div className="text-xs text-muted-foreground">
+                          Beli {it.qty} × {formatRupiah(Number(it.unit_price))}
+                          {it.unit_name ? ` • ${it.unit_name}` : ""}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button size="sm" variant="outline" onClick={() => setRefundQty({ ...refundQty, [it.id]: Math.max(0, q - 1) })}>−</Button>
+                        <Input
+                          className="w-14 text-center"
+                          value={String(q)}
+                          onChange={(e) => {
+                            const v = Math.max(0, Math.min(it.qty, parseInt(e.target.value.replace(/\D/g, "") || "0", 10)));
+                            setRefundQty({ ...refundQty, [it.id]: v });
+                          }}
+                        />
+                        <Button size="sm" variant="outline" onClick={() => setRefundQty({ ...refundQty, [it.id]: Math.min(it.qty, q + 1) })}>+</Button>
+                        <span className="ml-1 text-xs text-muted-foreground">/{it.qty}</span>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="mt-2">
+                <Label className="text-xs">Alasan (opsional)</Label>
+                <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Rusak, salah ambil, dll" />
+              </div>
+              <div className="mt-2 flex items-center justify-between border-t pt-2 font-semibold">
+                <span>Total Refund</span><span className="text-destructive">{formatRupiah(total)}</span>
+              </div>
+            </Card>
+          )}
         </div>
 
-        {tx && (
-          <Card className="p-3 text-sm">
-            <div className="mb-2 flex items-center justify-between">
-              <div>
-                <div className="font-semibold">#{tx.id.slice(0, 8)}</div>
-                <div className="text-xs text-muted-foreground">{new Date(tx.created_at).toLocaleString("id-ID")}</div>
-              </div>
-              <Badge variant="secondary">Total {formatRupiah(Number(tx.total))}</Badge>
-            </div>
-            <ul className="divide-y rounded border">
-              {items.map((it) => {
-                const q = refundQty[it.id] || 0;
-                return (
-                  <li key={it.id} className="flex items-center justify-between gap-2 p-2">
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">{it.product_name}</div>
-                      <div className="text-xs text-muted-foreground">
-                        Beli {it.qty} × {formatRupiah(Number(it.unit_price))}
-                        {it.unit_name ? ` • ${it.unit_name}` : ""}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="outline" onClick={() => setRefundQty({ ...refundQty, [it.id]: Math.max(0, q - 1) })}>−</Button>
-                      <Input
-                        className="w-14 text-center"
-                        value={String(q)}
-                        onChange={(e) => {
-                          const v = Math.max(0, Math.min(it.qty, parseInt(e.target.value.replace(/\D/g, "") || "0", 10)));
-                          setRefundQty({ ...refundQty, [it.id]: v });
-                        }}
-                      />
-                      <Button size="sm" variant="outline" onClick={() => setRefundQty({ ...refundQty, [it.id]: Math.min(it.qty, q + 1) })}>+</Button>
-                      <span className="ml-1 text-xs text-muted-foreground">/{it.qty}</span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-            <div className="mt-2">
-              <Label className="text-xs">Alasan (opsional)</Label>
-              <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Rusak, salah ambil, dll" />
-            </div>
-            <div className="mt-2 flex items-center justify-between border-t pt-2 font-semibold">
-              <span>Total Refund</span><span className="text-destructive">{formatRupiah(total)}</span>
-            </div>
-          </Card>
-        )}
-
-        <DialogFooter>
+        <DialogFooter className="mt-2 shrink-0 border-t pt-3">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Tutup</Button>
           <Button onClick={submit} disabled={saving || !tx || total <= 0} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Proses Refund
