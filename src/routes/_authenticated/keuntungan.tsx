@@ -136,6 +136,7 @@ function KeuntunganPage() {
   type ActivityLog = { id: string; action: string; amount: number | null; note: string | null; actor_name: string | null; created_at: string };
   const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
   const [shiftShortages, setShiftShortages] = useState<{ closed_at: string; amount: number }[]>([]);
+  const [shiftSurpluses, setShiftSurpluses] = useState<{ closed_at: string; amount: number }[]>([]);
   const [resetConfirmOpen, setResetConfirmOpen] = useState(false);
   const [resetNote, setResetNote] = useState("");
   const [resetting, setResetting] = useState(false);
