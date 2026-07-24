@@ -11,6 +11,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { addShiftExpense, closeShift, deleteShiftExpense, getShiftSummary } from "@/lib/cashier.functions";
 import { formatRupiah, parseNumber } from "@/lib/format";
 import type { ActiveShift } from "@/components/CashierLock";
+import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-scroll";
 
 type Summary = {
   shift: any;
