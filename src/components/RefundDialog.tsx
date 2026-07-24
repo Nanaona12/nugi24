@@ -103,13 +103,13 @@ export function RefundDialog({ open, onOpenChange, onDone, cashierId }: { open: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex max-h-[90vh] max-w-xl flex-col">
+      <DialogContent className={`${dialogScrollContent} max-w-xl`}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2"><Undo2 className="h-5 w-5" /> Refund Barang</DialogTitle>
           <DialogDescription>Cari transaksi berdasarkan nomor struk lalu pilih item & jumlah yang dikembalikan.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+        <DialogScrollBody className="space-y-3">
           <div className="flex gap-2">
             <Input
               placeholder="Nomor struk (mis. 7a3b1f9c atau lengkap)"
