@@ -130,6 +130,9 @@ function KeuntunganPage() {
   const [resolvedLoss, setResolvedLoss] = useState<Record<string, { id: string; note: string | null; created_at: string }>>({});
   const [showResolvedLoss, setShowResolvedLoss] = useState(false);
   const [profitResetAt, setProfitResetAt] = useState<string | null>(null);
+  const [reservePercent, setReservePercent] = useState<number>(20);
+  const [reserveInput, setReserveInput] = useState<string>("20");
+  const [savingReserve, setSavingReserve] = useState(false);
   type ActivityLog = { id: string; action: string; amount: number | null; note: string | null; actor_name: string | null; created_at: string };
   const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
   const [shiftShortages, setShiftShortages] = useState<{ closed_at: string; amount: number }[]>([]);
