@@ -2045,7 +2045,7 @@ function KasirPage() {
                   )}
                 </div>
               </div>
-            </div>
+            </DialogScrollBody>
             <DialogFooter className="mt-4 shrink-0 border-t pt-4">
               <Button variant="outline" onClick={() => setPayOpen(false)}>
                 Batal
