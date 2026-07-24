@@ -130,6 +130,9 @@ function KeuntunganPage() {
   const [resolvedLoss, setResolvedLoss] = useState<Record<string, { id: string; note: string | null; created_at: string }>>({});
   const [showResolvedLoss, setShowResolvedLoss] = useState(false);
   const [profitResetAt, setProfitResetAt] = useState<string | null>(null);
+  const [reservePercent, setReservePercent] = useState<number>(20);
+  const [reserveInput, setReserveInput] = useState<string>("20");
+  const [savingReserve, setSavingReserve] = useState(false);
   type ActivityLog = { id: string; action: string; amount: number | null; note: string | null; actor_name: string | null; created_at: string };
   const [activityLog, setActivityLog] = useState<ActivityLog[]>([]);
   const [shiftShortages, setShiftShortages] = useState<{ closed_at: string; amount: number }[]>([]);
@@ -227,10 +230,14 @@ function KeuntunganPage() {
 
   useEffect(() => {
     (async () => {
-      const { data: t } = await supabase.from("tenants").select("id, profit_reset_at").limit(1).maybeSingle();
+      const { data: t } = await supabase.from("tenants").select("id, profit_reset_at, profit_reserve_percent").limit(1).maybeSingle();
       if (t?.id) {
         setTenantId(t.id as string);
         setProfitResetAt(((t as any).profit_reset_at as string | null) ?? null);
+        const pct = Number((t as any).profit_reserve_percent ?? 20);
+        const safe = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) : 20;
+        setReservePercent(safe);
+        setReserveInput(String(safe));
       }
       loadWithdrawals();
       loadActivityLog();
@@ -260,6 +267,21 @@ function KeuntunganPage() {
     loadWithdrawals();
     loadActivityLog();
   };
+
+  const saveReservePercent = async () => {
+    if (!tenantId) { toast.error("Toko belum terhubung"); return; }
+    const n = Number(reserveInput);
+    if (!Number.isFinite(n) || n < 0 || n > 100) { toast.error("Persen harus 0-100"); return; }
+    if (n === reservePercent) return;
+    setSavingReserve(true);
+    const { error } = await (supabase as any).from("tenants").update({ profit_reserve_percent: n }).eq("id", tenantId);
+    setSavingReserve(false);
+    if (error) { toast.error(error.message); setReserveInput(String(reservePercent)); return; }
+    setReservePercent(n);
+    toast.success(`Cadangan toko disetel ${n}%`);
+  };
+
+
 
   const deleteWithdrawal = async (id: string) => {
     if (!confirm("Hapus catatan pengambilan ini?")) return;
@@ -1022,6 +1044,8 @@ function KeuntunganPage() {
       {/* Ambil Keuntungan (Prive) */}
       {(() => {
         const totalTaken = visibleWithdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
+        const reserveAmount = Math.max(0, (Number(stats.allProfit) || 0) * (reservePercent / 100));
+        const available = stats.allProfit - totalTaken - reserveAmount;
         const sisa = stats.allProfit - totalTaken;
         return (
           <Card className="p-4">
@@ -1044,11 +1068,40 @@ function KeuntunganPage() {
                 </Button>
               </div>
             </div>
-            <div className="grid gap-3 sm:grid-cols-3">
+
+            <div className="mb-3 flex flex-wrap items-center gap-2 rounded-md border border-sky-500/30 bg-sky-500/5 p-3">
+              <div className="flex-1 min-w-[180px]">
+                <div className="text-xs font-medium text-sky-700 dark:text-sky-400">Cadangan Pengembangan Toko</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Persen dari total untung yang <b>disisihkan</b> agar toko bisa berkembang (beli stok, alat, ekspansi). Sisanya baru boleh diambil sebagai prive.
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <Input
+                  type="number"
+                  inputMode="decimal"
+                  min={0}
+                  max={100}
+                  value={reserveInput}
+                  onChange={(e) => setReserveInput(e.target.value)}
+                  onBlur={saveReservePercent}
+                  disabled={savingReserve}
+                  className="h-8 w-20 text-right"
+                />
+                <span className="text-sm font-semibold">%</span>
+              </div>
+            </div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Total Untung (Data)</div>
                 <div className="mt-1 text-xl font-bold text-primary">{formatRupiah(stats.allProfit)}</div>
                 <div className="text-[11px] text-muted-foreground">Sejak reset terakhir</div>
+              </div>
+              <div className="rounded-md border border-sky-500/30 bg-sky-500/5 p-3">
+                <div className="text-xs uppercase text-sky-700 dark:text-sky-400">Cadangan Toko ({reservePercent}%)</div>
+                <div className="mt-1 text-xl font-bold text-sky-600">{formatRupiah(reserveAmount)}</div>
+                <div className="text-[11px] text-muted-foreground">Disisihkan untuk pengembangan</div>
               </div>
               <div className="rounded-md border p-3">
                 <div className="text-xs uppercase text-muted-foreground">Sudah Diambil</div>
@@ -1056,10 +1109,12 @@ function KeuntunganPage() {
                 <div className="text-[11px] text-muted-foreground">{visibleWithdrawals.length} kali pengambilan</div>
               </div>
               <div className="rounded-md border p-3">
-                <div className="text-xs uppercase text-muted-foreground">Sisa Belum Diambil</div>
-                <div className={`mt-1 text-xl font-bold ${sisa < 0 ? "text-destructive" : "text-emerald-600"}`}>{formatRupiah(sisa)}</div>
+                <div className="text-xs uppercase text-muted-foreground">Bisa Diambil (Aman)</div>
+                <div className={`mt-1 text-xl font-bold ${available < 0 ? "text-destructive" : "text-emerald-600"}`}>{formatRupiah(available)}</div>
+                <div className="text-[11px] text-muted-foreground">Setelah kurangi cadangan · Sisa kotor: {formatRupiah(sisa)}</div>
               </div>
             </div>
+
             {visibleWithdrawals.length > 0 && (
               <div className="mt-4 overflow-x-auto">
                 <div className="mb-2 text-xs font-semibold text-muted-foreground">Riwayat Pengambilan</div>
@@ -1179,20 +1234,39 @@ function KeuntunganPage() {
               Catat pengambilan uang oleh pemilik. Data transaksi & laba tetap utuh — hanya dicatat di pembukuan sebagai pengeluaran (Prive).
             </DialogDescription>
           </DialogHeader>
-          <div className="grid gap-3">
-            <div className="grid gap-1">
-              <Label className="text-xs">Tanggal</Label>
-              <Input type="date" value={wDate} onChange={(e) => setWDate(e.target.value)} />
-            </div>
-            <div className="grid gap-1">
-              <Label className="text-xs">Nominal (Rp)</Label>
-              <Input type="number" inputMode="decimal" value={wAmount} onChange={(e) => setWAmount(e.target.value)} placeholder="0" />
-            </div>
-            <div className="grid gap-1">
-              <Label className="text-xs">Keterangan (opsional)</Label>
-              <Textarea value={wNote} onChange={(e) => setWNote(e.target.value)} placeholder="mis. Ambil untung bulan Juli" rows={2} />
-            </div>
-          </div>
+          {(() => {
+            const totalTaken = visibleWithdrawals.reduce((s, w) => s + Number(w.amount || 0), 0);
+            const reserveAmount = Math.max(0, (Number(stats.allProfit) || 0) * (reservePercent / 100));
+            const available = stats.allProfit - totalTaken - reserveAmount;
+            const amt = Number(wAmount) || 0;
+            const overLimit = amt > 0 && amt > available;
+            const overBy = overLimit ? amt - available : 0;
+            return (
+              <div className="grid gap-3">
+                <div className="rounded-md border bg-muted/40 p-2 text-[11px] leading-relaxed">
+                  <div>Cadangan toko: <b className="text-sky-600">{formatRupiah(reserveAmount)}</b> ({reservePercent}%)</div>
+                  <div>Aman diambil sekarang: <b className={available < 0 ? "text-destructive" : "text-emerald-600"}>{formatRupiah(available)}</b></div>
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs">Tanggal</Label>
+                  <Input type="date" value={wDate} onChange={(e) => setWDate(e.target.value)} />
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs">Nominal (Rp)</Label>
+                  <Input type="number" inputMode="decimal" value={wAmount} onChange={(e) => setWAmount(e.target.value)} placeholder="0" />
+                  {overLimit && (
+                    <div className="mt-1 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
+                      ⚠️ Melebihi batas aman sebesar <b>{formatRupiah(overBy)}</b>. Ini akan memakan cadangan pengembangan toko. Kamu tetap bisa lanjut jika memang perlu.
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-1">
+                  <Label className="text-xs">Keterangan (opsional)</Label>
+                  <Textarea value={wNote} onChange={(e) => setWNote(e.target.value)} placeholder="mis. Ambil untung bulan Juli" rows={2} />
+                </div>
+              </div>
+            );
+          })()}
           <DialogFooter>
             <Button variant="outline" onClick={() => setWithdrawOpen(false)} disabled={wSaving}>Batal</Button>
             <Button onClick={submitWithdrawal} disabled={wSaving}>{wSaving ? "Menyimpan..." : "Catat Pengambilan"}</Button>
