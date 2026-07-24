@@ -279,6 +279,9 @@ function KeuntunganPage() {
     if (error) { toast.error(error.message); setReserveInput(String(reservePercent)); return; }
     setReservePercent(n);
     toast.success(`Cadangan toko disetel ${n}%`);
+  };
+
+
 
   const deleteWithdrawal = async (id: string) => {
     if (!confirm("Hapus catatan pengambilan ini?")) return;
