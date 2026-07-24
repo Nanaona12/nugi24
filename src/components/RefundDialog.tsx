@@ -171,7 +171,7 @@ export function RefundDialog({ open, onOpenChange, onDone, cashierId }: { open: 
               </div>
             </Card>
           )}
-        </div>
+        </DialogScrollBody>
 
         <DialogFooter className="mt-2 shrink-0 border-t pt-3">
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Tutup</Button>
