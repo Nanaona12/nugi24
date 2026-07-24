@@ -1664,11 +1664,11 @@ function KasirPage() {
             }
           }}
         >
-          <DialogContent className="max-h-[90vh] overflow-hidden">
+          <DialogContent className={dialogScrollContent}>
             <DialogHeader>
               <DialogTitle>Pembayaran</DialogTitle>
             </DialogHeader>
-            <div className="mt-4 flex-1 min-h-0 overflow-y-auto pr-2">
+            <DialogScrollBody className="mt-4 pr-2">
               <div className="space-y-4">
                 <div className="rounded-lg bg-muted p-4 text-center">
                   <div className="text-sm text-muted-foreground">Total Belanja</div>
