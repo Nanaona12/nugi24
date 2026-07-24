@@ -268,6 +268,18 @@ function KeuntunganPage() {
     loadActivityLog();
   };
 
+  const saveReservePercent = async () => {
+    if (!tenantId) { toast.error("Toko belum terhubung"); return; }
+    const n = Number(reserveInput);
+    if (!Number.isFinite(n) || n < 0 || n > 100) { toast.error("Persen harus 0-100"); return; }
+    if (n === reservePercent) return;
+    setSavingReserve(true);
+    const { error } = await (supabase as any).from("tenants").update({ profit_reserve_percent: n }).eq("id", tenantId);
+    setSavingReserve(false);
+    if (error) { toast.error(error.message); setReserveInput(String(reservePercent)); return; }
+    setReservePercent(n);
+    toast.success(`Cadangan toko disetel ${n}%`);
+
   const deleteWithdrawal = async (id: string) => {
     if (!confirm("Hapus catatan pengambilan ini?")) return;
     const w = withdrawals.find((x) => x.id === id);
