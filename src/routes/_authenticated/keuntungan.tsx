@@ -212,6 +212,19 @@ function KeuntunganPage() {
     setShiftShortages(rows);
   };
 
+  const loadShiftSurpluses = async () => {
+    const { data } = await (supabase as any)
+      .from("profit_activity_log")
+      .select("created_at, amount")
+      .eq("action", "shift_surplus")
+      .order("created_at", { ascending: false })
+      .limit(500);
+    const rows = ((data || []) as any[])
+      .filter((r) => r.created_at)
+      .map((r) => ({ closed_at: r.created_at as string, amount: Number(r.amount) || 0 }));
+    setShiftSurpluses(rows);
+  };
+
   const currentActorName = async (): Promise<string> => {
     const { data } = await supabase.auth.getUser();
     const u = data?.user;
