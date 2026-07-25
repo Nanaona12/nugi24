@@ -995,7 +995,7 @@ function KasirPage() {
         item_count: totals.items,
         payment_method: paymentMethod,
         qris_amount: qrisPart,
-        customer_phone: sendWa && phoneClean ? phoneClean : null,
+        customer_phone: phoneClean || null,
       } as any)
       .select()
       .single();
