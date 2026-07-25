@@ -995,7 +995,7 @@ function KasirPage() {
         item_count: totals.items,
         payment_method: paymentMethod,
         qris_amount: qrisPart,
-        customer_phone: sendWa && phoneClean ? phoneClean : null,
+        customer_phone: phoneClean || null,
       } as any)
       .select()
       .single();
@@ -1470,7 +1470,32 @@ function KasirPage() {
               )}
             </div>
           </div>
-          <ScrollArea className="h-[calc(100vh-440px)] pr-2">
+          <div className="mb-3 rounded-md border bg-muted/30 p-2">
+            <div className="mb-1 flex items-center justify-between">
+              <div className="text-xs font-medium text-muted-foreground">Pelanggan (opsional)</div>
+              {(customerName || customerPhone) && (
+                <button
+                  type="button"
+                  className="text-[11px] text-muted-foreground underline hover:text-foreground"
+                  onClick={() => { setCustomerName(""); setCustomerPhone(""); }}
+                >
+                  Hapus
+                </button>
+              )}
+            </div>
+            <CustomerPicker
+              customers={customers}
+              name={customerName}
+              phone={customerPhone}
+              onPick={(c) => {
+                setCustomerName(c.name);
+                if (c.phone) setCustomerPhone(c.phone.replace(/[^\d+]/g, ""));
+              }}
+              onChangeName={setCustomerName}
+              onChangePhone={(v) => setCustomerPhone(v.replace(/[^\d+]/g, ""))}
+            />
+          </div>
+          <ScrollArea className="h-[calc(100vh-540px)] pr-2">
             {cart.length === 0 ? (
               <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
                 Pilih produk untuk mulai

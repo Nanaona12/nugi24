@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
+import { generateWhiteBgProductImage } from "@/lib/ai-image.functions";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -1432,7 +1434,9 @@ function parseUnitsString(s: string): ProductUnit[] {
 
 function ProductImageField({ value, onChange }: { value: string; onChange: (url: string) => void }) {
   const [uploading, setUploading] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const aiWhiteBg = useServerFn(generateWhiteBgProductImage);
 
   const upload = async (file: File) => {
     setUploading(true);
@@ -1454,9 +1458,22 @@ function ProductImageField({ value, onChange }: { value: string; onChange: (url:
     } finally { setUploading(false); }
   };
 
+  const runAiWhiteBg = async () => {
+    if (!value) return;
+    if (!window.confirm("Buat versi baru dengan latar belakang putih menggunakan AI? Foto lama tidak terhapus otomatis.")) return;
+    setAiLoading(true);
+    try {
+      const r = await aiWhiteBg({ data: { source_url: value } });
+      onChange(r.url);
+      toast.success("Foto latar putih berhasil dibuat");
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal membuat foto AI");
+    } finally { setAiLoading(false); }
+  };
+
   return (
     <div className="space-y-2 rounded-md border p-3">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <div className="text-sm font-semibold">Foto Produk</div>
           <div className="text-[11px] text-muted-foreground">Ditampilkan di galeri publik toko.</div>
@@ -1468,12 +1485,17 @@ function ProductImageField({ value, onChange }: { value: string; onChange: (url:
           className="hidden"
           onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.target.value = ""; }}
         />
-        <div className="flex gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={uploading}>
+        <div className="flex flex-wrap justify-end gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={uploading || aiLoading}>
             <Upload className="mr-1 h-3.5 w-3.5" />{uploading ? "Mengunggah..." : (value ? "Ganti" : "Upload")}
           </Button>
           {value && (
-            <Button type="button" size="sm" variant="ghost" onClick={() => onChange("")}>
+            <Button type="button" size="sm" variant="secondary" onClick={runAiWhiteBg} disabled={aiLoading || uploading} title="Buat versi latar belakang putih dengan AI">
+              <Sparkles className="mr-1 h-3.5 w-3.5" />{aiLoading ? "AI memproses..." : "AI Latar Putih"}
+            </Button>
+          )}
+          {value && (
+            <Button type="button" size="sm" variant="ghost" onClick={() => onChange("")} disabled={aiLoading || uploading}>
               <XIcon className="mr-1 h-3.5 w-3.5" />Hapus
             </Button>
           )}
@@ -1487,6 +1509,7 @@ function ProductImageField({ value, onChange }: { value: string; onChange: (url:
     </div>
   );
 }
+
 
 
 
