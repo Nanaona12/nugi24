@@ -2435,19 +2435,20 @@ function KasirPage() {
 
         {/* Pratinjau Struk (Belum Dibayar) */}
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="max-w-md p-0">
-            <DialogHeader className="px-5 pt-5">
+          <DialogContent className={`${dialogScrollContent} max-w-md p-0`}>
+            <DialogHeader className="shrink-0 px-5 pt-5">
               <DialogTitle>Pratinjau Struk</DialogTitle>
               <DialogDescription>Ringkasan pesanan sebelum pembayaran.</DialogDescription>
             </DialogHeader>
-            <div className="relative mx-5 my-3 overflow-hidden rounded-md border bg-white text-black">
+            <div className="relative mx-5 my-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border bg-white text-black">
               {/* Watermark diagonal */}
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                 <div className="rotate-[-24deg] select-none whitespace-nowrap rounded border-4 border-red-500/60 px-4 py-1 text-2xl font-black uppercase tracking-widest text-red-500/60">
                   Belum Dibayar
                 </div>
               </div>
-              <ScrollArea className="max-h-[65vh]">
+              <DialogScrollBody className="pr-0">
+
                 <div className="p-4 font-mono text-[12px] leading-tight">
                   <div className="text-center">
                     <div className="text-sm font-bold uppercase">{storeName || "Toko"}</div>
