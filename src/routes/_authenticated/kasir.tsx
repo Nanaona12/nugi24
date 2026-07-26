@@ -1191,6 +1191,66 @@ function KasirPage() {
     loadProducts();
   };
 
+  const buildPreviewReceiptData = () => {
+    const imgItems: ReceiptItem[] = cart.map((l) => {
+      const c = computeLine(l, getUnits(l.product, unitsByProduct));
+      let detail = "";
+      const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
+      const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
+      if (showPack) {
+        const parts: string[] = [];
+        parts.push(`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`);
+        if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
+        detail = parts.join(" + ");
+      } else {
+        detail = `${l.qty} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`;
+      }
+      return {
+        name: l.product.name,
+        qty: l.qty,
+        unit: l.baseUnit.name,
+        isWholesale: l.mode === "grosiran",
+        detail,
+        subtotal: c.total,
+      };
+    });
+    return {
+      storeName: storeName || "Toko",
+      storeNote: `Kasir: ${activeCashier?.name || "-"}`,
+      txId: "PREVIEW",
+      at: new Date(),
+      items: imgItems,
+      total: totals.total,
+      paid: 0,
+      change: 0,
+      paymentMethod: "-",
+      customerName: customerName.trim() || null,
+      customerPhone: null,
+    };
+  };
+
+  const copyPreviewImage = async () => {
+    if (cart.length === 0) { toast.error("Keranjang masih kosong"); return; }
+    try {
+      const { dataUrl } = renderReceiptPng(buildPreviewReceiptData(), { preview: true });
+      const blob = await (await fetch(dataUrl)).blob();
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        toast.success("Gambar pratinjau struk disalin");
+      } catch {
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `pratinjau-struk-${Date.now()}.png`;
+        a.click();
+        toast.success("Gambar diunduh (clipboard tidak didukung)");
+      }
+    } catch (e: any) {
+      toast.error("Gagal membuat gambar: " + (e?.message || "unknown"));
+    }
+  };
+
+
+
   return (
     <div className="space-y-3">
       {/* Cashier / shift header */}
