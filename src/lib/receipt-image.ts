@@ -118,7 +118,9 @@ export function renderReceiptPng(
 
   ctx.font = `${subFs}px ui-sans-serif, system-ui, sans-serif`;
   ctx.fillStyle = "#475569";
-  const head1 = `#${r.txId.slice(0, 8).toUpperCase()} • ${r.paymentMethod.toUpperCase()}`;
+  const head1 = preview
+    ? "PRATINJAU • BELUM DIBAYAR"
+    : `#${r.txId.slice(0, 8).toUpperCase()} • ${r.paymentMethod.toUpperCase()}`;
   ctx.fillText(head1, W / 2, yy + subFs - 2);
   yy += subFs + 4;
   ctx.fillText(r.at.toLocaleString("id-ID"), W / 2, yy + subFs - 2);
