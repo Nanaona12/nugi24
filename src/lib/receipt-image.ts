@@ -26,7 +26,11 @@ export type ReceiptData = {
 };
 
 /** Render struk ke PNG (data URL). Width fixed 600px, height auto. */
-export function renderReceiptPng(r: ReceiptData): { dataUrl: string; base64: string } {
+export function renderReceiptPng(
+  r: ReceiptData,
+  opts: { preview?: boolean } = {},
+): { dataUrl: string; base64: string } {
+  const preview = !!opts.preview;
   const W = 600;
   const PAD = 28;
   const lineGap = 6;
