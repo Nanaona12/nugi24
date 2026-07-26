@@ -2502,10 +2502,13 @@ function KasirPage() {
                     * Ini bukan bukti pembayaran *
                   </div>
                 </div>
-              </ScrollArea>
+              </DialogScrollBody>
             </div>
-            <DialogFooter className="px-5 pb-5">
+            <DialogFooter className="shrink-0 gap-2 border-t px-5 pb-5 pt-3">
               <Button variant="outline" onClick={() => setPreviewOpen(false)}>Tutup</Button>
+              <Button variant="secondary" onClick={copyPreviewImage}>
+                <Copy className="mr-2 h-4 w-4" /> Salin Gambar
+              </Button>
               <Button onClick={() => { setPreviewOpen(false); setPayOpen(true); }}>Lanjut Bayar</Button>
             </DialogFooter>
           </DialogContent>
