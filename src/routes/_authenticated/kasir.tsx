@@ -1191,6 +1191,66 @@ function KasirPage() {
     loadProducts();
   };
 
+  const buildPreviewReceiptData = () => {
+    const imgItems: ReceiptItem[] = cart.map((l) => {
+      const c = computeLine(l, getUnits(l.product, unitsByProduct));
+      let detail = "";
+      const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
+      const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
+      if (showPack) {
+        const parts: string[] = [];
+        parts.push(`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`);
+        if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
+        detail = parts.join(" + ");
+      } else {
+        detail = `${l.qty} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`;
+      }
+      return {
+        name: l.product.name,
+        qty: l.qty,
+        unit: l.baseUnit.name,
+        isWholesale: l.mode === "grosiran",
+        detail,
+        subtotal: c.total,
+      };
+    });
+    return {
+      storeName: storeName || "Toko",
+      storeNote: `Kasir: ${activeCashier?.name || "-"}`,
+      txId: "PREVIEW",
+      at: new Date(),
+      items: imgItems,
+      total: totals.total,
+      paid: 0,
+      change: 0,
+      paymentMethod: "-",
+      customerName: customerName.trim() || null,
+      customerPhone: null,
+    };
+  };
+
+  const copyPreviewImage = async () => {
+    if (cart.length === 0) { toast.error("Keranjang masih kosong"); return; }
+    try {
+      const { dataUrl } = renderReceiptPng(buildPreviewReceiptData(), { preview: true });
+      const blob = await (await fetch(dataUrl)).blob();
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+        toast.success("Gambar pratinjau struk disalin");
+      } catch {
+        const a = document.createElement("a");
+        a.href = dataUrl;
+        a.download = `pratinjau-struk-${Date.now()}.png`;
+        a.click();
+        toast.success("Gambar diunduh (clipboard tidak didukung)");
+      }
+    } catch (e: any) {
+      toast.error("Gagal membuat gambar: " + (e?.message || "unknown"));
+    }
+  };
+
+
+
   return (
     <div className="space-y-3">
       {/* Cashier / shift header */}
@@ -2375,19 +2435,20 @@ function KasirPage() {
 
         {/* Pratinjau Struk (Belum Dibayar) */}
         <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-          <DialogContent className="max-w-md p-0">
-            <DialogHeader className="px-5 pt-5">
+          <DialogContent className={`${dialogScrollContent} max-w-md p-0`}>
+            <DialogHeader className="shrink-0 px-5 pt-5">
               <DialogTitle>Pratinjau Struk</DialogTitle>
               <DialogDescription>Ringkasan pesanan sebelum pembayaran.</DialogDescription>
             </DialogHeader>
-            <div className="relative mx-5 my-3 overflow-hidden rounded-md border bg-white text-black">
+            <div className="relative mx-5 my-3 flex min-h-0 flex-1 flex-col overflow-hidden rounded-md border bg-white text-black">
               {/* Watermark diagonal */}
               <div className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center">
                 <div className="rotate-[-24deg] select-none whitespace-nowrap rounded border-4 border-red-500/60 px-4 py-1 text-2xl font-black uppercase tracking-widest text-red-500/60">
                   Belum Dibayar
                 </div>
               </div>
-              <ScrollArea className="max-h-[65vh]">
+              <DialogScrollBody className="pr-0">
+
                 <div className="p-4 font-mono text-[12px] leading-tight">
                   <div className="text-center">
                     <div className="text-sm font-bold uppercase">{storeName || "Toko"}</div>
@@ -2441,10 +2502,13 @@ function KasirPage() {
                     * Ini bukan bukti pembayaran *
                   </div>
                 </div>
-              </ScrollArea>
+              </DialogScrollBody>
             </div>
-            <DialogFooter className="px-5 pb-5">
+            <DialogFooter className="shrink-0 gap-2 border-t px-5 pb-5 pt-3">
               <Button variant="outline" onClick={() => setPreviewOpen(false)}>Tutup</Button>
+              <Button variant="secondary" onClick={copyPreviewImage}>
+                <Copy className="mr-2 h-4 w-4" /> Salin Gambar
+              </Button>
               <Button onClick={() => { setPreviewOpen(false); setPayOpen(true); }}>Lanjut Bayar</Button>
             </DialogFooter>
           </DialogContent>
