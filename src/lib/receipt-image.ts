@@ -199,38 +199,65 @@ export function renderReceiptPng(
   ctx.font = `${itemFs}px ui-sans-serif, system-ui, sans-serif`;
   ctx.fillStyle = "#334155";
   ctx.textAlign = "left";
-  if (r.paymentMethod === "split") {
-    ctx.fillText("Cash", PAD, yy + itemFs);
-    ctx.textAlign = "right";
-    ctx.fillText(formatRupiah(r.cashPart || 0), W - PAD, yy + itemFs);
-    yy += itemFs + 4;
-    ctx.textAlign = "left";
-    ctx.fillText("QRIS", PAD, yy + itemFs);
-    ctx.textAlign = "right";
-    ctx.fillText(formatRupiah(r.qrisPart || 0), W - PAD, yy + itemFs);
-    yy += itemFs + 4;
-    ctx.textAlign = "left";
-    ctx.fillText("Total Bayar (SPLIT)", PAD, yy + itemFs);
-    ctx.textAlign = "right";
-    ctx.fillText(formatRupiah(r.paid), W - PAD, yy + itemFs);
-    yy += itemFs + 4;
-  } else {
-    ctx.fillText(`Bayar (${r.paymentMethod.toUpperCase()})`, PAD, yy + itemFs);
-    ctx.textAlign = "right";
-    ctx.fillText(formatRupiah(r.paid), W - PAD, yy + itemFs);
-    yy += itemFs + 4;
-  }
+  if (!preview) {
+    if (r.paymentMethod === "split") {
+      ctx.fillText("Cash", PAD, yy + itemFs);
+      ctx.textAlign = "right";
+      ctx.fillText(formatRupiah(r.cashPart || 0), W - PAD, yy + itemFs);
+      yy += itemFs + 4;
+      ctx.textAlign = "left";
+      ctx.fillText("QRIS", PAD, yy + itemFs);
+      ctx.textAlign = "right";
+      ctx.fillText(formatRupiah(r.qrisPart || 0), W - PAD, yy + itemFs);
+      yy += itemFs + 4;
+      ctx.textAlign = "left";
+      ctx.fillText("Total Bayar (SPLIT)", PAD, yy + itemFs);
+      ctx.textAlign = "right";
+      ctx.fillText(formatRupiah(r.paid), W - PAD, yy + itemFs);
+      yy += itemFs + 4;
+    } else {
+      ctx.fillText(`Bayar (${r.paymentMethod.toUpperCase()})`, PAD, yy + itemFs);
+      ctx.textAlign = "right";
+      ctx.fillText(formatRupiah(r.paid), W - PAD, yy + itemFs);
+      yy += itemFs + 4;
+    }
 
-  ctx.textAlign = "left";
-  ctx.fillText("Kembali", PAD, yy + itemFs);
-  ctx.textAlign = "right";
-  ctx.fillText(formatRupiah(r.change), W - PAD, yy + itemFs);
-  yy += itemFs + 10;
+    ctx.textAlign = "left";
+    ctx.fillText("Kembali", PAD, yy + itemFs);
+    ctx.textAlign = "right";
+    ctx.fillText(formatRupiah(r.change), W - PAD, yy + itemFs);
+    yy += itemFs + 10;
+  } else {
+    ctx.textAlign = "left";
+    ctx.fillText(`Total item: ${r.items.reduce((s, it) => s + it.qty, 0)}`, PAD, yy + itemFs);
+    yy += itemFs + 10;
+  }
 
   ctx.textAlign = "center";
   ctx.font = `${subFs}px ui-sans-serif, system-ui, sans-serif`;
   ctx.fillStyle = "#64748b";
-  ctx.fillText("Terima kasih sudah berbelanja 🙏", W / 2, yy + subFs);
+  ctx.fillText(
+    preview ? "* Ini bukan bukti pembayaran *" : "Terima kasih sudah berbelanja 🙏",
+    W / 2,
+    yy + subFs,
+  );
+
+  if (preview) {
+    // Watermark diagonal "BELUM DIBAYAR"
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.rotate((-24 * Math.PI) / 180);
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.font = `900 46px ui-sans-serif, system-ui, sans-serif`;
+    ctx.fillStyle = "rgba(239,68,68,0.35)";
+    ctx.fillText("BELUM DIBAYAR", 0, 0);
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = "rgba(239,68,68,0.35)";
+    const tw = ctx.measureText("BELUM DIBAYAR").width;
+    ctx.strokeRect(-tw / 2 - 16, -38, tw + 32, 76);
+    ctx.restore();
+  }
 
   const dataUrl = canvas.toDataURL("image/png");
   const base64 = dataUrl.split(",")[1] || "";
