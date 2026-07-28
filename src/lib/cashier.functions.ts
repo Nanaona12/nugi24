@@ -401,18 +401,32 @@ export const closeShift = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     // Auto-catat setoran kasir ke pembukuan: uang kasir dikurangi kas modal
+    const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
     const setoran = Math.max(0, actual_cash - opening_cash);
     if (setoran > 0) {
-      const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
       await context.supabase.from("bookkeeping_entries").insert({
         tenant_id: tenantId,
         entry_date: new Date().toISOString(),
         kind: "in",
-        description: `Setoran kasir (closing shift ${shortId})`,
+        description: `Setoran kasir tunai (closing shift ${shortId})`,
         ref: data.shift_id,
         amount: setoran,
       } as any);
     }
+
+    // Penerimaan non-tunai (QRIS / transfer) juga masuk pembukuan, tanpa modal kas
+    const nonCash = (Number(total_qris) || 0) + (Number(total_other) || 0);
+    if (nonCash > 0) {
+      await context.supabase.from("bookkeeping_entries").insert({
+        tenant_id: tenantId,
+        entry_date: new Date().toISOString(),
+        kind: "in",
+        description: `Penerimaan QRIS/non-tunai (closing shift ${shortId})`,
+        ref: data.shift_id,
+        amount: nonCash,
+      } as any);
+    }
+
 
     // Selisih kurang kasir: catat sebagai kas keluar + kurangi keuntungan
     if (difference < 0) {
