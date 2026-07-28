@@ -414,18 +414,31 @@ export const closeShift = createServerFn({ method: "POST" })
       } as any);
     }
 
-    // Penerimaan non-tunai (QRIS / transfer) juga masuk pembukuan, tanpa modal kas
-    const nonCash = (Number(total_qris) || 0) + (Number(total_other) || 0);
-    if (nonCash > 0) {
+    // Penerimaan non-tunai dipisah: QRIS sendiri, metode lain sendiri
+    const qrisAmount = Number(total_qris) || 0;
+    if (qrisAmount > 0) {
       await context.supabase.from("bookkeeping_entries").insert({
         tenant_id: tenantId,
         entry_date: new Date().toISOString(),
         kind: "in",
-        description: `Penerimaan QRIS/non-tunai (closing shift ${shortId})`,
+        description: `Penerimaan QRIS (closing shift ${shortId})`,
         ref: data.shift_id,
-        amount: nonCash,
+        amount: qrisAmount,
       } as any);
     }
+
+    const otherAmount = Number(total_other) || 0;
+    if (otherAmount > 0) {
+      await context.supabase.from("bookkeeping_entries").insert({
+        tenant_id: tenantId,
+        entry_date: new Date().toISOString(),
+        kind: "in",
+        description: `Penerimaan non-tunai lain (closing shift ${shortId})`,
+        ref: data.shift_id,
+        amount: otherAmount,
+      } as any);
+    }
+
 
 
     // Selisih kurang kasir: catat sebagai kas keluar + kurangi keuntungan
