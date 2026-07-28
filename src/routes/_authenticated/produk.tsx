@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { generateWhiteBgProductImage } from "@/lib/ai-image.functions";
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
+import { ProductImage } from "@/components/ProductImage";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
@@ -890,7 +891,7 @@ function ProdukPage() {
                       <div className="flex items-center gap-2 flex-wrap">
                         <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md border bg-muted">
                           {p.image_url ? (
-                            <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+                            <ProductImage src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-muted-foreground/40">
                               <Package className="h-4 w-4" />
