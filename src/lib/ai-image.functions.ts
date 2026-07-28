@@ -13,16 +13,32 @@ export const generateWhiteBgProductImage = createServerFn({ method: "POST" })
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY belum diset");
 
-    // Fetch source image and convert to data URL (Gemini accepts URLs, but many
-    // Supabase Storage URLs are public HTTP anyway — data URL is safest).
-    const imgRes = await fetch(data.source_url);
-    if (!imgRes.ok) throw new Error("Gagal mengambil foto sumber");
-    const contentType = imgRes.headers.get("content-type") || "image/jpeg";
-    const buf = new Uint8Array(await imgRes.arrayBuffer());
+    // Ambil foto sumber. Bucket product-photos bersifat privat, jadi utamakan
+    // download lewat Storage API (pakai sesi user) sebelum fallback ke fetch URL.
+    const marker = "/product-photos/";
+    const idx = data.source_url.indexOf(marker);
+    let bytesIn: Uint8Array | null = null;
+    let contentType = "image/jpeg";
+    if (idx !== -1) {
+      let path = data.source_url.slice(idx + marker.length).split("?")[0];
+      try { path = decodeURIComponent(path); } catch { /* keep raw */ }
+      const { data: blob, error: dlErr } = await context.supabase.storage.from("product-photos").download(path);
+      if (!dlErr && blob) {
+        contentType = blob.type || contentType;
+        bytesIn = new Uint8Array(await blob.arrayBuffer());
+      }
+    }
+    if (!bytesIn) {
+      const imgRes = await fetch(data.source_url);
+      if (!imgRes.ok) throw new Error("Gagal mengambil foto sumber");
+      contentType = imgRes.headers.get("content-type") || contentType;
+      bytesIn = new Uint8Array(await imgRes.arrayBuffer());
+    }
     let bin = "";
-    for (let i = 0; i < buf.byteLength; i++) bin += String.fromCharCode(buf[i]);
+    for (let i = 0; i < bytesIn.byteLength; i++) bin += String.fromCharCode(bytesIn[i]);
     const srcB64 = btoa(bin);
     const srcDataUrl = `data:${contentType};base64,${srcB64}`;
+
 
     const prompt =
       "Edit foto produk ini menjadi versi katalog e-commerce yang bersih: ganti latar belakang menjadi PUTIH POLOS (#FFFFFF) tanpa tekstur, tanpa bayangan tajam, tanpa properti tambahan. Pertahankan produk (bentuk, warna, label, teks kemasan) tetap utuh dan tajam, posisikan di tengah, cahaya rata seperti studio produk. Hasilkan gambar persegi berkualitas tinggi.";

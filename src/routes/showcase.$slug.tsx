@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ProductImage } from "@/components/ProductImage";
 import { Button } from "@/components/ui/button";
 import { formatRupiah } from "@/lib/format";
 import { ArrowLeft, Search, Package, MessageCircle, MapPin, Phone, Store, Filter, Navigation } from "lucide-react";
@@ -191,7 +192,7 @@ function ShowcaseDetail() {
                 <Card key={p.id} className={`overflow-hidden flex flex-col ${out ? "opacity-70" : ""}`}>
                   <div className="relative aspect-square w-full bg-muted">
                     {p.image_url ? (
-                      <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+                      <ProductImage src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center text-muted-foreground">
                         <Package className="h-12 w-12 opacity-40" />

@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { ProductImage } from "@/components/ProductImage";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatRupiah } from "@/lib/format";
@@ -273,7 +274,7 @@ function ProductsGrid({
               <Card className={`group overflow-hidden flex flex-col h-full transition hover:border-primary hover:shadow-md ${out ? "opacity-70" : ""}`}>
                 <div className="relative aspect-square w-full bg-muted">
                   {p.image_url ? (
-                    <img src={p.image_url} alt={p.name} className="h-full w-full object-cover" loading="lazy" />
+                    <ProductImage src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
                   ) : (
                     <div className="flex h-full items-center justify-center text-muted-foreground">
                       <Package className="h-10 w-10 opacity-40" />
