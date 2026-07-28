@@ -1503,9 +1503,10 @@ function ProductImageField({ value, onChange }: { value: string; onChange: (url:
       </div>
       {value && (
         <div className="flex justify-center">
-          <img src={value} alt="Foto produk" className="max-h-40 rounded-md border object-contain" />
+          <ProductImage src={value} alt="Foto produk" className="max-h-40 rounded-md border object-contain" />
         </div>
       )}
+
     </div>
   );
 }
