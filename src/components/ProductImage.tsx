@@ -57,5 +57,45 @@ export function ProductImage({ src, alt, className, loading = "lazy", zoomable =
   }, [src]);
 
   if (!resolved) return <div className={`bg-muted ${className ?? ""}`} aria-label={alt} />;
-  return <img src={resolved} alt={alt} className={className} loading={loading} />;
+
+  const img = <img src={resolved} alt={alt} className={className} loading={loading} />;
+  if (!zoomable) return img;
+
+  return (
+    <>
+      <button
+        type="button"
+        className="contents cursor-zoom-in"
+        aria-label={`Lihat gambar ${alt}`}
+        onClick={(e) => {
+          e.stopPropagation();
+          e.preventDefault();
+          setOpen(true);
+        }}
+      >
+        {img}
+      </button>
+      {open && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label={alt}
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-3 bg-black/80 p-4 backdrop-blur-sm"
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen(false);
+          }}
+        >
+          <img
+            src={resolved}
+            alt={alt}
+            className="max-h-[80vh] max-w-full rounded-lg object-contain shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <p className="max-w-[90vw] text-center text-sm font-medium text-white">{alt}</p>
+          <p className="text-xs text-white/70">Ketuk di luar gambar untuk menutup</p>
+        </div>
+      )}
+    </>
+  );
 }
