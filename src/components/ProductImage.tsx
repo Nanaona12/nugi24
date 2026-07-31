@@ -32,10 +32,13 @@ type Props = {
   alt: string;
   className?: string;
   loading?: "lazy" | "eager";
+  /** Klik gambar untuk melihat pratinjau besar. */
+  zoomable?: boolean;
 };
 
-export function ProductImage({ src, alt, className, loading = "lazy" }: Props) {
+export function ProductImage({ src, alt, className, loading = "lazy", zoomable = false }: Props) {
   const [resolved, setResolved] = useState<string | null>(() => cache.get(src) ?? null);
+  const [open, setOpen] = useState(false);
 
   useEffect(() => {
     let active = true;
