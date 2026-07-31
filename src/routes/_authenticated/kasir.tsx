@@ -130,6 +130,9 @@ function KasirPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [clearanceMap, setClearanceMap] = useState<Record<string, { promoId: string; price: number; normalPrice: number }>>({});
+  const clearanceMapRef = useRef(clearanceMap);
+  clearanceMapRef.current = clearanceMap;
+
   const [bxgyPromos, setBxgyPromos] = useState<{ id: string; name: string; buy_product_id: string; buy_qty: number; free_product_id: string; free_qty: number }[]>([]);
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
