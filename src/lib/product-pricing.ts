@@ -29,53 +29,63 @@ export function tierPriceFor(unit: ProductUnit, qty: number): { price: number; t
   return { price: Number(chosen.price), tier: chosen };
 }
 
-/** Muat units + tiers untuk daftar product id (batched + paginated agar aman utk banyak produk). */
+/** Muat units + tiers untuk daftar product id (batched paralel agar ringan & cepat). */
 export async function loadUnitsForProducts(productIds: string[]): Promise<Record<string, ProductUnit[]>> {
   if (productIds.length === 0) return {};
 
-  const CHUNK = 100;  // batasi panjang URL utk .in()
-  const PAGE = 1000;  // batas default PostgREST per query
+  const CHUNK = 150; // batasi panjang URL utk .in()
+  const PAGE = 1000; // batas default PostgREST per query
 
-  const unitList: any[] = [];
-  for (let i = 0; i < productIds.length; i += CHUNK) {
-    const idsChunk = productIds.slice(i, i + CHUNK);
-    let from = 0;
-    while (true) {
-      const { data, error } = await (supabase as any)
-        .from("product_units")
-        .select("*")
-        .in("product_id", idsChunk)
-        .order("sort_order", { ascending: true })
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      const rows = (data || []) as any[];
-      unitList.push(...rows);
-      if (rows.length < PAGE) break;
-      from += PAGE;
-    }
+  // Ambil semua chunk secara paralel (bukan berurutan) agar tidak terjadi waterfall request.
+  async function fetchAll(table: string, col: string, ids: string[], cols: string, orderBy: string) {
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+    const results = await Promise.all(
+      chunks.map(async (idsChunk) => {
+        const rows: any[] = [];
+        let from = 0;
+        // paging hanya berlanjut bila chunk benar-benar penuh
+        while (true) {
+          const { data, error } = await (supabase as any)
+            .from(table)
+            .select(cols)
+            .in(col, idsChunk)
+            .order(orderBy, { ascending: true })
+            .range(from, from + PAGE - 1);
+          if (error) throw error;
+          const page = (data || []) as any[];
+          rows.push(...page);
+          if (page.length < PAGE) break;
+          from += PAGE;
+        }
+        return rows;
+      }),
+    );
+    return results.flat();
   }
+
+  const unitList = await fetchAll(
+    "product_units",
+    "product_id",
+    productIds,
+    "id, product_id, name, conversion, sort_order, is_base, show_in_showcase",
+    "sort_order",
+  );
 
   const unitIds = unitList.map((u) => u.id);
+  const tierRows = await fetchAll(
+    "product_price_tiers",
+    "product_unit_id",
+    unitIds,
+    "id, product_unit_id, min_qty, price",
+    "min_qty",
+  );
+
   const tiersByUnit: Record<string, PriceTier[]> = {};
-  for (let i = 0; i < unitIds.length; i += CHUNK) {
-    const idsChunk = unitIds.slice(i, i + CHUNK);
-    let from = 0;
-    while (true) {
-      const { data, error } = await (supabase as any)
-        .from("product_price_tiers")
-        .select("*")
-        .in("product_unit_id", idsChunk)
-        .order("min_qty", { ascending: true })
-        .range(from, from + PAGE - 1);
-      if (error) throw error;
-      const rows = (data || []) as any[];
-      for (const t of rows) {
-        (tiersByUnit[t.product_unit_id] ||= []).push({ id: t.id, min_qty: t.min_qty, price: Number(t.price) });
-      }
-      if (rows.length < PAGE) break;
-      from += PAGE;
-    }
+  for (const t of tierRows) {
+    (tiersByUnit[t.product_unit_id] ||= []).push({ id: t.id, min_qty: t.min_qty, price: Number(t.price) });
   }
+
 
   const byProduct: Record<string, ProductUnit[]> = {};
   for (const u of unitList) {
