@@ -1485,16 +1485,31 @@ function KasirPage() {
                           )}
                         </div>
                       </div>
-                      <div className="mt-2 flex w-full items-center justify-between">
-                        <div className="text-sm font-semibold text-primary">
-                          {formatRupiah(ecer)}
-                          <span className="text-[10px] text-muted-foreground">/{base.name}</span>
-                        </div>
+                      <div className="mt-2 w-full space-y-0.5">
+                        {units.map((u) => {
+                          const tiers = [...(u.tiers || [])].sort((a, b) => a.min_qty - b.min_qty);
+                          if (tiers.length === 0) return null;
+                          return tiers.map((t, ti) => (
+                            <div key={`${u.id ?? u.name}-${ti}`} className="flex items-baseline gap-1 text-xs">
+                              <span className="font-semibold text-primary">{formatRupiah(Number(t.price))}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                /{u.name}
+                                {u.conversion > 1 ? ` (isi ${u.conversion})` : ""}
+                                {t.min_qty > 1 ? ` • min.${t.min_qty}` : ""}
+                              </span>
+                            </div>
+                          ));
+                        })}
+                      </div>
+                      <div className="mt-1.5 flex w-full items-center justify-between">
+                        <span className="text-[10px] text-muted-foreground">
+                          {grosirCount > 0 ? "tersedia grosir" : ""}
+                        </span>
                         <Badge variant={(p.stock || 0) <= 0 ? "destructive" : "secondary"} className="text-[10px]">
                           {(p.stock || 0) <= 0 ? "Habis" : `stok ${p.stock}`}
                         </Badge>
                       </div>
-                      {grosirCount > 0 && <div className="mt-1 text-[10px] text-success">tersedia grosir</div>}
+
                     </button>
                   );
                 })}
