@@ -1468,7 +1468,7 @@ function KasirPage() {
                       <div className="mb-1.5 flex items-start gap-2 pr-12">
                         <div className="h-11 w-11 shrink-0 overflow-hidden rounded-md border bg-muted">
                           {p.image_url ? (
-                            <ProductImage src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                            <ProductImage src={p.image_url} alt={p.name} className="h-full w-full object-cover" zoomable />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center text-muted-foreground/50">
                               <Package className="h-5 w-5" />

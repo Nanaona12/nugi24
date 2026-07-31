@@ -274,7 +274,7 @@ function ProductsGrid({
               <Card className={`group overflow-hidden flex flex-col h-full transition hover:border-primary hover:shadow-md ${out ? "opacity-70" : ""}`}>
                 <div className="relative aspect-square w-full bg-muted">
                   {p.image_url ? (
-                    <ProductImage src={p.image_url} alt={p.name} className="h-full w-full object-cover" />
+                    <ProductImage src={p.image_url} alt={p.name} className="h-full w-full object-cover" zoomable />
                   ) : (
                     <div className="flex h-full items-center justify-center text-muted-foreground">
                       <Package className="h-10 w-10 opacity-40" />
