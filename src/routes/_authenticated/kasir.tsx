@@ -130,6 +130,9 @@ function KasirPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [clearanceMap, setClearanceMap] = useState<Record<string, { promoId: string; price: number; normalPrice: number }>>({});
+  const clearanceMapRef = useRef(clearanceMap);
+  clearanceMapRef.current = clearanceMap;
+
   const [bxgyPromos, setBxgyPromos] = useState<{ id: string; name: string; buy_product_id: string; buy_qty: number; free_product_id: string; free_qty: number }[]>([]);
   const [query, setQuery] = useState("");
   const [cart, setCart] = useState<CartLine[]>([]);
@@ -532,6 +535,18 @@ function KasirPage() {
   };
 
   const loadProducts = async () => {
+    // Jalankan paralel: produk, promo aktif, dan batch kadaluarsa (bukan berurutan).
+    const nowIso = new Date().toISOString();
+    const promoPromise = (supabase as any)
+      .from("promos")
+      .select("*")
+      .eq("active", true)
+      .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+      .or(`ends_at.is.null,ends_at.gte.${nowIso}`);
+    const batchPromise = (supabase as any)
+      .from("product_batches")
+      .select("product_id, qty, expiry_date");
+
     const { data, error } = await supabase.from("products").select("*").order("name");
     if (error) {
       toast.error(error.message);
@@ -539,15 +554,9 @@ function KasirPage() {
     }
     let prods = (data || []) as Product[];
 
-    // Load promo aktif dalam window waktu
-    const nowIso = new Date().toISOString();
-    const { data: promoData } = await (supabase as any)
-      .from("promos")
-      .select("*")
-      .eq("active", true)
-      .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
-      .or(`ends_at.is.null,ends_at.gte.${nowIso}`);
+    const { data: promoData } = await promoPromise;
     const promos = (promoData || []) as any[];
+
 
     // Terapkan harga cuci gudang: override products[].price untuk produk clearance
     const clearance: Record<string, { promoId: string; price: number; normalPrice: number }> = {};
@@ -597,7 +606,7 @@ function KasirPage() {
       toast.error("Gagal memuat satuan: " + e.message);
     }
     // Load batches → ringkasan expiry per produk (untuk badge warning)
-    const { data: bs } = await (supabase as any).from("product_batches").select("product_id, qty, expiry_date");
+    const { data: bs } = await batchPromise;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const exp: Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }> = {};
@@ -630,19 +639,39 @@ function KasirPage() {
     })();
   }, []);
 
-  // Realtime: produk / satuan / tier harga berubah di admin → auto refresh daftar produk kasir.
-  // Debounce agar burst update tidak memicu banyak query.
+  // Realtime: produk / satuan / tier harga berubah di admin → kasir ikut ter-update.
+  // UPDATE produk (mis. stok berkurang saat ada penjualan) cukup di-patch di memori,
+  // tidak perlu memuat ulang seluruh produk + satuan + tier (itu penyebab lag).
   useEffect(() => {
     let t: any = null;
-    const bump = () => { if (t) clearTimeout(t); t = setTimeout(() => loadProducts(), 400); };
+    const bump = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => loadProducts(), 1200);
+    };
     const ch = supabase
       .channel("kasir-products-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, (payload: any) => {
+        if (payload.eventType === "UPDATE" && payload.new?.id) {
+          const row = payload.new as Product;
+          setProducts((prev) => {
+            const i = prev.findIndex((p) => p.id === row.id);
+            if (i === -1) return prev;
+            const next = [...prev];
+            // pertahankan harga clearance bila produk sedang promo cuci gudang
+            const cl = clearanceMapRef.current[row.id];
+            next[i] = cl ? { ...row, price: cl.price } : row;
+            return next;
+          });
+          return;
+        }
+        bump();
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "product_units" }, bump)
       .on("postgres_changes", { event: "*", schema: "public", table: "product_price_tiers" }, bump)
       .subscribe();
     return () => { if (t) clearTimeout(t); supabase.removeChannel(ch); };
   }, []);
+
 
   // Pratinjau struk (belum dibayar)
   const [previewOpen, setPreviewOpen] = useState(false);
