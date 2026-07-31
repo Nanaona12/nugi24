@@ -606,7 +606,7 @@ function KasirPage() {
       toast.error("Gagal memuat satuan: " + e.message);
     }
     // Load batches → ringkasan expiry per produk (untuk badge warning)
-    const { data: bs } = await (supabase as any).from("product_batches").select("product_id, qty, expiry_date");
+    const { data: bs } = await batchPromise;
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const exp: Record<string, { minDays: number; totalQty: number; batches: number; nearestDate: string }> = {};
