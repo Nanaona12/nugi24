@@ -535,6 +535,18 @@ function KasirPage() {
   };
 
   const loadProducts = async () => {
+    // Jalankan paralel: produk, promo aktif, dan batch kadaluarsa (bukan berurutan).
+    const nowIso = new Date().toISOString();
+    const promoPromise = (supabase as any)
+      .from("promos")
+      .select("*")
+      .eq("active", true)
+      .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
+      .or(`ends_at.is.null,ends_at.gte.${nowIso}`);
+    const batchPromise = (supabase as any)
+      .from("product_batches")
+      .select("product_id, qty, expiry_date");
+
     const { data, error } = await supabase.from("products").select("*").order("name");
     if (error) {
       toast.error(error.message);
@@ -542,15 +554,9 @@ function KasirPage() {
     }
     let prods = (data || []) as Product[];
 
-    // Load promo aktif dalam window waktu
-    const nowIso = new Date().toISOString();
-    const { data: promoData } = await (supabase as any)
-      .from("promos")
-      .select("*")
-      .eq("active", true)
-      .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
-      .or(`ends_at.is.null,ends_at.gte.${nowIso}`);
+    const { data: promoData } = await promoPromise;
     const promos = (promoData || []) as any[];
+
 
     // Terapkan harga cuci gudang: override products[].price untuk produk clearance
     const clearance: Record<string, { promoId: string; price: number; normalPrice: number }> = {};
