@@ -630,19 +630,39 @@ function KasirPage() {
     })();
   }, []);
 
-  // Realtime: produk / satuan / tier harga berubah di admin → auto refresh daftar produk kasir.
-  // Debounce agar burst update tidak memicu banyak query.
+  // Realtime: produk / satuan / tier harga berubah di admin → kasir ikut ter-update.
+  // UPDATE produk (mis. stok berkurang saat ada penjualan) cukup di-patch di memori,
+  // tidak perlu memuat ulang seluruh produk + satuan + tier (itu penyebab lag).
   useEffect(() => {
     let t: any = null;
-    const bump = () => { if (t) clearTimeout(t); t = setTimeout(() => loadProducts(), 400); };
+    const bump = () => {
+      if (t) clearTimeout(t);
+      t = setTimeout(() => loadProducts(), 1200);
+    };
     const ch = supabase
       .channel("kasir-products-live")
-      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, bump)
+      .on("postgres_changes", { event: "*", schema: "public", table: "products" }, (payload: any) => {
+        if (payload.eventType === "UPDATE" && payload.new?.id) {
+          const row = payload.new as Product;
+          setProducts((prev) => {
+            const i = prev.findIndex((p) => p.id === row.id);
+            if (i === -1) return prev;
+            const next = [...prev];
+            // pertahankan harga clearance bila produk sedang promo cuci gudang
+            const cl = clearanceMapRef.current[row.id];
+            next[i] = cl ? { ...row, price: cl.price } : row;
+            return next;
+          });
+          return;
+        }
+        bump();
+      })
       .on("postgres_changes", { event: "*", schema: "public", table: "product_units" }, bump)
       .on("postgres_changes", { event: "*", schema: "public", table: "product_price_tiers" }, bump)
       .subscribe();
     return () => { if (t) clearTimeout(t); supabase.removeChannel(ch); };
   }, []);
+
 
   // Pratinjau struk (belum dibayar)
   const [previewOpen, setPreviewOpen] = useState(false);
