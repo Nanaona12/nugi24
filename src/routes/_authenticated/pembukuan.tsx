@@ -144,7 +144,50 @@ function PembukuanPage() {
     list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setEntries(list);
     setLoading(false);
+
+    // Keuntungan yang belum diambil (sinkron dengan halaman Untung)
+    const { data: tRow } = await (supabase as any)
+      .from("tenants")
+      .select("profit_reset_at")
+      .eq("id", tenant)
+      .maybeSingle();
+    const resetAt = tRow?.profit_reset_at ? new Date(tRow.profit_reset_at as string) : null;
+
+    const [itemsRes, shiftRes] = await Promise.all([
+      supabase
+        .from("transaction_items")
+        .select("qty, unit_cost, subtotal, transactions(created_at)")
+        .order("id", { ascending: false })
+        .limit(5000),
+      (supabase as any)
+        .from("cashier_shifts")
+        .select("closed_at, difference")
+        .eq("status", "closed")
+        .lt("difference", 0)
+        .limit(500),
+    ]);
+
+    let gross = 0;
+    for (const it of ((itemsRes.data || []) as any[])) {
+      const at = it.transactions?.created_at;
+      if (!at) continue;
+      if (resetAt && new Date(at) < resetAt) continue;
+      gross += (Number(it.subtotal) || 0) - (Number(it.unit_cost) || 0) * (Number(it.qty) || 0);
+    }
+    for (const s of ((shiftRes.data || []) as any[])) {
+      if (!s.closed_at) continue;
+      if (resetAt && new Date(s.closed_at) < resetAt) continue;
+      gross -= Math.abs(Number(s.difference) || 0);
+    }
+    let takenTotal = 0;
+    for (const b of ((bkRes.data || []) as any[])) {
+      if (b.ref !== "profit_withdrawal") continue;
+      if (resetAt && new Date(b.entry_date) < resetAt) continue;
+      takenTotal += Number(b.amount) || 0;
+    }
+    setUnwithdrawnProfit(Math.max(0, gross - takenTotal));
   };
+
 
   useEffect(() => {
     load();
