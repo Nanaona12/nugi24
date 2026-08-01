@@ -174,12 +174,13 @@ function PembukuanPage() {
   }, [filtered]);
 
   const totals = useMemo(() => {
-    let debit = 0, kredit = 0;
+    let debit = 0, kredit = 0, prive = 0;
     for (const e of filtered) {
       debit += e.debit;
       kredit += e.kredit;
+      if (e.ref === "profit_withdrawal") prive += e.kredit;
     }
-    return { debit, kredit, saldo: debit - kredit };
+    return { debit, kredit, prive, saldo: debit - kredit };
   }, [filtered]);
 
   const exportCsv = () => {
