@@ -496,6 +496,14 @@ export const closeShift = createServerFn({ method: "POST" })
           .maybeSingle();
         cashierName = (cRow as any)?.name || "";
       }
+      await context.supabase.from("bookkeeping_entries").insert({
+        tenant_id: tenantId,
+        entry_date: new Date().toISOString(),
+        kind: "in",
+        description: `Selisih lebih kasir (closing shift ${shortId})${cashierName ? " - " + cashierName : ""}`,
+        ref: data.shift_id,
+        amount: surplus,
+      } as any);
       await (context.supabase as any).from("profit_activity_log").insert({
         tenant_id: tenantId,
         user_id: context.userId ?? null,
