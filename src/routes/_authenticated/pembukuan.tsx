@@ -309,6 +309,9 @@ function PembukuanPage() {
             <TrendingDown className="h-4 w-4 text-destructive" /> Total Kredit (Keluar)
           </div>
           <div className="mt-1 text-xl font-bold text-destructive tabular-nums">{formatRupiah(totals.kredit)}</div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            termasuk ambil keuntungan (prive): {formatRupiah(totals.prive)}
+          </div>
         </Card>
         <Card className="p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -316,6 +319,9 @@ function PembukuanPage() {
           </div>
           <div className={`mt-1 text-xl font-bold tabular-nums ${totals.saldo >= 0 ? "text-primary" : "text-destructive"}`}>
             {formatRupiah(totals.saldo)}
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            sudah dikurangi pengambilan keuntungan {formatRupiah(totals.prive)}
           </div>
         </Card>
       </div>
