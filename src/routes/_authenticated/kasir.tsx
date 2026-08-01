@@ -1236,28 +1236,9 @@ function KasirPage() {
   };
 
   const buildPreviewReceiptData = () => {
-    const imgItems: ReceiptItem[] = cart.map((l) => {
-      const c = computeLine(l, getUnits(l.product, unitsByProduct));
-      let detail = "";
-      const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
-      const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
-      if (showPack) {
-        const parts: string[] = [];
-        parts.push(`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`);
-        if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
-        detail = parts.join(" + ");
-      } else {
-        detail = `${l.qty} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`;
-      }
-      return {
-        name: l.product.name,
-        qty: l.qty,
-        unit: l.baseUnit.name,
-        isWholesale: l.mode === "grosiran",
-        detail,
-        subtotal: c.total,
-      };
-    });
+    const imgItems: ReceiptItem[] = cart.map((l) =>
+      buildReceiptLine(l, getUnits(l.product, unitsByProduct)),
+    );
     return {
       storeName: storeName || "Toko",
       storeNote: `Kasir: ${activeCashier?.name || "-"}`,
