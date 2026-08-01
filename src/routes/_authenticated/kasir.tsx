@@ -222,22 +222,9 @@ function KasirPage() {
     if (r.customerPhone) lines.push(`No: ${r.customerPhone}`);
     lines.push(`--------------------------------`);
     for (const it of r.items) {
-      const c = computeLine(it, getUnits(it.product, unitsByProduct));
-      const showPack = c.packs > 0 && (it.mode === "grosiran" || c.autoUnit);
-      const packName = it.mode === "grosiran" ? it.unit.name : c.autoUnit?.name || "";
+      const rl = buildReceiptLine(it, getUnits(it.product, unitsByProduct));
       lines.push(`${it.product.name}`);
-      if (showPack) {
-        lines.push(`  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
-        if (c.remainder > 0) {
-          lines.push(
-            `  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(
-              c.remainder * c.ecerPrice,
-            )}`,
-          );
-        }
-      } else {
-        lines.push(`  ${it.qty} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.total)}`);
-      }
+      lines.push(`  ${rl.detail} = ${formatRupiah(rl.subtotal)}`);
     }
     lines.push(`--------------------------------`);
     lines.push(`Total   : ${formatRupiah(r.total)}`);
