@@ -180,8 +180,10 @@ function PembukuanPage() {
       kredit += e.kredit;
       if (e.ref === "profit_withdrawal") prive += e.kredit;
     }
-    return { debit, kredit, prive, saldo: debit - kredit };
-  }, [filtered]);
+    const saldoKas = debit - kredit;
+    return { debit, kredit, prive, saldoKas, saldo: saldoKas - unwithdrawnProfit };
+  }, [filtered, unwithdrawnProfit]);
+
 
   const exportCsv = () => {
     const header = ["Tanggal", "Sumber", "Keterangan", "Ref", "Debit", "Kredit", "Saldo"];
