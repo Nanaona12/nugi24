@@ -492,8 +492,8 @@ function PembukuanPage() {
                   <td className="p-2" colSpan={4}>Total ({withBalance.length} catatan)</td>
                   <td className="p-2 text-right tabular-nums text-emerald-600">{formatRupiah(totals.debit)}</td>
                   <td className="p-2 text-right tabular-nums text-destructive">{formatRupiah(totals.kredit)}</td>
-                  <td className={`p-2 text-right tabular-nums ${totals.saldo >= 0 ? "text-primary" : "text-destructive"}`}>
-                    {formatRupiah(totals.saldo)}
+                  <td className={`p-2 text-right tabular-nums ${totals.saldoKas >= 0 ? "text-primary" : "text-destructive"}`}>
+                    {formatRupiah(totals.saldoKas)}
                   </td>
                   <td />
                 </tr>
