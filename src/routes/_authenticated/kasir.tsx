@@ -125,6 +125,39 @@ function computeLine(
   };
 }
 
+/** Bangun baris struk memakai nama satuan seperti yang tampil di keranjang (bukan unit dasar). */
+function buildReceiptLine(
+  l: CartLine,
+  allUnits: ProductUnit[],
+): { name: string; qty: number; unit: string; isWholesale: boolean; detail: string; subtotal: number } {
+  const c = computeLine(l, allUnits);
+  const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
+  const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
+  const displayQty = l.mode === "grosiran" ? Math.max(1, c.packs) : l.qty;
+  const displayUnitName = l.mode === "grosiran" ? l.unit.name : l.baseUnit.name;
+
+  let detail = "";
+  if (showPack) {
+    const parts = [`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`];
+    if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
+    detail = parts.join(" + ");
+  } else if (l.mode === "grosiran") {
+    const perUnit = displayQty > 0 ? c.total / displayQty : c.total;
+    detail = `${displayQty} ${displayUnitName} × ${formatRupiah(perUnit)}`;
+  } else {
+    detail = `${l.qty} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`;
+  }
+
+  return {
+    name: l.product.name,
+    qty: displayQty,
+    unit: displayUnitName,
+    isWholesale: l.mode === "grosiran",
+    detail,
+    subtotal: c.total,
+  };
+}
+
 function KasirPage() {
   const router = useRouter();
   const [products, setProducts] = useState<Product[]>([]);
@@ -189,22 +222,9 @@ function KasirPage() {
     if (r.customerPhone) lines.push(`No: ${r.customerPhone}`);
     lines.push(`--------------------------------`);
     for (const it of r.items) {
-      const c = computeLine(it, getUnits(it.product, unitsByProduct));
-      const showPack = c.packs > 0 && (it.mode === "grosiran" || c.autoUnit);
-      const packName = it.mode === "grosiran" ? it.unit.name : c.autoUnit?.name || "";
+      const rl = buildReceiptLine(it, getUnits(it.product, unitsByProduct));
       lines.push(`${it.product.name}`);
-      if (showPack) {
-        lines.push(`  ${c.packs} ${packName} x ${formatRupiah(c.packPrice)} = ${formatRupiah(c.packs * c.packPrice)}`);
-        if (c.remainder > 0) {
-          lines.push(
-            `  ${c.remainder} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(
-              c.remainder * c.ecerPrice,
-            )}`,
-          );
-        }
-      } else {
-        lines.push(`  ${it.qty} ${it.baseUnit.name} x ${formatRupiah(c.ecerPrice)} = ${formatRupiah(c.total)}`);
-      }
+      lines.push(`  ${rl.detail} = ${formatRupiah(rl.subtotal)}`);
     }
     lines.push(`--------------------------------`);
     lines.push(`Total   : ${formatRupiah(r.total)}`);
@@ -1140,28 +1160,9 @@ function KasirPage() {
     setLastReceipt(receipt);
     // generate struk gambar
     try {
-      const imgItems: ReceiptItem[] = cart.map((l) => {
-        const c = computeLine(l, getUnits(l.product, unitsByProduct));
-        let detail = "";
-        const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
-        const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
-        if (showPack) {
-          const parts: string[] = [];
-          parts.push(`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`);
-          if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
-          detail = parts.join(" + ");
-        } else {
-          detail = `${l.qty} × ${formatRupiah(c.ecerPrice)}`;
-        }
-        return {
-          name: l.product.name,
-          qty: l.qty,
-          unit: l.baseUnit.name,
-          isWholesale: l.mode === "grosiran",
-          detail,
-          subtotal: c.total,
-        };
-      });
+      const imgItems: ReceiptItem[] = cart.map((l) =>
+        buildReceiptLine(l, getUnits(l.product, unitsByProduct)),
+      );
       const receiptDataForPrint = {
         storeName: storeName || "Toko",
         storeNote: "Terima kasih atas kunjungan Anda",
@@ -1222,28 +1223,9 @@ function KasirPage() {
   };
 
   const buildPreviewReceiptData = () => {
-    const imgItems: ReceiptItem[] = cart.map((l) => {
-      const c = computeLine(l, getUnits(l.product, unitsByProduct));
-      let detail = "";
-      const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
-      const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
-      if (showPack) {
-        const parts: string[] = [];
-        parts.push(`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`);
-        if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
-        detail = parts.join(" + ");
-      } else {
-        detail = `${l.qty} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`;
-      }
-      return {
-        name: l.product.name,
-        qty: l.qty,
-        unit: l.baseUnit.name,
-        isWholesale: l.mode === "grosiran",
-        detail,
-        subtotal: c.total,
-      };
-    });
+    const imgItems: ReceiptItem[] = cart.map((l) =>
+      buildReceiptLine(l, getUnits(l.product, unitsByProduct)),
+    );
     return {
       storeName: storeName || "Toko",
       storeNote: `Kasir: ${activeCashier?.name || "-"}`,
