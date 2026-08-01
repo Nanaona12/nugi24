@@ -49,6 +49,8 @@ function PembukuanPage() {
   const [filterKind, setFilterKind] = useState<"all" | "in" | "out">("all");
   const [q, setQ] = useState("");
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [unwithdrawnProfit, setUnwithdrawnProfit] = useState(0);
+
 
   // Add dialog
   const [addOpen, setAddOpen] = useState(false);
