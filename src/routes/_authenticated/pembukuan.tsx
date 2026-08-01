@@ -49,6 +49,8 @@ function PembukuanPage() {
   const [filterKind, setFilterKind] = useState<"all" | "in" | "out">("all");
   const [q, setQ] = useState("");
   const [tenantId, setTenantId] = useState<string | null>(null);
+  const [unwithdrawnProfit, setUnwithdrawnProfit] = useState(0);
+
 
   // Add dialog
   const [addOpen, setAddOpen] = useState(false);
@@ -142,7 +144,50 @@ function PembukuanPage() {
     list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setEntries(list);
     setLoading(false);
+
+    // Keuntungan yang belum diambil (sinkron dengan halaman Untung)
+    const { data: tRow } = await (supabase as any)
+      .from("tenants")
+      .select("profit_reset_at")
+      .eq("id", tenant)
+      .maybeSingle();
+    const resetAt = tRow?.profit_reset_at ? new Date(tRow.profit_reset_at as string) : null;
+
+    const [itemsRes, shiftRes] = await Promise.all([
+      supabase
+        .from("transaction_items")
+        .select("qty, unit_cost, subtotal, transactions(created_at)")
+        .order("id", { ascending: false })
+        .limit(5000),
+      (supabase as any)
+        .from("cashier_shifts")
+        .select("closed_at, difference")
+        .eq("status", "closed")
+        .lt("difference", 0)
+        .limit(500),
+    ]);
+
+    let gross = 0;
+    for (const it of ((itemsRes.data || []) as any[])) {
+      const at = it.transactions?.created_at;
+      if (!at) continue;
+      if (resetAt && new Date(at) < resetAt) continue;
+      gross += (Number(it.subtotal) || 0) - (Number(it.unit_cost) || 0) * (Number(it.qty) || 0);
+    }
+    for (const s of ((shiftRes.data || []) as any[])) {
+      if (!s.closed_at) continue;
+      if (resetAt && new Date(s.closed_at) < resetAt) continue;
+      gross -= Math.abs(Number(s.difference) || 0);
+    }
+    let takenTotal = 0;
+    for (const b of ((bkRes.data || []) as any[])) {
+      if (b.ref !== "profit_withdrawal") continue;
+      if (resetAt && new Date(b.entry_date) < resetAt) continue;
+      takenTotal += Number(b.amount) || 0;
+    }
+    setUnwithdrawnProfit(Math.max(0, gross - takenTotal));
   };
+
 
   useEffect(() => {
     load();
@@ -180,8 +225,10 @@ function PembukuanPage() {
       kredit += e.kredit;
       if (e.ref === "profit_withdrawal") prive += e.kredit;
     }
-    return { debit, kredit, prive, saldo: debit - kredit };
-  }, [filtered]);
+    const saldoKas = debit - kredit;
+    return { debit, kredit, prive, saldoKas, saldo: saldoKas - unwithdrawnProfit };
+  }, [filtered, unwithdrawnProfit]);
+
 
   const exportCsv = () => {
     const header = ["Tanggal", "Sumber", "Keterangan", "Ref", "Debit", "Kredit", "Saldo"];
@@ -314,15 +361,24 @@ function PembukuanPage() {
           </div>
         </Card>
         <Card className="p-4">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Wallet className="h-4 w-4 text-primary" /> Saldo Bersih
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Wallet className="h-4 w-4 text-primary" /> Saldo Bersih
+            </div>
+            <div className="text-right">
+              <div className="text-[10px] uppercase text-muted-foreground">Untung belum diambil</div>
+              <div className="text-xs font-semibold text-amber-600 tabular-nums">
+                {formatRupiah(unwithdrawnProfit)}
+              </div>
+            </div>
           </div>
           <div className={`mt-1 text-xl font-bold tabular-nums ${totals.saldo >= 0 ? "text-primary" : "text-destructive"}`}>
             {formatRupiah(totals.saldo)}
           </div>
           <div className="mt-1 text-[11px] text-muted-foreground">
-            sudah dikurangi pengambilan keuntungan {formatRupiah(totals.prive)}
+            Saldo kas {formatRupiah(totals.saldoKas)} − untung belum diambil {formatRupiah(unwithdrawnProfit)}
           </div>
+
         </Card>
       </div>
 
@@ -436,8 +492,8 @@ function PembukuanPage() {
                   <td className="p-2" colSpan={4}>Total ({withBalance.length} catatan)</td>
                   <td className="p-2 text-right tabular-nums text-emerald-600">{formatRupiah(totals.debit)}</td>
                   <td className="p-2 text-right tabular-nums text-destructive">{formatRupiah(totals.kredit)}</td>
-                  <td className={`p-2 text-right tabular-nums ${totals.saldo >= 0 ? "text-primary" : "text-destructive"}`}>
-                    {formatRupiah(totals.saldo)}
+                  <td className={`p-2 text-right tabular-nums ${totals.saldoKas >= 0 ? "text-primary" : "text-destructive"}`}>
+                    {formatRupiah(totals.saldoKas)}
                   </td>
                   <td />
                 </tr>
