@@ -478,7 +478,8 @@ export const closeShift = createServerFn({ method: "POST" })
       });
     }
 
-    // Selisih lebih kasir: catat sebagai tambahan keuntungan
+    // Selisih lebih kasir: hanya catat di pembukuan sebagai kas masuk,
+    // tidak dihitung sebagai keuntungan (pendekatan konservatif).
     if (difference > 0) {
       const surplus = difference;
       const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
@@ -504,14 +505,6 @@ export const closeShift = createServerFn({ method: "POST" })
         ref: data.shift_id,
         amount: surplus,
       } as any);
-      await (context.supabase as any).from("profit_activity_log").insert({
-        tenant_id: tenantId,
-        user_id: context.userId ?? null,
-        actor_name: cashierName || null,
-        action: "shift_surplus",
-        amount: surplus,
-        note: `Selisih lebih closing shift ${shortId}${data.notes?.trim() ? " - " + data.notes.trim() : ""}`,
-      });
     }
 
     return { ok: true, totals: { opening_cash, total_sales, total_cash, total_qris, total_other, total_transactions, total_expenses, expected_cash, actual_cash, difference } };
