@@ -13,7 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah, parseNumber, parseBarcodes, barcodeMatches, barcodeIncludes } from "@/lib/format";
-import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Trash, Package, X as XIcon, Copy, Sparkles } from "lucide-react";
+import { Upload, Download, Plus, Pencil, Trash2, Search, FileSpreadsheet, ScanLine, Package, X as XIcon, Copy, Sparkles } from "lucide-react";
 import { BarcodeScanner } from "@/components/BarcodeScanner";
 import { AIPhotoCapture } from "@/components/AIPhotoCapture";
 import type { AiVisionResult } from "@/lib/ai-vision.functions";
@@ -84,9 +84,6 @@ function ProdukPage() {
   const [formUnits, setFormUnits] = useState<ProductUnit[]>([]);
   const [formBatches, setFormBatches] = useState<{ qty: string; expiry_date: string; note: string }[]>([]);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
-  const [confirmDeleteAll, setConfirmDeleteAll] = useState(false);
-  const [deletingAll, setDeletingAll] = useState(false);
-  const [deleteAllPassword, setDeleteAllPassword] = useState("");
   const [aiOpen, setAiOpen] = useState(false);
   const [aiHint, setAiHint] = useState<{ price: number | null; margin: number | null; profit: number | null; reasoning: string | null } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -402,31 +399,6 @@ function ProdukPage() {
     else { toast.success("Dihapus"); load(); }
   };
 
-  const removeAll = async () => {
-    if (!deleteAllPassword) { toast.error("Masukkan password untuk konfirmasi"); return; }
-    setDeletingAll(true);
-    const { data: userData } = await supabase.auth.getUser();
-    const email = userData.user?.email;
-    if (!email) { setDeletingAll(false); toast.error("Sesi tidak ditemukan"); return; }
-    const { error: authErr } = await supabase.auth.signInWithPassword({ email, password: deleteAllPassword });
-    if (authErr) {
-      setDeletingAll(false);
-      toast.error("Password salah");
-      return;
-    }
-    const { error, count } = await supabase
-      .from("products")
-      .delete({ count: "exact" })
-      .not("id", "is", null);
-    setDeletingAll(false);
-    setConfirmDeleteAll(false);
-    setDeleteAllPassword("");
-    if (error) toast.error(error.message);
-    else {
-      toast.success(`${count ?? 0} produk dihapus`);
-      load();
-    }
-  };
 
   const handleScan = async (scanned: string) => {
     const mode = scanMode;
@@ -777,9 +749,6 @@ function ProdukPage() {
         <Button onClick={openNew}>
           <Plus className="mr-2 h-4 w-4" /> Tambah
         </Button>
-        <Button variant="destructive" onClick={() => setConfirmDeleteAll(true)} disabled={products.length === 0}>
-          <Trash className="mr-2 h-4 w-4" /> Hapus Semua ({products.length})
-        </Button>
       </div>
 
       {pricingIssues.length > 0 && (
@@ -815,38 +784,6 @@ function ProdukPage() {
         </Card>
       )}
 
-      <AlertDialog open={confirmDeleteAll} onOpenChange={(o) => { setConfirmDeleteAll(o); if (!o) setDeleteAllPassword(""); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Hapus semua {products.length} produk?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tindakan ini tidak bisa dibatalkan. Semua produk akan dihapus permanen dari database.
-              Masukkan password akun Anda untuk konfirmasi.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <label className="text-sm font-medium">Password</label>
-            <Input
-              type="password"
-              autoComplete="current-password"
-              value={deleteAllPassword}
-              onChange={(e) => setDeleteAllPassword(e.target.value)}
-              placeholder="Password akun Anda"
-              disabled={deletingAll}
-            />
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deletingAll}>Batal</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => { e.preventDefault(); removeAll(); }}
-              disabled={deletingAll || !deleteAllPassword}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deletingAll ? "Menghapus..." : "Ya, Hapus Semua"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
 
       <BarcodeScanner
