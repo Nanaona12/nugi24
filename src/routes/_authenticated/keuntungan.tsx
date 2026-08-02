@@ -1023,6 +1023,18 @@ function KeuntunganPage() {
         />
       </div>
 
+      <Card className="border-primary/30 bg-primary/5 p-3 text-xs">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2 font-medium text-primary">
+            <TrendingUp className="h-4 w-4" />
+            Selisih Closing Kasir
+          </div>
+          <div className="text-muted-foreground">
+            Selisih kurang mengurangi keuntungan. Selisih lebih hanya masuk pembukuan, bukan keuntungan.
+          </div>
+        </div>
+      </Card>
+
       {stats.shortageAll > 0 && (
         <Card className="border-destructive/40 bg-destructive/5 p-3 text-xs">
           <div className="flex flex-wrap items-center justify-between gap-2">
