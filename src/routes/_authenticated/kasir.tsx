@@ -1593,7 +1593,7 @@ function KasirPage() {
                 {cart.map((l) => {
                   const allUnits = getUnits(l.product, unitsByProduct);
                   const c = computeLine(l, allUnits);
-                  const grosirUnits = allUnits.filter((u) => u.conversion > 1);
+                  const grosirUnits = allUnits.filter((u) => !u.is_base);
                   const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
                   const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
                   const displayQty = l.mode === "grosiran" ? Math.max(1, c.packs) : l.qty;
