@@ -2625,7 +2625,12 @@ function PickerDialog({
       return;
     }
     if (qty <= 0) return;
-    const mode: SaleMode = opt.unit.conversion > 1 ? "grosiran" : "eceran";
+    // Satuan non-dasar tetap dihitung sebagai "grosiran" walau konversinya 1,
+    // agar harga yang dipakai adalah tier satuan tsb (bukan tier satuan dasar).
+    const isBaseUnit =
+      !!baseUnit &&
+      (opt.unit.id ? opt.unit.id === baseUnit.id : opt.unit.name === baseUnit.name && opt.unit.conversion === baseUnit.conversion);
+    const mode: SaleMode = isBaseUnit ? "eceran" : "grosiran";
     onAdd(product, mode, opt.unit, qtyPcs);
   };
 
