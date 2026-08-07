@@ -848,7 +848,8 @@ function KasirPage() {
         let key = `${p.id}:eceran`;
         if (it.unit) {
           const found = units.find((u) => u.name.toLowerCase() === it.unit!.toLowerCase());
-          if (found && found.conversion > 1) {
+          const isBase = found && (found.id ? found.id === base.id : found.name === base.name);
+          if (found && !isBase) {
             mode = "grosiran"; unit = found; key = `${p.id}:grosir:${unit.name}`;
           }
         }
@@ -1592,7 +1593,7 @@ function KasirPage() {
                 {cart.map((l) => {
                   const allUnits = getUnits(l.product, unitsByProduct);
                   const c = computeLine(l, allUnits);
-                  const grosirUnits = allUnits.filter((u) => u.conversion > 1);
+                  const grosirUnits = allUnits.filter((u) => !u.is_base);
                   const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
                   const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
                   const displayQty = l.mode === "grosiran" ? Math.max(1, c.packs) : l.qty;
@@ -2625,7 +2626,12 @@ function PickerDialog({
       return;
     }
     if (qty <= 0) return;
-    const mode: SaleMode = opt.unit.conversion > 1 ? "grosiran" : "eceran";
+    // Satuan non-dasar tetap dihitung sebagai "grosiran" walau konversinya 1,
+    // agar harga yang dipakai adalah tier satuan tsb (bukan tier satuan dasar).
+    const isBaseUnit =
+      !!baseUnit &&
+      (opt.unit.id ? opt.unit.id === baseUnit.id : opt.unit.name === baseUnit.name && opt.unit.conversion === baseUnit.conversion);
+    const mode: SaleMode = isBaseUnit ? "eceran" : "grosiran";
     onAdd(product, mode, opt.unit, qtyPcs);
   };
 
