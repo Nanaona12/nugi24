@@ -848,7 +848,8 @@ function KasirPage() {
         let key = `${p.id}:eceran`;
         if (it.unit) {
           const found = units.find((u) => u.name.toLowerCase() === it.unit!.toLowerCase());
-          if (found && found.conversion > 1) {
+          const isBase = found && (found.id ? found.id === base.id : found.name === base.name);
+          if (found && !isBase) {
             mode = "grosiran"; unit = found; key = `${p.id}:grosir:${unit.name}`;
           }
         }
