@@ -277,6 +277,7 @@ function ProdukPage() {
     // Salin satuan & harga tier dari produk sumber
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
+    setStockBatches([]);
     setEditOpen(true);
     toast.info("Duplikat siap, ubah kode/nama (rasa) lalu simpan");
   };
