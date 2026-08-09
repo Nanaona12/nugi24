@@ -70,12 +70,18 @@ function RiwayatPage() {
   const [delPassword, setDelPassword] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  const [search, setSearch] = useState("");
+  const [matches, setMatches] = useState<Record<string, { name: string; qty: number; subtotal: number }[]> | null>(null);
+  const [searching, setSearching] = useState(false);
+
   const load = async () => {
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
     const { data, error } = await supabase
       .from("transactions")
       .select("*")
+      .gte("created_at", since)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(500);
     if (error) { toast.error(error.message); return; }
     const rows = (data || []) as Tx[];
     const phones = Array.from(new Set(
@@ -95,6 +101,7 @@ function RiwayatPage() {
     }
     setTxs(rows);
   };
+
 
   const loadProfits = async (rows: Tx[], admin: boolean) => {
     if (!admin || rows.length === 0) return;
