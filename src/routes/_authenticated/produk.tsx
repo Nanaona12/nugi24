@@ -157,7 +157,7 @@ function ProdukPage() {
     return [{ name: "pcs", conversion: 1, sort_order: 0, is_base: true, tiers: [{ min_qty: 1, price: 0 }] }];
   };
 
-  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setAiHint(null); setEditOpen(true); };
+  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setStockBatches([]); setAiHint(null); setEditOpen(true); };
 
   const existingCategories = Array.from(new Set(products.map((p) => p.category).filter(Boolean) as string[]));
 
