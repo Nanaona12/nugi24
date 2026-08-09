@@ -1037,6 +1037,33 @@ function ProdukPage() {
 
           <UnitsEditor units={formUnits} onChange={setFormUnits} costPerBase={parseNumber(form.cost_price) || 0} />
 
+          {form.id && stockBatches.length > 0 && (
+            <div className="space-y-2 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-semibold">Modal per Batch (FIFO)</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Saat terjual, modal dipakai dari batch paling atas dulu. Jadi stok lama tetap memakai harga modal lama walau harga beli baru berubah.
+                </div>
+              </div>
+              <div className="space-y-1">
+                {stockBatches.map((b) => (
+                  <div key={b.id} className="flex items-center justify-between gap-2 rounded border bg-muted/30 px-2 py-1 text-xs">
+                    <span className="font-medium">{b.qty} pcs</span>
+                    <span className="text-muted-foreground">
+                      {b.expiry_date ? `Exp ${b.expiry_date}` : "Tanpa exp"} · {b.source || "-"}
+                    </span>
+                    <span className="font-semibold">
+                      {b.unit_cost ? `${formatRupiah(Number(b.unit_cost))}/pcs` : "modal produk"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Menambah stok di kolom "Stok" akan membuat batch baru dengan harga modal yang diisi sekarang.
+              </div>
+            </div>
+          )}
+
           {!form.id && (
             <div className="space-y-2 rounded-md border p-3">
               <div className="flex items-center justify-between">
