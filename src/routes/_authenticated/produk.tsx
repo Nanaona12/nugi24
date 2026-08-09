@@ -83,6 +83,7 @@ function ProdukPage() {
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [formUnits, setFormUnits] = useState<ProductUnit[]>([]);
   const [formBatches, setFormBatches] = useState<{ qty: string; expiry_date: string; note: string }[]>([]);
+  const [stockBatches, setStockBatches] = useState<{ id: string; qty: number; unit_cost: number | null; expiry_date: string | null; source: string | null; created_at: string }[]>([]);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiHint, setAiHint] = useState<{ price: number | null; margin: number | null; profit: number | null; reasoning: string | null } | null>(null);
@@ -156,7 +157,7 @@ function ProdukPage() {
     return [{ name: "pcs", conversion: 1, sort_order: 0, is_base: true, tiers: [{ min_qty: 1, price: 0 }] }];
   };
 
-  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setAiHint(null); setEditOpen(true); };
+  const openNew = () => { setForm(emptyForm); setFormUnits(defaultUnitsFor()); setFormBatches([]); setStockBatches([]); setAiHint(null); setEditOpen(true); };
 
   const existingCategories = Array.from(new Set(products.map((p) => p.category).filter(Boolean) as string[]));
 
@@ -243,7 +244,18 @@ function ProdukPage() {
     });
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
+    setStockBatches([]);
     setEditOpen(true);
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("product_batches")
+        .select("id, qty, unit_cost, expiry_date, source, created_at")
+        .eq("product_id", p.id)
+        .gt("qty", 0)
+        .order("expiry_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
+      setStockBatches((data as any[]) || []);
+    })();
   };
 
   const openDuplicate = (p: Product) => {
@@ -265,6 +277,7 @@ function ProdukPage() {
     // Salin satuan & harga tier dari produk sumber
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
+    setStockBatches([]);
     setEditOpen(true);
     toast.info("Duplikat siap, ubah kode/nama (rasa) lalu simpan");
   };
@@ -338,6 +351,18 @@ function ProdukPage() {
 
 
 
+    // Batch kadaluarsa manual (hanya saat tambah produk baru).
+    // Stok bertambah otomatis dari batch, jadi kurangi stok awal agar tidak dobel.
+    const validBatches = !form.id
+      ? formBatches
+          .map((b) => ({ qty: parseInt(b.qty || "0", 10), expiry_date: b.expiry_date, note: b.note.trim() }))
+          .filter((b) => b.qty > 0 && b.expiry_date)
+      : [];
+    const batchTotal = validBatches.reduce((s, b) => s + b.qty, 0);
+    if (batchTotal > 0) {
+      payload.stock = Math.max(0, (parseInt(form.stock || "0", 10) || 0) - batchTotal);
+    }
+
     let prodId = form.id;
     if (form.id) {
       const { error } = await supabase.from("products").update(payload).eq("id", form.id);
@@ -360,36 +385,31 @@ function ProdukPage() {
     } catch (e: any) {
       toast.error("Produk tersimpan tapi satuan gagal: " + e.message);
     }
-    // Insert batches kadaluarsa (hanya saat tambah produk baru)
-    if (!form.id && formBatches.length > 0) {
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      const validBatches = formBatches
-        .map((b) => ({ qty: parseInt(b.qty || "0", 10), expiry_date: b.expiry_date, note: b.note.trim() }))
-        .filter((b) => b.qty > 0 && b.expiry_date);
-      if (validBatches.length > 0) {
-        const { data: tenant } = await supabase
-          .from("tenants")
-          .select("id")
-          .eq("owner_user_id", (await supabase.auth.getUser()).data.user?.id || "")
-          .maybeSingle();
-        if (tenant) {
-          const rows = validBatches.map((b) => ({
-            tenant_id: tenant.id,
-            product_id: prodId,
-            qty: b.qty,
-            expiry_date: b.expiry_date,
-            note: b.note || null,
-            source: "manual",
-          }));
-          const { error: bErr } = await (supabase as any).from("product_batches").insert(rows);
-          if (bErr) toast.error("Produk tersimpan tapi batch gagal: " + bErr.message);
-        }
+    if (validBatches.length > 0) {
+      const { data: tenant } = await supabase
+        .from("tenants")
+        .select("id")
+        .eq("owner_user_id", (await supabase.auth.getUser()).data.user?.id || "")
+        .maybeSingle();
+      if (tenant) {
+        const rows = validBatches.map((b) => ({
+          tenant_id: tenant.id,
+          product_id: prodId,
+          qty: b.qty,
+          expiry_date: b.expiry_date,
+          note: b.note || null,
+          unit_cost: parseNumber(form.cost_price) || null,
+          source: "manual",
+        }));
+        const { error: bErr } = await (supabase as any).from("product_batches").insert(rows);
+        if (bErr) toast.error("Produk tersimpan tapi batch gagal: " + bErr.message);
       }
     }
     toast.success("Disimpan");
     setEditOpen(false);
     load();
   };
+
 
 
   const remove = async (p: Product) => {
@@ -1016,6 +1036,33 @@ function ProdukPage() {
 
 
           <UnitsEditor units={formUnits} onChange={setFormUnits} costPerBase={parseNumber(form.cost_price) || 0} />
+
+          {form.id && stockBatches.length > 0 && (
+            <div className="space-y-2 rounded-md border p-3">
+              <div>
+                <div className="text-sm font-semibold">Modal per Batch (FIFO)</div>
+                <div className="text-[11px] text-muted-foreground">
+                  Saat terjual, modal dipakai dari batch paling atas dulu. Jadi stok lama tetap memakai harga modal lama walau harga beli baru berubah.
+                </div>
+              </div>
+              <div className="space-y-1">
+                {stockBatches.map((b) => (
+                  <div key={b.id} className="flex items-center justify-between gap-2 rounded border bg-muted/30 px-2 py-1 text-xs">
+                    <span className="font-medium">{b.qty} pcs</span>
+                    <span className="text-muted-foreground">
+                      {b.expiry_date ? `Exp ${b.expiry_date}` : "Tanpa exp"} · {b.source || "-"}
+                    </span>
+                    <span className="font-semibold">
+                      {b.unit_cost ? `${formatRupiah(Number(b.unit_cost))}/pcs` : "modal produk"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              <div className="text-[11px] text-muted-foreground">
+                Menambah stok di kolom "Stok" akan membuat batch baru dengan harga modal yang diisi sekarang.
+              </div>
+            </div>
+          )}
 
           {!form.id && (
             <div className="space-y-2 rounded-md border p-3">

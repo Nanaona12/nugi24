@@ -147,13 +147,15 @@ export function ReceivingDialog({
         const addStockBase = addQty * conv;
         const perPcsCost = it.unit_cost && it.unit_cost > 0 ? Number(it.unit_cost) / conv : 0;
         if (productId) {
-          const { data: p } = await supabase.from("products").select("stock").eq("id", productId).single();
-          const upd: { stock: number; cost_price?: number; price?: number } = { stock: (p?.stock || 0) + addStockBase };
+          // Harga modal & jual produk = referensi terbaru (perhitungan untung tetap pakai modal per batch/FIFO)
+          const upd: { cost_price?: number; price?: number } = {};
           if (perPcsCost > 0) upd.cost_price = perPcsCost;
           if (it.sell_price && it.sell_price > 0) upd.price = it.sell_price;
-          await supabase.from("products").update(upd).eq("id", productId);
+          if (Object.keys(upd).length > 0) {
+            await supabase.from("products").update(upd).eq("id", productId);
+          }
 
-          // Batch per pembelian (selalu, biar modal per batch tersimpan; expiry opsional)
+          // Batch per pembelian: stok produk otomatis bertambah dari batch ini (FIFO)
           if (tid) {
             await (supabase as any).from("product_batches").insert({
               product_id: productId,
