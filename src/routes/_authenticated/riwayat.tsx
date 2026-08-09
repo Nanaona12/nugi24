@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Receipt, Eye, Trash2, Download, ImageIcon, Printer } from "lucide-react";
+import { Receipt, Eye, Trash2, Download, ImageIcon, Printer, Search } from "lucide-react";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 import { printReceipt } from "@/lib/printer";
 import { loadPrinterSettings } from "@/lib/printer-settings";
@@ -70,12 +70,18 @@ function RiwayatPage() {
   const [delPassword, setDelPassword] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  const [search, setSearch] = useState("");
+  const [matches, setMatches] = useState<Record<string, { name: string; qty: number; subtotal: number }[]> | null>(null);
+  const [searching, setSearching] = useState(false);
+
   const load = async () => {
+    const since = new Date(Date.now() - 30 * 86400000).toISOString();
     const { data, error } = await supabase
       .from("transactions")
       .select("*")
+      .gte("created_at", since)
       .order("created_at", { ascending: false })
-      .limit(200);
+      .limit(500);
     if (error) { toast.error(error.message); return; }
     const rows = (data || []) as Tx[];
     const phones = Array.from(new Set(
@@ -95,6 +101,7 @@ function RiwayatPage() {
     }
     setTxs(rows);
   };
+
 
   const loadProfits = async (rows: Tx[], admin: boolean) => {
     if (!admin || rows.length === 0) return;
@@ -128,6 +135,34 @@ function RiwayatPage() {
   useEffect(() => {
     loadProfits(txs, isAdmin);
   }, [txs, isAdmin]);
+
+  // Cari struk berdasarkan nama/kode barang (30 hari terakhir)
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2 || txs.length === 0) { setMatches(null); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const ids = txs.map((r) => r.id);
+      const { data } = await supabase
+        .from("transaction_items")
+        .select("transaction_id, product_name, product_code, qty, subtotal")
+        .in("transaction_id", ids)
+        .or(`product_name.ilike.%${q}%,product_code.ilike.%${q}%`);
+      if (cancelled) return;
+      const map: Record<string, { name: string; qty: number; subtotal: number }[]> = {};
+      for (const it of (data || []) as any[]) {
+        (map[it.transaction_id] = map[it.transaction_id] || []).push({
+          name: it.product_name, qty: Number(it.qty || 0), subtotal: Number(it.subtotal || 0),
+        });
+      }
+      setMatches(map);
+      setSearching(false);
+    }, 350);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [search, txs]);
+
+
 
 
   const openDetail = async (tx: Tx) => {
@@ -239,13 +274,41 @@ function RiwayatPage() {
     .filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString())
     .reduce((s, t) => s + Number(t.total), 0);
 
+  const visibleTxs = matches ? txs.filter((t) => matches[t.id]?.length) : txs;
+  const matchTotal = matches
+    ? Object.values(matches).flat().reduce((s, m) => s + m.subtotal, 0)
+    : 0;
+  const matchQty = matches
+    ? Object.values(matches).flat().reduce((s, m) => s + m.qty, 0)
+    : 0;
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Total Hari Ini" value={formatRupiah(todayTotal)} />
         <Stat label="Transaksi Hari Ini" value={String(txs.filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString()).length)} />
-        <Stat label="Total Transaksi" value={String(txs.length)} />
+        <Stat label="Total Transaksi (30 hari)" value={String(txs.length)} />
       </div>
+
+      <Card className="space-y-2 p-3">
+        <div className="flex items-center gap-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari barang terjual di struk mana… (mis. Djarum)"
+            className="h-9"
+          />
+          {search && (
+            <Button size="sm" variant="ghost" onClick={() => setSearch("")}>Reset</Button>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Riwayat yang ditampilkan hanya 30 hari terakhir agar aplikasi tetap ringan.
+          {searching && " Mencari…"}
+          {matches && !searching && ` Ditemukan di ${visibleTxs.length} struk · ${matchQty} pcs · ${formatRupiah(matchTotal)}`}
+        </p>
+      </Card>
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
@@ -263,18 +326,31 @@ function RiwayatPage() {
               </tr>
             </thead>
             <tbody>
-              {txs.length === 0 ? (
+              {visibleTxs.length === 0 ? (
                 <tr>
                   <td colSpan={isAdmin ? 8 : 7} className="p-12 text-center text-muted-foreground">
                     <Receipt className="mx-auto mb-3 h-12 w-12 opacity-30" />
-                    Belum ada transaksi
+                    {matches ? "Barang tidak ditemukan di 30 hari terakhir" : "Belum ada transaksi"}
                   </td>
                 </tr>
               ) : (
-                txs.map((t) => (
+                visibleTxs.map((t) => (
+
                   <tr key={t.id} className="border-t hover:bg-muted/40">
-                    <td className="p-3">{new Date(t.created_at).toLocaleString("id-ID")}</td>
+                    <td className="p-3">
+                      {new Date(t.created_at).toLocaleString("id-ID")}
+                      {matches?.[t.id]?.length ? (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {matches[t.id].map((m, i) => (
+                            <Badge key={i} variant="secondary" className="text-[10px] font-normal">
+                              {m.name} · {m.qty} · {formatRupiah(m.subtotal)}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="p-3 font-mono text-xs">#{t.id.slice(0, 8)}</td>
+
                     <td className="p-3 text-right">{t.item_count}</td>
                     <td className="p-3 text-right font-semibold">{formatRupiah(Number(t.total))}</td>
                     <td className="p-3 text-right">{formatRupiah(Number(t.paid))}</td>
