@@ -244,7 +244,18 @@ function ProdukPage() {
     });
     setFormUnits(defaultUnitsFor(p));
     setFormBatches([]);
+    setStockBatches([]);
     setEditOpen(true);
+    (async () => {
+      const { data } = await (supabase as any)
+        .from("product_batches")
+        .select("id, qty, unit_cost, expiry_date, source, created_at")
+        .eq("product_id", p.id)
+        .gt("qty", 0)
+        .order("expiry_date", { ascending: true, nullsFirst: false })
+        .order("created_at", { ascending: true });
+      setStockBatches((data as any[]) || []);
+    })();
   };
 
   const openDuplicate = (p: Product) => {
