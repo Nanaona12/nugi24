@@ -274,13 +274,41 @@ function RiwayatPage() {
     .filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString())
     .reduce((s, t) => s + Number(t.total), 0);
 
+  const visibleTxs = matches ? txs.filter((t) => matches[t.id]?.length) : txs;
+  const matchTotal = matches
+    ? Object.values(matches).flat().reduce((s, m) => s + m.subtotal, 0)
+    : 0;
+  const matchQty = matches
+    ? Object.values(matches).flat().reduce((s, m) => s + m.qty, 0)
+    : 0;
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
         <Stat label="Total Hari Ini" value={formatRupiah(todayTotal)} />
         <Stat label="Transaksi Hari Ini" value={String(txs.filter((t) => new Date(t.created_at).toDateString() === new Date().toDateString()).length)} />
-        <Stat label="Total Transaksi" value={String(txs.length)} />
+        <Stat label="Total Transaksi (30 hari)" value={String(txs.length)} />
       </div>
+
+      <Card className="space-y-2 p-3">
+        <div className="flex items-center gap-2">
+          <Search className="h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Cari barang terjual di struk mana… (mis. Djarum)"
+            className="h-9"
+          />
+          {search && (
+            <Button size="sm" variant="ghost" onClick={() => setSearch("")}>Reset</Button>
+          )}
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          Riwayat yang ditampilkan hanya 30 hari terakhir agar aplikasi tetap ringan.
+          {searching && " Mencari…"}
+          {matches && !searching && ` Ditemukan di ${visibleTxs.length} struk · ${matchQty} pcs · ${formatRupiah(matchTotal)}`}
+        </p>
+      </Card>
 
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
@@ -298,15 +326,16 @@ function RiwayatPage() {
               </tr>
             </thead>
             <tbody>
-              {txs.length === 0 ? (
+              {visibleTxs.length === 0 ? (
                 <tr>
                   <td colSpan={isAdmin ? 8 : 7} className="p-12 text-center text-muted-foreground">
                     <Receipt className="mx-auto mb-3 h-12 w-12 opacity-30" />
-                    Belum ada transaksi
+                    {matches ? "Barang tidak ditemukan di 30 hari terakhir" : "Belum ada transaksi"}
                   </td>
                 </tr>
               ) : (
-                txs.map((t) => (
+                visibleTxs.map((t) => (
+
                   <tr key={t.id} className="border-t hover:bg-muted/40">
                     <td className="p-3">{new Date(t.created_at).toLocaleString("id-ID")}</td>
                     <td className="p-3 font-mono text-xs">#{t.id.slice(0, 8)}</td>
