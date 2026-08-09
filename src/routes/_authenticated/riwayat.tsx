@@ -136,6 +136,34 @@ function RiwayatPage() {
     loadProfits(txs, isAdmin);
   }, [txs, isAdmin]);
 
+  // Cari struk berdasarkan nama/kode barang (30 hari terakhir)
+  useEffect(() => {
+    const q = search.trim();
+    if (q.length < 2 || txs.length === 0) { setMatches(null); setSearching(false); return; }
+    let cancelled = false;
+    setSearching(true);
+    const t = setTimeout(async () => {
+      const ids = txs.map((r) => r.id);
+      const { data } = await supabase
+        .from("transaction_items")
+        .select("transaction_id, product_name, product_code, qty, subtotal")
+        .in("transaction_id", ids)
+        .or(`product_name.ilike.%${q}%,product_code.ilike.%${q}%`);
+      if (cancelled) return;
+      const map: Record<string, { name: string; qty: number; subtotal: number }[]> = {};
+      for (const it of (data || []) as any[]) {
+        (map[it.transaction_id] = map[it.transaction_id] || []).push({
+          name: it.product_name, qty: Number(it.qty || 0), subtotal: Number(it.subtotal || 0),
+        });
+      }
+      setMatches(map);
+      setSearching(false);
+    }, 350);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [search, txs]);
+
+
+
 
   const openDetail = async (tx: Tx) => {
     setSelected(tx);
