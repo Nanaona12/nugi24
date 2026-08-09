@@ -337,8 +337,20 @@ function RiwayatPage() {
                 visibleTxs.map((t) => (
 
                   <tr key={t.id} className="border-t hover:bg-muted/40">
-                    <td className="p-3">{new Date(t.created_at).toLocaleString("id-ID")}</td>
+                    <td className="p-3">
+                      {new Date(t.created_at).toLocaleString("id-ID")}
+                      {matches?.[t.id]?.length ? (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {matches[t.id].map((m, i) => (
+                            <Badge key={i} variant="secondary" className="text-[10px] font-normal">
+                              {m.name} · {m.qty} · {formatRupiah(m.subtotal)}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                    </td>
                     <td className="p-3 font-mono text-xs">#{t.id.slice(0, 8)}</td>
+
                     <td className="p-3 text-right">{t.item_count}</td>
                     <td className="p-3 text-right font-semibold">{formatRupiah(Number(t.total))}</td>
                     <td className="p-3 text-right">{formatRupiah(Number(t.paid))}</td>
