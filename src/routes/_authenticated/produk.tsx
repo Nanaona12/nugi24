@@ -83,6 +83,7 @@ function ProdukPage() {
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [formUnits, setFormUnits] = useState<ProductUnit[]>([]);
   const [formBatches, setFormBatches] = useState<{ qty: string; expiry_date: string; note: string }[]>([]);
+  const [stockBatches, setStockBatches] = useState<{ id: string; qty: number; unit_cost: number | null; expiry_date: string | null; source: string | null; created_at: string }[]>([]);
   const [scanMode, setScanMode] = useState<null | "add" | "search">(null);
   const [aiOpen, setAiOpen] = useState(false);
   const [aiHint, setAiHint] = useState<{ price: number | null; margin: number | null; profit: number | null; reasoning: string | null } | null>(null);
