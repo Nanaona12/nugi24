@@ -1,40 +1,33 @@
-# Rencana: Selisih Closing Kasir — Pembukuan vs Keuntungan
+# Modal FIFO per Batch — Untung Lebih Akurat
 
-Berdasarkan pilihan Anda, sistem akan mempertahankan pendekatan **konservatif**:
+Tujuan: kalau kemarin beli produk A modal Rp3.000 dan hari ini Rp2.500, penjualan hari ini tetap memakai modal Rp3.000 sampai stok lama habis, baru pindah ke Rp2.500.
 
-- **Selisih kurang (minus):** dicatat di pembukuan sebagai kas keluar **dan** mengurangi keuntungan karena merupakan kerugian kas nyata.
-- **Selisih lebih (plus):** dicatat di pembukuan sebagai kas masuk, **tetapi tidak menambah keuntungan**.
+## Kondisi sekarang
 
-Logika ini sudah berjalan di `src/routes/_authenticated/keuntungan.tsx` (baris ~549), namun masih ada bagian yang membingungkan di backend.
+- Sistem sudah punya catatan batch (harga modal per pembelian) dan sudah mengurangi stok batch tertua saat terjual.
+- Masalahnya: dari 533 produk, 452 punya stok yang tidak punya catatan batch sama sekali (hasil edit stok manual, import Excel, atau stok lama sebelum fitur batch). Untuk stok itu sistem terpaksa memakai "modal terakhir yang diinput", sehingga untung ikut berubah saat harga beli berubah.
+- Saat penerimaan PO, harga modal produk selalu ditimpa harga beli terbaru.
 
-## Perubahan yang akan dilakukan
+## Yang akan dikerjakan
 
-### 1. Bersihkan catatan selisih lebih dari `profit_activity_log`
+1. **Batch otomatis untuk semua penambahan stok**
+   Setiap kali stok bertambah — penerimaan PO, edit stok manual di halaman Produk, import Excel, atau saat produk baru dibuat dengan stok awal — sistem otomatis membuat catatan batch berisi jumlah dan modal saat itu.
 
-File: `src/lib/cashier.functions.ts`
+2. **Batch awal untuk stok yang sudah ada**
+   Stok yang saat ini belum punya batch akan dibuatkan satu batch awal memakai harga modal produk yang tercatat sekarang, supaya perhitungan FIFO langsung jalan tanpa data kosong.
 
-Saat ini `closeShift` masih menyisipkan `action: "shift_surplus"` ke tabel `profit_activity_log`, padahal nilai tersebut **tidak dipakai** dalam perhitungan keuntungan dan hanya membuat riwayat "Perubahan Keuntungan" tampak bertambah. Karena selisih lebih hanya masuk pembukuan, catatan di `profit_activity_log` akan dihapus.
+3. **Urutan pemakaian modal: yang lebih dulu masuk, dipakai duluan**
+   Saat barang terjual, modal diambil dari batch paling lama (barang mendekati kedaluwarsa tetap diprioritaskan lebih dulu, lalu yang paling lama dibeli). Kalau satu penjualan menghabiskan dua batch berbeda harga, modalnya dihitung campur sesuai porsi masing-masing.
 
-### 2. Tambahkan keterangan UI di halaman Keuntungan
+4. **Harga modal produk jadi acuan cadangan saja**
+   Harga modal di master produk tetap diperbarui sebagai referensi harga beli terakhir dan patokan harga jual, tetapi tidak lagi dipakai untuk menghitung untung selama batch masih tersedia. Pengaman lama yang mengganti modal batch saat nilainya terlalu tinggi diperketat agar hanya aktif untuk kasus salah input yang jelas (modal per kemasan tercatat sebagai per pcs), bukan untuk selisih harga beli yang wajar.
 
-File: `src/routes/_authenticated/keuntungan.tsx`
-
-Agar tidak membingungkan, akan ditambahkan teks penjelasan singkat di dekat ringkasan keuntungan:
-
-> "Selisih lebih closing kasir hanya menambah catatan kas di pembukuan, bukan keuntungan."
-
-### 3. Verifikasi konsistensi
-
-- Pastikan `shiftShortages` tetap mengurangi profit.
-- Pastikan `shiftSurpluses` tetap tidak mengurangi/menambah profit.
-- Pastikan pembukuan tetap mencatat kedua jenis selisih sebagai kas masuk/kas keluar.
-
-## Hasil akhir yang diharapkan
-
-- Keuntungan yang ditampilkan hanya berasal dari penjualan, dikurangi kerugian/promo dan selisih kurang kasir.
-- Posisi kas di pembukuan tetap akurat karena mencerminkan uang yang benar-benar dihitung saat closing.
-- Tidak ada catatan "selisih lebih" yang muncul di Riwayat Perubahan Keuntungan.
+5. **Transparansi di UI**
+   - Halaman Produk: tampilkan rincian batch stok (jumlah + modal per batch) saat produk dibuka, agar terlihat sisa stok modal lama vs baru.
+   - Halaman Riwayat/Keuntungan: modal per transaksi tetap memakai nilai yang tersimpan saat transaksi terjadi, jadi laporan lama tidak berubah.
 
 ## Catatan teknis
 
-Tidak ada perubahan struktur database. Hanya penghapusan penyisipan data yang tidak konsisten dan penambahan label UI.
+- Migrasi: fungsi `fefo_deduct_batches` diperbarui (urutan `expiry_date NULLS LAST, created_at`, hitung rata-rata tertimbang lintas batch, longgarkan guard 3×), plus trigger baru pada `products` yang membuat batch `source='manual'` saat stok naik tanpa batch pendamping, dan seeding batch awal untuk stok tanpa batch.
+- Frontend: `ReceivingDialog.tsx` tetap membuat batch per penerimaan; `produk.tsx` menampilkan daftar batch dan mengirim modal saat menambah stok manual/import.
+- `transaction_items.unit_cost` tetap menjadi sumber kebenaran untuk laporan historis (tidak dihitung ulang).
