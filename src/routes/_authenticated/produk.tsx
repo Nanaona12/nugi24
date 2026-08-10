@@ -258,6 +258,42 @@ function ProdukPage() {
     })();
   };
 
+  const adjustProductStock = async (productId: string, delta: number) => {
+    if (!delta) return;
+    const { data: p } = await supabase.from("products").select("stock").eq("id", productId).single();
+    const newStock = Math.max(0, Number((p as any)?.stock || 0) + delta);
+    await supabase.from("products").update({ stock: newStock }).eq("id", productId);
+    setForm((f) => (f.id === productId ? { ...f, stock: String(newStock) } : f));
+  };
+
+  const saveBatch = async (b: { id: string; qty: number; unit_cost: number | null; expiry_date: string | null }) => {
+    if (!form.id) return;
+    const { data: old } = await (supabase as any).from("product_batches").select("qty").eq("id", b.id).single();
+    const oldQty = Number(old?.qty || 0);
+    const newQty = Math.max(0, Number(b.qty || 0));
+    const { error } = await (supabase as any)
+      .from("product_batches")
+      .update({ qty: newQty, unit_cost: b.unit_cost ?? null, expiry_date: b.expiry_date || null })
+      .eq("id", b.id);
+    if (error) return toast.error(error.message);
+    await adjustProductStock(form.id, newQty - oldQty);
+    if (newQty === 0) setStockBatches((prev) => prev.filter((x) => x.id !== b.id));
+    toast.success("Batch diperbarui & stok disesuaikan");
+    load();
+  };
+
+  const deleteBatch = async (b: { id: string; qty: number }) => {
+    if (!form.id) return;
+    if (!confirm(`Hapus batch ${b.qty} pcs? Stok produk akan dikurangi.`)) return;
+    const { data: old } = await (supabase as any).from("product_batches").select("qty").eq("id", b.id).single();
+    const { error } = await (supabase as any).from("product_batches").delete().eq("id", b.id);
+    if (error) return toast.error(error.message);
+    await adjustProductStock(form.id, -Number(old?.qty || 0));
+    setStockBatches((prev) => prev.filter((x) => x.id !== b.id));
+    toast.success("Batch dihapus & stok dikurangi");
+    load();
+  };
+
   const openDuplicate = (p: Product) => {
     // Duplikat: salin harga/kategori/satuan/kode dari produk sumber, kosongkan barcode/stok, beri nama sementara
     setForm({
