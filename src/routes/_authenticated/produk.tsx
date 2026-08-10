@@ -1053,8 +1053,7 @@ function ProdukPage() {
                       value={String(b.qty ?? "")}
                       onChange={(e) => {
                         const v = e.target.value.replace(/\D/g, "");
-                        setStockBatches((prev) => prev.map((x) => (x.id === b.id ? { ...x, qty: v === "" ? "" : parseInt(v, 10) } : x)));
-                      }}
+                        setStockBatches((prev) => prev.map((x) => (x.id === b.id ? { ...x, qty: v === "" ? 0 : parseInt(v, 10) } : x)));
                       className="h-7 text-xs text-center"
                     />
                     <Input
