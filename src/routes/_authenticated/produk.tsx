@@ -1042,24 +1042,52 @@ function ProdukPage() {
               <div>
                 <div className="text-sm font-semibold">Modal per Batch (FIFO)</div>
                 <div className="text-[11px] text-muted-foreground">
-                  Saat terjual, modal dipakai dari batch paling atas dulu. Jadi stok lama tetap memakai harga modal lama walau harga beli baru berubah.
+                  Saat terjual, modal dipakai dari batch paling atas dulu. Mengubah jumlah batch akan otomatis menyesuaikan stok produk.
                 </div>
               </div>
               <div className="space-y-1">
                 {stockBatches.map((b) => (
-                  <div key={b.id} className="flex items-center justify-between gap-2 rounded border bg-muted/30 px-2 py-1 text-xs">
-                    <span className="font-medium">{b.qty} pcs</span>
-                    <span className="text-muted-foreground">
-                      {b.expiry_date ? `Exp ${b.expiry_date}` : "Tanpa exp"} · {b.source || "-"}
-                    </span>
-                    <span className="font-semibold">
-                      {b.unit_cost ? `${formatRupiah(Number(b.unit_cost))}/pcs` : "modal produk"}
-                    </span>
+                  <div key={b.id} className="grid grid-cols-[70px_1fr_100px_auto] items-center gap-2 rounded border bg-muted/30 px-2 py-1 text-xs">
+                    <Input
+                      inputMode="numeric"
+                      value={String(b.qty ?? "")}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/\D/g, "");
+                        setStockBatches((prev) => prev.map((x) => (x.id === b.id ? { ...x, qty: v === "" ? "" : parseInt(v, 10) } : x)));
+                      }}
+                      className="h-7 text-xs text-center"
+                    />
+                    <Input
+                      type="date"
+                      value={b.expiry_date || ""}
+                      onChange={(e) =>
+                        setStockBatches((prev) => prev.map((x) => (x.id === b.id ? { ...x, expiry_date: e.target.value || null } : x)))
+                      }
+                      className="h-7 text-xs"
+                    />
+                    <Input
+                      inputMode="decimal"
+                      placeholder="modal/pcs"
+                      value={b.unit_cost != null ? String(b.unit_cost) : ""}
+                      onChange={(e) => {
+                        const v = e.target.value.replace(/[^\d.]/g, "");
+                        setStockBatches((prev) => prev.map((x) => (x.id === b.id ? { ...x, unit_cost: v === "" ? null : Number(v) } : x)));
+                      }}
+                      className="h-7 text-xs text-right"
+                    />
+                    <div className="flex items-center gap-1">
+                      <Button type="button" size="sm" variant="outline" className="h-7 px-2 text-[11px]" onClick={() => saveBatch(b)}>
+                        Simpan
+                      </Button>
+                      <Button type="button" size="sm" variant="ghost" className="h-7 px-2 text-[11px] text-destructive" onClick={() => deleteBatch(b)}>
+                        Hapus
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
               <div className="text-[11px] text-muted-foreground">
-                Menambah stok di kolom "Stok" akan membuat batch baru dengan harga modal yang diisi sekarang.
+                Menambah stok di kolom "Stok" akan membuat batch baru dengan harga modal yang diisi sekarang. Menghapus batch akan mengurangi stok sebanyak jumlah batch tersebut.
               </div>
             </div>
           )}
