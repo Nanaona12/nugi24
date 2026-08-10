@@ -607,16 +607,64 @@ function POPage() {
 
 
   const updateStatus = async (po: PO, status: string) => {
-    const { error } = await supabase
+    const wasReceived = po.status === "received" || (po as any).received_status === "received" || (po as any).received_status === "partial";
+    const revert = wasReceived && status !== "received";
+
+    if (revert) {
+      if (!confirm("PO ini sudah diterima. Mengubah status akan MENGURANGI kembali stok dari penerimaan PO ini. Lanjutkan?")) return;
+      // 1. Hapus batch hasil penerimaan PO ini
+      const { data: batches } = await (supabase as any)
+        .from("product_batches")
+        .select("id, product_id, qty")
+        .eq("po_id", po.id);
+
+      // 2. Hitung stok yang harus dikurangi (pakai qty_received sebagai acuan)
+      const { data: poItems } = await (supabase as any)
+        .from("purchase_order_items")
+        .select("id, product_id, qty_received, unit_conversion")
+        .eq("po_id", po.id);
+
+      const reduce: Record<string, number> = {};
+      for (const it of ((poItems as any[]) || [])) {
+        if (!it.product_id) continue;
+        const base = Math.max(0, Number(it.qty_received || 0)) * Math.max(1, Number(it.unit_conversion || 1));
+        if (base > 0) reduce[it.product_id] = (reduce[it.product_id] || 0) + base;
+      }
+      // Jika tidak ada qty_received (data lama), pakai qty batch
+      if (Object.keys(reduce).length === 0) {
+        for (const b of ((batches as any[]) || [])) {
+          reduce[b.product_id] = (reduce[b.product_id] || 0) + Number(b.qty || 0);
+        }
+      }
+
+      if ((batches as any[])?.length) {
+        await (supabase as any).from("product_batches").delete().eq("po_id", po.id);
+      }
+
+      const ids = Object.keys(reduce);
+      if (ids.length > 0) {
+        const { data: prods } = await supabase.from("products").select("id, stock").in("id", ids);
+        for (const p of ((prods as any[]) || [])) {
+          const newStock = Math.max(0, Number(p.stock || 0) - (reduce[p.id] || 0));
+          await supabase.from("products").update({ stock: newStock }).eq("id", p.id);
+        }
+      }
+
+      await (supabase as any)
+        .from("purchase_order_items")
+        .update({ qty_received: 0 })
+        .eq("po_id", po.id);
+    }
+
+    const { error } = await (supabase as any)
       .from("purchase_orders")
-      .update({ status })
+      .update(revert ? { status, received_status: "pending", received_at: null } : { status })
       .eq("id", po.id);
     if (error) return toast.error(error.message);
 
     // Catatan: penambahan stok HANYA dilakukan lewat Receiving Dialog
     // (agar tidak dobel dengan qty_received + batch + expiry).
-    // Perubahan status di sini tidak menyentuh products.stock / cost_price / price.
-    toast.success(`Status: ${STATUS_LABEL[status] || status}`);
+    toast.success(revert ? "Status dikembalikan & stok dikurangi kembali" : `Status: ${STATUS_LABEL[status] || status}`);
     setDetailOpen(null);
     load();
   };
