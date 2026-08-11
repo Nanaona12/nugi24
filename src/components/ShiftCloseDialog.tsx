@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { FileText, Loader2, Plus, Printer, Trash2 } from "lucide-react";
+import { FileText, ListTree, Loader2, Plus, Printer, Trash2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { addShiftExpense, closeShift, deleteShiftExpense, getShiftSummary } from "@/lib/cashier.functions";
 import { formatRupiah, parseNumber } from "@/lib/format";
@@ -19,9 +19,17 @@ type Summary = {
   totals: {
     total_sales: number; total_cash: number; total_qris: number; total_other: number;
     total_transactions: number; total_expenses: number; expected_cash: number; opening_cash: number;
+    total_debt?: number; debts_new?: number; debt_payments_cash?: number; debt_payments_other?: number;
   };
   expenses: { id: string; label: string; amount: number; created_at: string }[];
+  transactions?: {
+    id: string; created_at: string; method: string; total: number;
+    cash: number; qris: number; other: number; debt: number; counted_as_cash: boolean;
+  }[];
+  debts?: { id: string; debtor_name: string; original_amount: number; paid_amount: number; status: string; created_at: string }[];
+  debt_payments?: { id: string; amount: number; method: string; created_at: string }[];
 };
+
 
 type Props = {
   open: boolean;
@@ -41,6 +49,7 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
   const [newExpLabel, setNewExpLabel] = useState("");
   const [newExpAmount, setNewExpAmount] = useState("");
   const [addingExp, setAddingExp] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
   const [closed, setClosed] = useState<null | (Summary["totals"] & { actual_cash: number; difference: number })>(null);
 
   const summaryFn = useServerFn(getShiftSummary);
@@ -291,6 +300,96 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                 <Row label="Kas seharusnya" value={formatRupiah(cashExpected)} bold />
               </div>
             </Card>
+
+            <Button variant="outline" size="sm" className="w-full" onClick={() => setShowDetail((v) => !v)}>
+              <ListTree className="mr-2 h-4 w-4" /> {showDetail ? "Sembunyikan" : "Lihat"} Detail Perhitungan
+            </Button>
+
+            {showDetail && (
+              <div className="space-y-3 rounded-md border p-3 text-xs">
+                <div>
+                  <div className="mb-1 font-semibold">Rumus Kas Seharusnya</div>
+                  <div className="rounded bg-muted/40 p-2 leading-5">
+                    Saldo awal {formatRupiah(summary.totals.opening_cash)} + Penjualan tunai {formatRupiah(summary.totals.total_cash)} − Pengeluaran {formatRupiah(summary.totals.total_expenses)} = <b>{formatRupiah(cashExpected)}</b>
+                  </div>
+                  <p className="mt-1 text-muted-foreground">
+                    QRIS/non-tunai <b>tidak</b> masuk kas fisik. Transaksi <b>hutang/kasbon tidak dihitung</b> sebagai uang masuk, jadi hutang tidak boleh bikin kas minus.
+                  </p>
+                </div>
+
+                <div>
+                  <div className="mb-1 font-semibold">Rincian Struk ({summary.transactions?.length ?? 0})</div>
+                  <div className="max-h-56 overflow-auto rounded border">
+                    <table className="w-full">
+                      <thead className="sticky top-0 bg-muted">
+                        <tr className="text-left">
+                          <th className="p-1">Waktu</th>
+                          <th className="p-1">Struk</th>
+                          <th className="p-1">Metode</th>
+                          <th className="p-1 text-right">Total</th>
+                          <th className="p-1 text-right">Tunai</th>
+                          <th className="p-1 text-right">QRIS</th>
+                          <th className="p-1 text-right">Hutang</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {(summary.transactions ?? []).map((t) => (
+                          <tr key={t.id} className="border-t">
+                            <td className="p-1 whitespace-nowrap">{new Date(t.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}</td>
+                            <td className="p-1">#{t.id.slice(0, 6).toUpperCase()}</td>
+                            <td className="p-1 uppercase">{t.method || "-"}</td>
+                            <td className="p-1 text-right">{formatRupiah(t.total)}</td>
+                            <td className="p-1 text-right">{t.cash ? formatRupiah(t.cash) : "-"}</td>
+                            <td className="p-1 text-right">{t.qris ? formatRupiah(t.qris) : "-"}</td>
+                            <td className="p-1 text-right text-destructive">{t.debt ? formatRupiah(t.debt) : "-"}</td>
+                          </tr>
+                        ))}
+                        {(summary.transactions ?? []).length === 0 && (
+                          <tr><td colSpan={7} className="p-2 text-center text-muted-foreground">Belum ada transaksi</td></tr>
+                        )}
+                      </tbody>
+                      <tfoot className="border-t bg-muted/40 font-semibold">
+                        <tr>
+                          <td className="p-1" colSpan={3}>Total</td>
+                          <td className="p-1 text-right">{formatRupiah(summary.totals.total_sales)}</td>
+                          <td className="p-1 text-right">{formatRupiah(summary.totals.total_cash)}</td>
+                          <td className="p-1 text-right">{formatRupiah(summary.totals.total_qris)}</td>
+                          <td className="p-1 text-right">{formatRupiah(summary.totals.total_debt ?? 0)}</td>
+                        </tr>
+                      </tfoot>
+                    </table>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-1 font-semibold">Hutang / Kasbon Shift Ini</div>
+                  <div className="space-y-1">
+                    <Row label="Kasbon baru (tidak masuk kas)" value={formatRupiah(summary.totals.debts_new ?? 0)} />
+                    <Row label="Bayar hutang tunai (masuk laci, tidak dihitung kas seharusnya)" value={formatRupiah(summary.totals.debt_payments_cash ?? 0)} />
+                    {(summary.totals.debt_payments_other ?? 0) > 0 && (
+                      <Row label="Bayar hutang non-tunai" value={formatRupiah(summary.totals.debt_payments_other ?? 0)} />
+                    )}
+                  </div>
+                  {(summary.debts ?? []).length > 0 && (
+                    <ul className="mt-1 space-y-1">
+                      {(summary.debts ?? []).map((d) => (
+                        <li key={d.id} className="flex justify-between rounded bg-muted/40 px-2 py-1">
+                          <span className="truncate">{d.debtor_name} · {d.status === "paid" ? "Lunas" : `Sisa ${formatRupiah(Number(d.original_amount) - Number(d.paid_amount))}`}</span>
+                          <span>{formatRupiah(Number(d.original_amount))}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {(summary.totals.debt_payments_cash ?? 0) > 0 && (
+                    <p className="mt-1 text-muted-foreground">
+                      Karena pembayaran hutang tunai belum dihitung di kas seharusnya, uang laci bisa terlihat <b>lebih</b> sebesar nominal itu.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+
 
             {!closed && (
               <div className="space-y-2 rounded-md border p-3">

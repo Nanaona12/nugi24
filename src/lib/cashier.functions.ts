@@ -255,27 +255,48 @@ export const getShiftSummary = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     if (!s) throw new Error("Shift tidak ditemukan");
 
-    const [{ data: txs }, { data: exps }] = await Promise.all([
+    const [{ data: txs }, { data: exps }, { data: dbts }, { data: dpays }] = await Promise.all([
       context.supabase
         .from("transactions")
-        .select("id, total, payment_method, qris_amount, created_at")
+        .select("id, total, payment_method, qris_amount, created_at, customer_phone")
         .eq("shift_id", data.shift_id)
-        .eq("tenant_id", tenantId),
+        .eq("tenant_id", tenantId)
+        .order("created_at"),
       context.supabase
         .from("shift_expenses")
         .select("id, label, amount, created_at")
         .eq("shift_id", data.shift_id)
         .eq("tenant_id", tenantId)
         .order("created_at"),
+      context.supabase
+        .from("debts")
+        .select("id, debtor_name, original_amount, paid_amount, status, created_at, transaction_id")
+        .eq("shift_id", data.shift_id)
+        .eq("tenant_id", tenantId)
+        .order("created_at"),
+      context.supabase
+        .from("debt_payments")
+        .select("id, amount, method, created_at, debt_id")
+        .eq("shift_id", data.shift_id)
+        .eq("tenant_id", tenantId)
+        .order("created_at"),
     ]);
-    let total_sales = 0, total_cash = 0, total_qris = 0, total_other = 0, total_transactions = 0;
+    let total_sales = 0, total_cash = 0, total_qris = 0, total_other = 0, total_transactions = 0, total_debt = 0;
+    const transactions: any[] = [];
     for (const t of (txs ?? []) as any[]) {
       const amt = Number(t.total) || 0;
       const method = String(t.payment_method || "").toLowerCase();
       const isDebt = method === "debt" || method === "kasbon" || method === "hutang";
       total_sales += amt;
       total_transactions += 1;
-      if (isDebt) continue;
+      if (isDebt) {
+        total_debt += amt;
+        transactions.push({
+          id: t.id, created_at: t.created_at, method, total: amt,
+          cash: 0, qris: 0, other: 0, debt: amt, counted_as_cash: false,
+        });
+        continue;
+      }
       let qris_portion = Number(t.qris_amount) || 0;
       let cash_portion = 0;
       let other_portion = 0;
@@ -291,18 +312,35 @@ export const getShiftSummary = createServerFn({ method: "POST" })
       total_cash += cash_portion;
       total_qris += qris_portion;
       total_other += other_portion;
+      transactions.push({
+        id: t.id, created_at: t.created_at, method, total: amt,
+        cash: cash_portion, qris: qris_portion, other: other_portion, debt: 0,
+        counted_as_cash: cash_portion > 0,
+      });
     }
     const total_expenses = ((exps ?? []) as any[]).reduce((s, e) => s + (Number(e.amount) || 0), 0);
     const opening_cash = Number(s.opening_cash) || 0;
     const expected_cash = opening_cash + total_cash - total_expenses;
+    const debts_new = ((dbts ?? []) as any[]).reduce((s, d) => s + (Number(d.original_amount) || 0), 0);
+    const debt_payments_cash = ((dpays ?? []) as any[])
+      .filter((p) => String(p.method || "").toLowerCase() === "cash" || String(p.method || "").toLowerCase() === "tunai")
+      .reduce((s, p) => s + (Number(p.amount) || 0), 0);
+    const debt_payments_other = ((dpays ?? []) as any[]).reduce((s, p) => s + (Number(p.amount) || 0), 0) - debt_payments_cash;
 
     return {
       shift: s,
       cashier_name: (s as any).cashiers?.name ?? "",
-      totals: { total_sales, total_cash, total_qris, total_other, total_transactions, total_expenses, expected_cash, opening_cash },
+      totals: {
+        total_sales, total_cash, total_qris, total_other, total_transactions, total_expenses, expected_cash, opening_cash,
+        total_debt, debts_new, debt_payments_cash, debt_payments_other,
+      },
       expenses: (exps ?? []) as { id: string; label: string; amount: number; created_at: string }[],
+      transactions,
+      debts: (dbts ?? []) as any[],
+      debt_payments: (dpays ?? []) as any[],
     };
   });
+
 
 export const addShiftExpense = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
