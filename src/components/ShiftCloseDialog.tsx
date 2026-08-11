@@ -19,9 +19,17 @@ type Summary = {
   totals: {
     total_sales: number; total_cash: number; total_qris: number; total_other: number;
     total_transactions: number; total_expenses: number; expected_cash: number; opening_cash: number;
+    total_debt?: number; debts_new?: number; debt_payments_cash?: number; debt_payments_other?: number;
   };
   expenses: { id: string; label: string; amount: number; created_at: string }[];
+  transactions?: {
+    id: string; created_at: string; method: string; total: number;
+    cash: number; qris: number; other: number; debt: number; counted_as_cash: boolean;
+  }[];
+  debts?: { id: string; debtor_name: string; original_amount: number; paid_amount: number; status: string; created_at: string }[];
+  debt_payments?: { id: string; amount: number; method: string; created_at: string }[];
 };
+
 
 type Props = {
   open: boolean;
