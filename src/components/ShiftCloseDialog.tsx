@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
-import { FileText, Loader2, Plus, Printer, Trash2 } from "lucide-react";
+import { FileText, ListTree, Loader2, Plus, Printer, Trash2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
 import { addShiftExpense, closeShift, deleteShiftExpense, getShiftSummary } from "@/lib/cashier.functions";
 import { formatRupiah, parseNumber } from "@/lib/format";
@@ -49,6 +49,7 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
   const [newExpLabel, setNewExpLabel] = useState("");
   const [newExpAmount, setNewExpAmount] = useState("");
   const [addingExp, setAddingExp] = useState(false);
+  const [showDetail, setShowDetail] = useState(false);
   const [closed, setClosed] = useState<null | (Summary["totals"] & { actual_cash: number; difference: number })>(null);
 
   const summaryFn = useServerFn(getShiftSummary);
