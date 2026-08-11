@@ -282,6 +282,11 @@ export const getShiftSummary = createServerFn({ method: "POST" })
         .order("created_at"),
     ]);
     let total_sales = 0, total_cash = 0, total_qris = 0, total_other = 0, total_transactions = 0, total_debt = 0;
+    // Hutang yang menempel pada transaksi (bayar sebagian) → bukan uang masuk
+    const debtByTx: Record<string, number> = {};
+    for (const d of ((dbts ?? []) as any[])) {
+      if (d.transaction_id) debtByTx[d.transaction_id] = (debtByTx[d.transaction_id] || 0) + (Number(d.original_amount) || 0);
+    }
     const transactions: any[] = [];
     for (const t of (txs ?? []) as any[]) {
       const amt = Number(t.total) || 0;
@@ -289,6 +294,7 @@ export const getShiftSummary = createServerFn({ method: "POST" })
       const isDebt = method === "debt" || method === "kasbon" || method === "hutang";
       total_sales += amt;
       total_transactions += 1;
+      const linkedDebt = Math.min(amt, Number(debtByTx[t.id] || 0));
       if (isDebt) {
         total_debt += amt;
         transactions.push({
@@ -309,15 +315,24 @@ export const getShiftSummary = createServerFn({ method: "POST" })
       } else {
         other_portion = Math.max(0, amt - qris_portion);
       }
+      // Kurangi bagian yang jadi hutang (tunai dulu, lalu lainnya, lalu QRIS)
+      let rest = linkedDebt;
+      if (rest > 0) {
+        const cut1 = Math.min(cash_portion, rest); cash_portion -= cut1; rest -= cut1;
+        const cut2 = Math.min(other_portion, rest); other_portion -= cut2; rest -= cut2;
+        const cut3 = Math.min(qris_portion, rest); qris_portion -= cut3; rest -= cut3;
+      }
+      if (linkedDebt > 0) total_debt += linkedDebt;
       total_cash += cash_portion;
       total_qris += qris_portion;
       total_other += other_portion;
       transactions.push({
         id: t.id, created_at: t.created_at, method, total: amt,
-        cash: cash_portion, qris: qris_portion, other: other_portion, debt: 0,
+        cash: cash_portion, qris: qris_portion, other: other_portion, debt: linkedDebt,
         counted_as_cash: cash_portion > 0,
       });
     }
+
     const total_expenses = ((exps ?? []) as any[]).reduce((s, e) => s + (Number(e.amount) || 0), 0);
     const opening_cash = Number(s.opening_cash) || 0;
     const expected_cash = opening_cash + total_cash - total_expenses;
@@ -381,9 +396,15 @@ export const closeShift = createServerFn({ method: "POST" })
     const tenantId = await getTenantId(context);
     // Recompute totals server-side for trust
     const { data: txs } = await context.supabase
-      .from("transactions").select("total, payment_method, qris_amount").eq("shift_id", data.shift_id).eq("tenant_id", tenantId);
+      .from("transactions").select("id, total, payment_method, qris_amount").eq("shift_id", data.shift_id).eq("tenant_id", tenantId);
     const { data: exps } = await context.supabase
       .from("shift_expenses").select("amount").eq("shift_id", data.shift_id).eq("tenant_id", tenantId);
+    const { data: dbts } = await context.supabase
+      .from("debts").select("original_amount, transaction_id").eq("shift_id", data.shift_id).eq("tenant_id", tenantId);
+    const debtByTx: Record<string, number> = {};
+    for (const d of ((dbts ?? []) as any[])) {
+      if (d.transaction_id) debtByTx[d.transaction_id] = (debtByTx[d.transaction_id] || 0) + (Number(d.original_amount) || 0);
+    }
     let total_sales = 0, total_cash = 0, total_qris = 0, total_other = 0, total_transactions = 0;
     for (const t of (txs ?? []) as any[]) {
       const amt = Number(t.total) || 0;
@@ -404,10 +425,17 @@ export const closeShift = createServerFn({ method: "POST" })
       } else {
         other_portion = Math.max(0, amt - qris_portion);
       }
+      let rest = Math.min(amt, Number(debtByTx[t.id] || 0));
+      if (rest > 0) {
+        const cut1 = Math.min(cash_portion, rest); cash_portion -= cut1; rest -= cut1;
+        const cut2 = Math.min(other_portion, rest); other_portion -= cut2; rest -= cut2;
+        const cut3 = Math.min(qris_portion, rest); qris_portion -= cut3; rest -= cut3;
+      }
       total_cash += cash_portion;
       total_qris += qris_portion;
       total_other += other_portion;
     }
+
     const total_expenses = ((exps ?? []) as any[]).reduce((s, e) => s + (Number(e.amount) || 0), 0);
     const { data: cur } = await context.supabase
       .from("cashier_shifts").select("opening_cash, status").eq("id", data.shift_id).eq("tenant_id", tenantId).maybeSingle();
