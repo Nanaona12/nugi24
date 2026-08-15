@@ -122,7 +122,9 @@ function BackupPage() {
 
   return (
     <div className="space-y-4">
+      <GoogleSheetsBackupCard />
       <Card>
+
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DatabaseBackup className="h-5 w-5 text-primary" /> Backup Data ke Spreadsheet
