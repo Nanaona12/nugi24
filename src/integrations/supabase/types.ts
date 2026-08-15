@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      app_user_connections: {
+        Row: {
+          account_email: string | null
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          account_email?: string | null
+          connection_key_ciphertext: string
+          connector_id: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          account_email?: string | null
+          connection_key_ciphertext?: string
+          connector_id?: string
+          created_at?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       bookkeeping_entries: {
         Row: {
           amount: number
@@ -1537,6 +1567,108 @@ export type Database = {
           },
           {
             foreignKeyName: "subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_backup_runs: {
+        Row: {
+          created_at: string
+          detail: Json | null
+          error: string | null
+          id: string
+          status: string
+          tenant_id: string
+          total_rows: number
+        }
+        Insert: {
+          created_at?: string
+          detail?: Json | null
+          error?: string | null
+          id?: string
+          status: string
+          tenant_id: string
+          total_rows?: number
+        }
+        Update: {
+          created_at?: string
+          detail?: Json | null
+          error?: string | null
+          id?: string
+          status?: string
+          tenant_id?: string
+          total_rows?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_backup_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_backup_runs_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tenant_backup_settings: {
+        Row: {
+          connected_user_id: string | null
+          created_at: string
+          enabled: boolean
+          google_email: string | null
+          last_backup_at: string | null
+          last_error: string | null
+          last_status: string | null
+          spreadsheet_id: string | null
+          spreadsheet_url: string | null
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          connected_user_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          google_email?: string | null
+          last_backup_at?: string | null
+          last_error?: string | null
+          last_status?: string | null
+          spreadsheet_id?: string | null
+          spreadsheet_url?: string | null
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          connected_user_id?: string | null
+          created_at?: string
+          enabled?: boolean
+          google_email?: string | null
+          last_backup_at?: string | null
+          last_error?: string | null
+          last_status?: string | null
+          spreadsheet_id?: string | null
+          spreadsheet_url?: string | null
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tenant_backup_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tenant_backup_settings_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
             referencedRelation: "tenants_showcase"
