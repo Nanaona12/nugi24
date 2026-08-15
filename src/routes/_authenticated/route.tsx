@@ -22,6 +22,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DailyBackupTrigger } from "@/components/DailyBackupTrigger";
+
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
@@ -407,7 +409,9 @@ function AuthedLayout() {
           <main className="mx-auto w-full max-w-7xl px-4 py-6">
             <Outlet />
           </main>
+          {!sub?.isSuperAdmin && !isCashierSession && <DailyBackupTrigger />}
         </SidebarInset>
+
       </div>
     </SidebarProvider>
   );

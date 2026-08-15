@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, DatabaseBackup } from "lucide-react";
 import { toast } from "sonner";
+import { GoogleSheetsBackupCard } from "@/components/GoogleSheetsBackupCard";
+
 
 export const Route = createFileRoute("/_authenticated/backup")({
   head: () => ({
@@ -122,7 +124,9 @@ function BackupPage() {
 
   return (
     <div className="space-y-4">
+      <GoogleSheetsBackupCard />
       <Card>
+
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <DatabaseBackup className="h-5 w-5 text-primary" /> Backup Data ke Spreadsheet
