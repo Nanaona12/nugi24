@@ -492,33 +492,68 @@ function KasirPage() {
   };
 
   // Sinkron shift lintas device: selalu percaya data server
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = (await getMyOpenShiftCb({
-          data: { cashier_id: activeCashier?.id ?? null },
-        })) as { shift: ActiveShift | null };
-        if (cancelled) return;
-        if (res?.shift) {
-          persistShift(res.shift);
-          if (isCashierSession && !activeCashier) {
-            const c = { id: res.shift.cashier_id, name: res.shift.cashier_name };
-            setActiveCashier(c);
-            try { localStorage.setItem(CASHIER_KEY, JSON.stringify(c)); } catch {}
-          }
-        } else {
-          persistShift(null);
+  const syncShift = async (opts?: { silent?: boolean }) => {
+    if (!opts?.silent) setSyncing(true);
+    try {
+      const res = (await getMyOpenShiftCb({
+        data: { cashier_id: activeCashier?.id ?? null },
+      })) as { shift: ActiveShift | null };
+      if (res?.shift) {
+        const prevId = activeShiftRef.current?.shift_id;
+        persistShift(res.shift);
+        if (isCashierSession && !activeCashier) {
+          const c = { id: res.shift.cashier_id, name: res.shift.cashier_name };
+          setActiveCashier(c);
+          try { localStorage.setItem(CASHIER_KEY, JSON.stringify(c)); } catch {}
         }
-      } catch {
-        // biarkan status lokal apa adanya bila server tidak bisa dihubungi
-      } finally {
-        if (!cancelled) setShiftChecked(true);
+        if (prevId && prevId !== res.shift.shift_id) toast.info("Mengikuti shift terbaru dari device lain");
+      } else {
+        if (activeShiftRef.current) toast.info("Shift sudah ditutup di device lain");
+        persistShift(null);
       }
-    })();
-    return () => { cancelled = true; };
+      setLastSync(new Date());
+    } catch {
+      // biarkan status lokal apa adanya bila server tidak bisa dihubungi
+    } finally {
+      setSyncing(false);
+      setShiftChecked(true);
+    }
+  };
+
+  useEffect(() => {
+    syncShift({ silent: true });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Realtime: perubahan shift & transaksi dari device lain langsung tercermin di sini
+  useEffect(() => {
+    if (!tenantId) return;
+    const ch = supabase
+      .channel(`kasir-sync-${tenantId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "cashier_shifts", filter: `tenant_id=eq.${tenantId}` },
+        () => { syncShift({ silent: true }); },
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "transactions", filter: `tenant_id=eq.${tenantId}` },
+        () => { setLastSync(new Date()); },
+      )
+      .subscribe((status: string) => {
+        setRtStatus(status === "SUBSCRIBED" ? "live" : status === "CHANNEL_ERROR" || status === "TIMED_OUT" || status === "CLOSED" ? "offline" : "connecting");
+      });
+    return () => { supabase.removeChannel(ch); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantId]);
+
+  // Cadangan: sinkron ulang saat tab kembali aktif
+  useEffect(() => {
+    const onVis = () => { if (document.visibilityState === "visible") syncShift({ silent: true }); };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeCashier?.id]);
 
   // Tentukan dialog buka shift hanya setelah pengecekan server selesai
   useEffect(() => {
