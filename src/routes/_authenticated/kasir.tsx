@@ -483,6 +483,12 @@ function KasirPage() {
     setQris(null);
   };
 
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const [rtStatus, setRtStatus] = useState<RealtimeStatus>("connecting");
+  const activeShiftRef = useRef<ActiveShift | null>(activeShift);
+  useEffect(() => { activeShiftRef.current = activeShift; }, [activeShift]);
+
   const persistShift = (s: ActiveShift | null) => {
     setActiveShift(s);
     try {
