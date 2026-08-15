@@ -580,6 +580,52 @@ function RiwayatPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={editCustOpen} onOpenChange={(o) => { setEditCustOpen(o); if (!o) setEditCustTarget(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Ganti Pelanggan #{editCustTarget?.id.slice(0, 8)}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              value={custQuery}
+              onChange={(e) => setCustQuery(e.target.value)}
+              placeholder="Cari nama / nomor HP pelanggan…"
+              className="h-9"
+            />
+            <div className="max-h-[45vh] space-y-1 overflow-y-auto rounded border p-1">
+              {custList
+                .filter((c) => {
+                  const q = custQuery.trim().toLowerCase();
+                  if (!q) return true;
+                  return c.name.toLowerCase().includes(q) || (c.phone || "").includes(q);
+                })
+                .filter((c) => !!c.phone)
+                .slice(0, 100)
+                .map((c) => (
+                  <button
+                    key={c.id}
+                    disabled={savingCust}
+                    onClick={() => applyCustomer(c)}
+                    className="flex w-full items-center justify-between rounded px-2 py-2 text-left text-sm hover:bg-muted"
+                  >
+                    <span className="font-medium">{c.name}</span>
+                    <span className="text-xs text-muted-foreground">{c.phone}</span>
+                  </button>
+                ))}
+              {custList.filter((c) => !!c.phone).length === 0 && (
+                <p className="p-3 text-center text-xs text-muted-foreground">
+                  Belum ada pelanggan dengan nomor HP. Tambahkan dulu di halaman Pelanggan.
+                </p>
+              )}
+            </div>
+            <Button variant="outline" size="sm" disabled={savingCust} onClick={() => applyCustomer(null)} className="w-full">
+              Kosongkan pelanggan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
