@@ -32,6 +32,7 @@ import { Route as AuthenticatedKaryawanRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedKadaluarsaRouteImport } from './routes/_authenticated/kadaluarsa'
 import { Route as AuthenticatedHutangRouteImport } from './routes/_authenticated/hutang'
 import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
+import { Route as AuthenticatedBackupRouteImport } from './routes/_authenticated/backup'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as ApiPublicMidtransWebhookRouteImport } from './routes/api/public/midtrans-webhook'
 
@@ -150,6 +151,11 @@ const AuthenticatedCekKoneksiRoute = AuthenticatedCekKoneksiRouteImport.update({
   path: '/cek-koneksi',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedBackupRoute = AuthenticatedBackupRouteImport.update({
+  id: '/backup',
+  path: '/backup',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -168,6 +174,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/showcase': typeof ShowcaseRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
+  '/backup': typeof AuthenticatedBackupRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/hutang': typeof AuthenticatedHutangRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
@@ -194,6 +201,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/showcase': typeof ShowcaseRouteWithChildren
   '/admin': typeof AuthenticatedAdminRoute
+  '/backup': typeof AuthenticatedBackupRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/hutang': typeof AuthenticatedHutangRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
@@ -222,6 +230,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/showcase': typeof ShowcaseRouteWithChildren
   '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/backup': typeof AuthenticatedBackupRoute
   '/_authenticated/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/_authenticated/hutang': typeof AuthenticatedHutangRoute
   '/_authenticated/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
@@ -250,6 +259,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/showcase'
     | '/admin'
+    | '/backup'
     | '/cek-koneksi'
     | '/hutang'
     | '/kadaluarsa'
@@ -276,6 +286,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/showcase'
     | '/admin'
+    | '/backup'
     | '/cek-koneksi'
     | '/hutang'
     | '/kadaluarsa'
@@ -303,6 +314,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/showcase'
     | '/_authenticated/admin'
+    | '/_authenticated/backup'
     | '/_authenticated/cek-koneksi'
     | '/_authenticated/hutang'
     | '/_authenticated/kadaluarsa'
@@ -496,6 +508,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCekKoneksiRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/backup': {
+      id: '/_authenticated/backup'
+      path: '/backup'
+      fullPath: '/backup'
+      preLoaderRoute: typeof AuthenticatedBackupRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -515,6 +534,7 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedBackupRoute: typeof AuthenticatedBackupRoute
   AuthenticatedCekKoneksiRoute: typeof AuthenticatedCekKoneksiRoute
   AuthenticatedHutangRoute: typeof AuthenticatedHutangRoute
   AuthenticatedKadaluarsaRoute: typeof AuthenticatedKadaluarsaRoute
@@ -536,6 +556,7 @@ interface AuthenticatedRouteRouteChildren {
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedBackupRoute: AuthenticatedBackupRoute,
   AuthenticatedCekKoneksiRoute: AuthenticatedCekKoneksiRoute,
   AuthenticatedHutangRoute: AuthenticatedHutangRoute,
   AuthenticatedKadaluarsaRoute: AuthenticatedKadaluarsaRoute,

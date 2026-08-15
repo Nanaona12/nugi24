@@ -275,6 +275,7 @@ function AuthedLayout() {
     { to: "/promo", icon: Gift, label: "Promo" },
     { to: "/pembukuan", icon: BookOpen, label: "Pembukuan" },
     { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
+    { to: "/backup", icon: DatabaseBackup, label: "Backup Data" },
     { to: "/langganan", icon: CreditCard, label: "Langganan" },
     { to: "/pengaturan", icon: Settings, label: "Pengaturan" },
   ];
