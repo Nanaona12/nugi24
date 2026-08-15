@@ -55,7 +55,7 @@ import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
 import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-scroll";
 import { AIOrderDialog, type AiOrderItem } from "@/components/AIOrderDialog";
-import { openShift as openShiftFn, deductProductStock as deductProductStockFn } from "@/lib/cashier.functions";
+import { openShift as openShiftFn, deductProductStock as deductProductStockFn, getMyOpenShift } from "@/lib/cashier.functions";
 
 import { parseNumber } from "@/lib/format";
 
@@ -343,11 +343,14 @@ function KasirPage() {
       return null;
     }
   });
-  const [lockOpen, setLockOpen] = useState(!activeShift && !isCashierSession);
-  const [openingDialogOpen, setOpeningDialogOpen] = useState(isCashierSession && !activeShift);
+  const [shiftChecked, setShiftChecked] = useState(false);
+  const [lockOpen, setLockOpen] = useState(false);
+  const [openingDialogOpen, setOpeningDialogOpen] = useState(false);
   const [openingCash, setOpeningCash] = useState("");
   const [openingShiftLoading, setOpeningShiftLoading] = useState(false);
   const openShiftFnCb = useServerFn(openShiftFn);
+  const getMyOpenShiftCb = useServerFn(getMyOpenShift);
+
   const deductStockFn = useServerFn(deductProductStockFn);
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
@@ -487,6 +490,50 @@ function KasirPage() {
       else localStorage.removeItem(SHIFT_KEY);
     } catch {}
   };
+
+  // Sinkron shift lintas device: selalu percaya data server
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = (await getMyOpenShiftCb({
+          data: { cashier_id: activeCashier?.id ?? null },
+        })) as { shift: ActiveShift | null };
+        if (cancelled) return;
+        if (res?.shift) {
+          persistShift(res.shift);
+          if (isCashierSession && !activeCashier) {
+            const c = { id: res.shift.cashier_id, name: res.shift.cashier_name };
+            setActiveCashier(c);
+            try { localStorage.setItem(CASHIER_KEY, JSON.stringify(c)); } catch {}
+          }
+        } else {
+          persistShift(null);
+        }
+      } catch {
+        // biarkan status lokal apa adanya bila server tidak bisa dihubungi
+      } finally {
+        if (!cancelled) setShiftChecked(true);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Tentukan dialog buka shift hanya setelah pengecekan server selesai
+  useEffect(() => {
+    if (!shiftChecked) return;
+    if (activeShift) {
+      setLockOpen(false);
+      setOpeningDialogOpen(false);
+    } else if (isCashierSession) {
+      setOpeningDialogOpen(true);
+    } else {
+      setLockOpen(true);
+    }
+  }, [shiftChecked, activeShift, isCashierSession]);
+
+
 
   const handleStartShift = async () => {
     if (!activeCashier) return;

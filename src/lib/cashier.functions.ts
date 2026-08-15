@@ -210,7 +210,37 @@ export const verifyCashierPin = createServerFn({ method: "POST" })
     return { cashier: { id: (c as any).id, name: (c as any).name }, openShift: openShift ?? null };
   });
 
+/** Shift yang masih terbuka untuk tenant / kasir ini (sinkron lintas device). */
+export const getMyOpenShift = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { cashier_id?: string | null } | undefined) => d ?? {})
+  .handler(async ({ data, context }) => {
+    const tenantId = await getTenantId(context);
+    let q = context.supabase
+      .from("cashier_shifts")
+      .select("id, opened_at, opening_cash, cashier_id, cashiers(name)")
+      .eq("tenant_id", tenantId)
+      .eq("status", "open")
+      .order("opened_at", { ascending: false })
+      .limit(1);
+    if (data.cashier_id) q = q.eq("cashier_id", data.cashier_id);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    const s = (rows || [])[0] as any;
+    if (!s) return { shift: null };
+    return {
+      shift: {
+        shift_id: s.id as string,
+        cashier_id: s.cashier_id as string,
+        cashier_name: (s.cashiers?.name as string) || "Kasir",
+        opening_cash: Number(s.opening_cash) || 0,
+        opened_at: s.opened_at as string,
+      },
+    };
+  });
+
 export const openShift = createServerFn({ method: "POST" })
+
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { cashier_id: string; opening_cash: number }) => d)
   .handler(async ({ data, context }) => {
