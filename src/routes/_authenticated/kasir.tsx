@@ -491,6 +491,50 @@ function KasirPage() {
     } catch {}
   };
 
+  // Sinkron shift lintas device: selalu percaya data server
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = (await getMyOpenShiftCb({
+          data: { cashier_id: activeCashier?.id ?? null },
+        })) as { shift: ActiveShift | null };
+        if (cancelled) return;
+        if (res?.shift) {
+          persistShift(res.shift);
+          if (isCashierSession && !activeCashier) {
+            const c = { id: res.shift.cashier_id, name: res.shift.cashier_name };
+            setActiveCashier(c);
+            try { localStorage.setItem(CASHIER_KEY, JSON.stringify(c)); } catch {}
+          }
+        } else {
+          persistShift(null);
+        }
+      } catch {
+        // biarkan status lokal apa adanya bila server tidak bisa dihubungi
+      } finally {
+        if (!cancelled) setShiftChecked(true);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Tentukan dialog buka shift hanya setelah pengecekan server selesai
+  useEffect(() => {
+    if (!shiftChecked) return;
+    if (activeShift) {
+      setLockOpen(false);
+      setOpeningDialogOpen(false);
+    } else if (isCashierSession) {
+      setOpeningDialogOpen(true);
+    } else {
+      setLockOpen(true);
+    }
+  }, [shiftChecked, activeShift, isCashierSession]);
+
+
+
   const handleStartShift = async () => {
     if (!activeCashier) return;
     const cash = parseNumber(openingCash) || 0;
