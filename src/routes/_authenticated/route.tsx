@@ -409,7 +409,9 @@ function AuthedLayout() {
           <main className="mx-auto w-full max-w-7xl px-4 py-6">
             <Outlet />
           </main>
+          {!sub?.isSuperAdmin && !isCashierSession && <DailyBackupTrigger />}
         </SidebarInset>
+
       </div>
     </SidebarProvider>
   );
