@@ -1372,6 +1372,13 @@ function KasirPage() {
             <span className="text-muted-foreground italic">Belum ada kasir aktif</span>
           )}
         </div>
+        <SyncStatus
+          lastSync={lastSync}
+          status={rtStatus}
+          refreshing={syncing}
+          shiftId={activeShift?.shift_id ?? null}
+          onRefresh={() => { syncShift(); loadProducts(); }}
+        />
         <div className="flex gap-2">
           {activeShift && (
             <>
