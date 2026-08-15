@@ -22,6 +22,8 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { DailyBackupTrigger } from "@/components/DailyBackupTrigger";
+
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthedLayout,
