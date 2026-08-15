@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { Receipt, Eye, Trash2, Download, ImageIcon, Printer, Search } from "lucide-react";
+import { Receipt, Eye, Trash2, Download, ImageIcon, Printer, Search, Pencil } from "lucide-react";
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 import { printReceipt } from "@/lib/printer";
 import { loadPrinterSettings } from "@/lib/printer-settings";
@@ -73,6 +73,39 @@ function RiwayatPage() {
   const [search, setSearch] = useState("");
   const [matches, setMatches] = useState<Record<string, { name: string; qty: number; subtotal: number }[]> | null>(null);
   const [searching, setSearching] = useState(false);
+
+  const [editCustOpen, setEditCustOpen] = useState(false);
+  const [editCustTarget, setEditCustTarget] = useState<Tx | null>(null);
+  const [custQuery, setCustQuery] = useState("");
+  const [custList, setCustList] = useState<{ id: string; name: string; phone: string | null }[]>([]);
+  const [savingCust, setSavingCust] = useState(false);
+
+  const openEditCustomer = async (tx: Tx, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditCustTarget(tx);
+    setCustQuery("");
+    setEditCustOpen(true);
+    const { data } = await supabase.from("customers").select("id, name, phone").order("name").limit(500);
+    setCustList((data || []) as any[]);
+  };
+
+  const applyCustomer = async (c: { name: string; phone: string | null } | null) => {
+    if (!editCustTarget) return;
+    setSavingCust(true);
+    const { error } = await supabase
+      .from("transactions")
+      .update({ customer_phone: c?.phone || null })
+      .eq("id", editCustTarget.id);
+    setSavingCust(false);
+    if (error) { toast.error(error.message); return; }
+    const patch = { customer_phone: c?.phone || null, customer_name: c?.name || null };
+    setTxs((prev) => prev.map((t) => (t.id === editCustTarget.id ? { ...t, ...patch } : t)));
+    setSelected((prev) => (prev && prev.id === editCustTarget.id ? { ...prev, ...patch } : prev));
+    toast.success(c ? `Pelanggan diubah ke ${c.name}` : "Pelanggan dikosongkan");
+    setEditCustOpen(false);
+    setEditCustTarget(null);
+  };
+
 
   const load = async () => {
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
@@ -365,6 +398,10 @@ function RiwayatPage() {
                         <Button size="icon" variant="ghost" onClick={() => openDetail(t)}>
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button size="icon" variant="ghost" title="Ganti nama pelanggan" onClick={(e) => openEditCustomer(t, e)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+
                         <Button size="icon" variant="ghost" onClick={(e) => askDelete(t, e)} className="text-destructive hover:text-destructive">
                           <Trash2 className="h-4 w-4" />
                         </Button>
@@ -388,13 +425,17 @@ function RiwayatPage() {
             <div className="space-y-3 text-sm">
               <div className="text-xs text-muted-foreground">
                 {new Date(selected.created_at).toLocaleString("id-ID")}
-                {(selected.customer_name || selected.customer_phone) && (
-                  <div className="mt-1 text-foreground">
+                <div className="mt-1 flex items-center gap-2 text-foreground">
+                  <span>
                     Pelanggan: <span className="font-medium">{selected.customer_name || "-"}</span>
                     {selected.customer_phone && <span className="ml-1 text-muted-foreground">({selected.customer_phone})</span>}
-                  </div>
-                )}
+                  </span>
+                  <Button size="sm" variant="outline" className="h-7 px-2" onClick={() => openEditCustomer(selected)}>
+                    <Pencil className="mr-1 h-3 w-3" /> Ganti
+                  </Button>
+                </div>
               </div>
+
               <ul className="divide-y rounded border">
                 {items.map((it) => {
                   const profit = itemProfit(it);
@@ -539,6 +580,52 @@ function RiwayatPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={editCustOpen} onOpenChange={(o) => { setEditCustOpen(o); if (!o) setEditCustTarget(null); }}>
+        <DialogContent className="max-h-[85vh] overflow-hidden">
+          <DialogHeader>
+            <DialogTitle>Ganti Pelanggan #{editCustTarget?.id.slice(0, 8)}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Input
+              value={custQuery}
+              onChange={(e) => setCustQuery(e.target.value)}
+              placeholder="Cari nama / nomor HP pelanggan…"
+              className="h-9"
+            />
+            <div className="max-h-[45vh] space-y-1 overflow-y-auto rounded border p-1">
+              {custList
+                .filter((c) => {
+                  const q = custQuery.trim().toLowerCase();
+                  if (!q) return true;
+                  return c.name.toLowerCase().includes(q) || (c.phone || "").includes(q);
+                })
+                .filter((c) => !!c.phone)
+                .slice(0, 100)
+                .map((c) => (
+                  <button
+                    key={c.id}
+                    disabled={savingCust}
+                    onClick={() => applyCustomer(c)}
+                    className="flex w-full items-center justify-between rounded px-2 py-2 text-left text-sm hover:bg-muted"
+                  >
+                    <span className="font-medium">{c.name}</span>
+                    <span className="text-xs text-muted-foreground">{c.phone}</span>
+                  </button>
+                ))}
+              {custList.filter((c) => !!c.phone).length === 0 && (
+                <p className="p-3 text-center text-xs text-muted-foreground">
+                  Belum ada pelanggan dengan nomor HP. Tambahkan dulu di halaman Pelanggan.
+                </p>
+              )}
+            </div>
+            <Button variant="outline" size="sm" disabled={savingCust} onClick={() => applyCustomer(null)} className="w-full">
+              Kosongkan pelanggan
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </div>
   );
 }
