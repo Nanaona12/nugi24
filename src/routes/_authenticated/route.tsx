@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users, AlarmClock, Home, UserCog, Layers, BookOpen, Wallet, History, Gift } from "lucide-react";
+import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users, AlarmClock, Home, UserCog, Layers, BookOpen, Wallet, History, Gift, DatabaseBackup } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -275,6 +275,7 @@ function AuthedLayout() {
     { to: "/promo", icon: Gift, label: "Promo" },
     { to: "/pembukuan", icon: BookOpen, label: "Pembukuan" },
     { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
+    { to: "/backup", icon: DatabaseBackup, label: "Backup Data" },
     { to: "/langganan", icon: CreditCard, label: "Langganan" },
     { to: "/pengaturan", icon: Settings, label: "Pengaturan" },
   ];
