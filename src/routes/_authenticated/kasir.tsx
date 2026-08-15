@@ -343,11 +343,14 @@ function KasirPage() {
       return null;
     }
   });
-  const [lockOpen, setLockOpen] = useState(!activeShift && !isCashierSession);
-  const [openingDialogOpen, setOpeningDialogOpen] = useState(isCashierSession && !activeShift);
+  const [shiftChecked, setShiftChecked] = useState(false);
+  const [lockOpen, setLockOpen] = useState(false);
+  const [openingDialogOpen, setOpeningDialogOpen] = useState(false);
   const [openingCash, setOpeningCash] = useState("");
   const [openingShiftLoading, setOpeningShiftLoading] = useState(false);
   const openShiftFnCb = useServerFn(openShiftFn);
+  const getMyOpenShiftCb = useServerFn(getMyOpenShift);
+
   const deductStockFn = useServerFn(deductProductStockFn);
   const [closeOpen, setCloseOpen] = useState(false);
   const [refundOpen, setRefundOpen] = useState(false);
