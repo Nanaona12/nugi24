@@ -74,6 +74,39 @@ function RiwayatPage() {
   const [matches, setMatches] = useState<Record<string, { name: string; qty: number; subtotal: number }[]> | null>(null);
   const [searching, setSearching] = useState(false);
 
+  const [editCustOpen, setEditCustOpen] = useState(false);
+  const [editCustTarget, setEditCustTarget] = useState<Tx | null>(null);
+  const [custQuery, setCustQuery] = useState("");
+  const [custList, setCustList] = useState<{ id: string; name: string; phone: string | null }[]>([]);
+  const [savingCust, setSavingCust] = useState(false);
+
+  const openEditCustomer = async (tx: Tx, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setEditCustTarget(tx);
+    setCustQuery("");
+    setEditCustOpen(true);
+    const { data } = await supabase.from("customers").select("id, name, phone").order("name").limit(500);
+    setCustList((data || []) as any[]);
+  };
+
+  const applyCustomer = async (c: { name: string; phone: string | null } | null) => {
+    if (!editCustTarget) return;
+    setSavingCust(true);
+    const { error } = await supabase
+      .from("transactions")
+      .update({ customer_phone: c?.phone || null })
+      .eq("id", editCustTarget.id);
+    setSavingCust(false);
+    if (error) { toast.error(error.message); return; }
+    const patch = { customer_phone: c?.phone || null, customer_name: c?.name || null };
+    setTxs((prev) => prev.map((t) => (t.id === editCustTarget.id ? { ...t, ...patch } : t)));
+    setSelected((prev) => (prev && prev.id === editCustTarget.id ? { ...prev, ...patch } : prev));
+    toast.success(c ? `Pelanggan diubah ke ${c.name}` : "Pelanggan dikosongkan");
+    setEditCustOpen(false);
+    setEditCustTarget(null);
+  };
+
+
   const load = async () => {
     const since = new Date(Date.now() - 30 * 86400000).toISOString();
     const { data, error } = await supabase
