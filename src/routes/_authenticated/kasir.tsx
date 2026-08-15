@@ -51,6 +51,7 @@ import { printReceipt } from "@/lib/printer";
 import { loadPrinterSettings } from "@/lib/printer-settings";
 import { Printer } from "lucide-react";
 import { CashierLock, type ActiveShift } from "@/components/CashierLock";
+import { SyncStatus, type RealtimeStatus } from "@/components/SyncStatus";
 import { ShiftCloseDialog } from "@/components/ShiftCloseDialog";
 import { RefundDialog } from "@/components/RefundDialog";
 import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-scroll";
