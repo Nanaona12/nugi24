@@ -398,6 +398,10 @@ function RiwayatPage() {
                         <Button size="icon" variant="ghost" onClick={() => openDetail(t)}>
                           <Eye className="h-4 w-4" />
                         </Button>
+                        <Button size="icon" variant="ghost" title="Ganti nama pelanggan" onClick={(e) => openEditCustomer(t, e)}>
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+
                         <Button size="icon" variant="ghost" onClick={(e) => askDelete(t, e)} className="text-destructive hover:text-destructive">
                           <Trash2 className="h-4 w-4" />
                         </Button>
