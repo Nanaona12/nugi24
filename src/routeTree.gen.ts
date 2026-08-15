@@ -34,6 +34,7 @@ import { Route as AuthenticatedHutangRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
 import { Route as AuthenticatedBackupRouteImport } from './routes/_authenticated/backup'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
+import { Route as OauthGoogleSheetsReturnRouteImport } from './routes/oauth.google-sheets.return'
 import { Route as ApiPublicMidtransWebhookRouteImport } from './routes/api/public/midtrans-webhook'
 
 const ShowcaseRoute = ShowcaseRouteImport.update({
@@ -161,6 +162,11 @@ const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const OauthGoogleSheetsReturnRoute = OauthGoogleSheetsReturnRouteImport.update({
+  id: '/oauth/google-sheets/return',
+  path: '/oauth/google-sheets/return',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicMidtransWebhookRoute =
   ApiPublicMidtransWebhookRouteImport.update({
     id: '/api/public/midtrans-webhook',
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/stok-log': typeof AuthenticatedStokLogRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
+  '/oauth/google-sheets/return': typeof OauthGoogleSheetsReturnRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -221,6 +228,7 @@ export interface FileRoutesByTo {
   '/stok-log': typeof AuthenticatedStokLogRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
+  '/oauth/google-sheets/return': typeof OauthGoogleSheetsReturnRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -250,6 +258,7 @@ export interface FileRoutesById {
   '/_authenticated/stok-log': typeof AuthenticatedStokLogRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
+  '/oauth/google-sheets/return': typeof OauthGoogleSheetsReturnRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -279,6 +288,7 @@ export interface FileRouteTypes {
     | '/stok-log'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
+    | '/oauth/google-sheets/return'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -306,6 +316,7 @@ export interface FileRouteTypes {
     | '/stok-log'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
+    | '/oauth/google-sheets/return'
   id:
     | '__root__'
     | '/'
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
     | '/_authenticated/stok-log'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
+    | '/oauth/google-sheets/return'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -343,6 +355,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   ShowcaseRoute: typeof ShowcaseRouteWithChildren
   ApiPublicMidtransWebhookRoute: typeof ApiPublicMidtransWebhookRoute
+  OauthGoogleSheetsReturnRoute: typeof OauthGoogleSheetsReturnRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -522,6 +535,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/oauth/google-sheets/return': {
+      id: '/oauth/google-sheets/return'
+      path: '/oauth/google-sheets/return'
+      fullPath: '/oauth/google-sheets/return'
+      preLoaderRoute: typeof OauthGoogleSheetsReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/midtrans-webhook': {
       id: '/api/public/midtrans-webhook'
       path: '/api/public/midtrans-webhook'
@@ -598,6 +618,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   ShowcaseRoute: ShowcaseRouteWithChildren,
   ApiPublicMidtransWebhookRoute: ApiPublicMidtransWebhookRoute,
+  OauthGoogleSheetsReturnRoute: OauthGoogleSheetsReturnRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
