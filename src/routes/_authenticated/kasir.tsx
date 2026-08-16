@@ -1491,7 +1491,10 @@ function KasirPage() {
                 <div className="text-xs text-muted-foreground">{formatRupiah(parseNumber(openingCash) || 0)}</div>
               )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={exitToAuth} disabled={openingShiftLoading}>
+                <LogOutIcon className="mr-1 h-4 w-4" /> Keluar
+              </Button>
               <Button onClick={handleStartShift} disabled={openingShiftLoading}>
                 {openingShiftLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Mulai Shift
               </Button>
