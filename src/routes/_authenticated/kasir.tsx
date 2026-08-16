@@ -1454,7 +1454,10 @@ function KasirPage() {
         <Dialog
           open={openingDialogOpen}
           onOpenChange={(o) => {
-            if (!o && activeShift) setOpeningDialogOpen(false);
+            if (!o) {
+              if (activeShift) setOpeningDialogOpen(false);
+              else exitToAuth();
+            }
           }}
         >
           <DialogContent
