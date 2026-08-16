@@ -108,7 +108,7 @@ export function CashierLock({ open, onUnlocked, forceLocked = true, onClose, onE
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o && !forceLocked) onClose?.(); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o) { if (forceLocked) onExit?.(); else onClose?.(); } }}>
       <DialogContent
         className="max-w-md"
         onInteractOutside={(e) => { if (forceLocked) e.preventDefault(); }}

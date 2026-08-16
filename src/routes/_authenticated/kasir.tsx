@@ -1,5 +1,6 @@
 import { createFileRoute, useRouter } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { ProductImage } from "@/components/ProductImage";
 import { Button } from "@/components/ui/button";
@@ -161,6 +162,7 @@ function buildReceiptLine(
 
 function KasirPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [products, setProducts] = useState<Product[]>([]);
   const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [clearanceMap, setClearanceMap] = useState<Record<string, { promoId: string; price: number; normalPrice: number }>>({});
@@ -598,6 +600,21 @@ function KasirPage() {
     } finally {
       setOpeningShiftLoading(false);
     }
+  };
+
+  const exitToAuth = async () => {
+    try {
+      await queryClient.cancelQueries();
+    } catch {}
+    queryClient.clear();
+    try {
+      localStorage.removeItem(CASHIER_KEY);
+      localStorage.removeItem(SHIFT_KEY);
+    } catch {}
+    setActiveCashier(null);
+    persistShift(null);
+    await supabase.auth.signOut({ scope: "local" });
+    router.navigate({ to: "/auth", replace: true });
   };
 
   const shiftClosedRef = useRef(false);
@@ -1437,7 +1454,10 @@ function KasirPage() {
         <Dialog
           open={openingDialogOpen}
           onOpenChange={(o) => {
-            if (!o && activeShift) setOpeningDialogOpen(false);
+            if (!o) {
+              if (activeShift) setOpeningDialogOpen(false);
+              else exitToAuth();
+            }
           }}
         >
           <DialogContent
@@ -1471,7 +1491,10 @@ function KasirPage() {
                 <div className="text-xs text-muted-foreground">{formatRupiah(parseNumber(openingCash) || 0)}</div>
               )}
             </div>
-            <DialogFooter>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={exitToAuth} disabled={openingShiftLoading}>
+                <LogOutIcon className="mr-1 h-4 w-4" /> Keluar
+              </Button>
               <Button onClick={handleStartShift} disabled={openingShiftLoading}>
                 {openingShiftLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Mulai Shift
               </Button>
