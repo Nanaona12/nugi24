@@ -1277,6 +1277,7 @@ function KeuntunganPage() {
                 <div className="rounded-md border bg-muted/40 p-2 text-[11px] leading-relaxed">
                   <div>Cadangan toko: <b className="text-sky-600">{formatRupiah(reserveAmount)}</b> ({reservePercent}%)</div>
                   <div>Aman diambil sekarang: <b className={available < 0 ? "text-destructive" : "text-emerald-600"}>{formatRupiah(available)}</b></div>
+                  <div>Total semua (aman + cadangan): <b>{formatRupiah(Math.max(0, available + reserveAmount))}</b></div>
                 </div>
                 <div className="grid gap-1">
                   <Label className="text-xs">Tanggal</Label>
@@ -1285,12 +1286,33 @@ function KeuntunganPage() {
                 <div className="grid gap-1">
                   <Label className="text-xs">Nominal (Rp)</Label>
                   <Input type="number" inputMode="decimal" value={wAmount} onChange={(e) => setWAmount(e.target.value)} placeholder="0" />
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-[11px]"
+                      onClick={() => setWAmount(String(Math.max(0, Math.floor(available))))}
+                    >
+                      Ambil Aman ({formatRupiah(Math.max(0, available))})
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="secondary"
+                      className="h-7 text-[11px]"
+                      onClick={() => setWAmount(String(Math.max(0, Math.floor(available + reserveAmount))))}
+                    >
+                      Ambil Semua ({formatRupiah(Math.max(0, available + reserveAmount))})
+                    </Button>
+                  </div>
                   {overLimit && (
                     <div className="mt-1 rounded-md border border-destructive/40 bg-destructive/5 p-2 text-[11px] text-destructive">
                       ⚠️ Melebihi batas aman sebesar <b>{formatRupiah(overBy)}</b>. Ini akan memakan cadangan pengembangan toko. Kamu tetap bisa lanjut jika memang perlu.
                     </div>
                   )}
                 </div>
+
                 <div className="grid gap-1">
                   <Label className="text-xs">Keterangan (opsional)</Label>
                   <Textarea value={wNote} onChange={(e) => setWNote(e.target.value)} placeholder="mis. Ambil untung bulan Juli" rows={2} />
