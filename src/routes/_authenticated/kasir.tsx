@@ -162,6 +162,7 @@ function buildReceiptLine(
 
 function KasirPage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [products, setProducts] = useState<Product[]>([]);
   const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
   const [clearanceMap, setClearanceMap] = useState<Record<string, { promoId: string; price: number; normalPrice: number }>>({});
