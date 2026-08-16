@@ -602,6 +602,21 @@ function KasirPage() {
     }
   };
 
+  const exitToAuth = async () => {
+    try {
+      await queryClient.cancelQueries();
+    } catch {}
+    queryClient.clear();
+    try {
+      localStorage.removeItem(CASHIER_KEY);
+      localStorage.removeItem(SHIFT_KEY);
+    } catch {}
+    setActiveCashier(null);
+    persistShift(null);
+    await supabase.auth.signOut({ scope: "local" });
+    router.navigate({ to: "/auth", replace: true });
+  };
+
   const shiftClosedRef = useRef(false);
   const handleShiftClosed = async () => {
     // Shift sudah ditutup di server. Jangan tutup dialog dulu supaya user
