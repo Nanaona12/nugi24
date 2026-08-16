@@ -1442,7 +1442,7 @@ function KasirPage() {
           onClose={() => {
             if (activeShift) setLockOpen(false);
           }}
-          onExit={() => router.navigate({ to: "/produk", replace: true })}
+          onExit={() => { void exitToAuth(); }}
           onUnlocked={(s) => {
             persistShift(s);
             setLockOpen(false);
