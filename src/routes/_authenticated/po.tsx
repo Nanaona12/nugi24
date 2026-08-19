@@ -1158,7 +1158,7 @@ function POPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Supplier *</Label>
-              <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Nama supplier" />
+              <SupplierCombobox value={supplier} onChange={setSupplier} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Catatan</Label>
