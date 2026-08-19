@@ -351,33 +351,35 @@ function AuthedLayout() {
             </div>
           </SidebarHeader>
           <SidebarContent>
-            <SidebarGroup>
-              <SidebarGroupLabel>Menu</SidebarGroupLabel>
-              <SidebarGroupContent>
-                <SidebarMenu>
-                  {navItems.map((item) => {
-                    const Icon = item.icon;
-                    const active = pathname === item.to || pathname.startsWith(item.to + "/");
-                    const showDebtBadge = item.to === "/hutang" && openDebts > 0;
-                    return (
-                      <SidebarMenuItem key={item.to}>
-                        <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
-                          <Link to={item.to}>
-                            <Icon className="h-4 w-4" />
-                            <span className="flex-1">{item.label}</span>
-                            {showDebtBadge && (
-                              <Badge variant="destructive" className="ml-auto h-5 px-1.5 text-[10px] group-data-[collapsible=icon]:hidden">
-                                {openDebts}
-                              </Badge>
-                            )}
-                          </Link>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </SidebarMenu>
-              </SidebarGroupContent>
-            </SidebarGroup>
+            {navGroups.map((group) => (
+              <SidebarGroup key={group.label}>
+                <SidebarGroupLabel>{group.label}</SidebarGroupLabel>
+                <SidebarGroupContent>
+                  <SidebarMenu>
+                    {group.items.map((item) => {
+                      const Icon = item.icon;
+                      const active = pathname === item.to || pathname.startsWith(item.to + "/");
+                      const showDebtBadge = item.to === "/hutang" && openDebts > 0;
+                      return (
+                        <SidebarMenuItem key={item.to}>
+                          <SidebarMenuButton asChild isActive={active} tooltip={item.label}>
+                            <Link to={item.to}>
+                              <Icon className="h-4 w-4" />
+                              <span className="flex-1">{item.label}</span>
+                              {showDebtBadge && (
+                                <Badge variant="destructive" className="ml-auto h-5 px-1.5 text-[10px] group-data-[collapsible=icon]:hidden">
+                                  {openDebts}
+                                </Badge>
+                              )}
+                            </Link>
+                          </SidebarMenuButton>
+                        </SidebarMenuItem>
+                      );
+                    })}
+                  </SidebarMenu>
+                </SidebarGroupContent>
+              </SidebarGroup>
+            ))}
           </SidebarContent>
           <SidebarFooter>
             <div className="px-2 py-1 text-xs text-sidebar-foreground/70 group-data-[collapsible=icon]:hidden">
