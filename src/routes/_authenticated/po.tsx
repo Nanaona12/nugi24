@@ -134,6 +134,10 @@ function POPage() {
   });
   const [lowCategoryFilter, setLowCategoryFilter] = useState<string>("");
   const [selectedLowIds, setSelectedLowIds] = useState<Set<string>>(new Set());
+  const [lowSort, setLowSort] = useState<"priority" | "name" | "stock">("priority");
+  const [onlyFastMoving, setOnlyFastMoving] = useState(false);
+  const [salesStats, setSalesStats] = useState<Record<string, { qtyBase: number; receipts: number }>>({});
+
 
   // Form
   const [supplier, setSupplier] = useState("");
