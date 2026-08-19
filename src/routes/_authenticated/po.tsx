@@ -40,6 +40,7 @@ import {
   X as XIcon,
   CalendarIcon,
   ChevronsUpDown,
+  Truck,
 } from "lucide-react";
 import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
 import { SupplierCombobox } from "@/components/SupplierCombobox";
