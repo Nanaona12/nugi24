@@ -120,6 +120,15 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Dibatalkan",
 };
 
+const PRIORITY_META: Record<"urgent" | "high" | "medium" | "low", { label: string; variant: "destructive" | "default" | "secondary" | "outline" }> = {
+  urgent: { label: "Mendesak", variant: "destructive" },
+  high: { label: "Tinggi", variant: "default" },
+  medium: { label: "Sedang", variant: "secondary" },
+  low: { label: "Rendah", variant: "outline" },
+};
+
+
+
 function POPage() {
   const [pos, setPos] = useState<PO[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
