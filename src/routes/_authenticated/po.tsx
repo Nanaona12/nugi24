@@ -42,6 +42,8 @@ import {
   ChevronsUpDown,
 } from "lucide-react";
 import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
+import { SupplierCombobox } from "@/components/SupplierCombobox";
+import { loadCheapestSupplierMap, type CheapestInfo } from "@/lib/supplier-compare";
 import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
 import { ReceivingDialog } from "@/components/ReceivingDialog";
 import { PackageCheck } from "lucide-react";
