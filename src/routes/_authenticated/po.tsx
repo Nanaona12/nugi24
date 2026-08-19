@@ -962,9 +962,11 @@ function POPage() {
                       }}
                     />
                   </th>
+                  <th className="p-2">Prioritas</th>
                   <th className="p-2">Kode</th>
                   <th className="p-2">Nama</th>
                   <th className="p-2">Kategori</th>
+                  <th className="p-2 text-right">Laku 30hr</th>
                   <th className="p-2 text-right">Stok</th>
                   <th className="p-2 text-right w-24">Batas</th>
                   <th className="p-2 text-right">Harga</th>
@@ -976,6 +978,7 @@ function POPage() {
                   const out = (p.stock ?? 0) <= 0;
                   const isCustom = p.min_stock != null;
                   const checked = selectedLowIds.has(p.id);
+                  const prio = PRIORITY_META[p.level];
                   return (
                     <tr key={p.id} className="border-t hover:bg-muted/40">
                       <td className="p-2">
@@ -991,9 +994,25 @@ function POPage() {
                           }}
                         />
                       </td>
+                      <td className="p-2">
+                        <Badge variant={prio.variant} className="text-[10px] whitespace-nowrap">{prio.label}</Badge>
+                      </td>
                       <td className="p-2 font-mono text-xs">{p.code}</td>
                       <td className="p-2 font-medium">{p.name}</td>
                       <td className="p-2 text-xs text-muted-foreground">{p.category || "-"}</td>
+                      <td className="p-2 text-right text-xs">
+                        {p.sold30 > 0 ? (
+                          <div className="leading-tight">
+                            <div className="font-medium">{p.sold30} pcs</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {p.receipts} struk • {out ? "stok habis" : `~${p.daysLeft < 1 ? "<1" : Math.round(p.daysLeft)} hr lagi`}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">belum laku</span>
+                        )}
+                      </td>
+
                       <td className="p-2 text-right">
                         <Badge variant={out ? "destructive" : "secondary"}>
                           {out ? "Habis" : `${p.stock} tersisa`}
