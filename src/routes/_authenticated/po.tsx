@@ -178,7 +178,28 @@ function POPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  const loadSalesStats = async () => {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await (supabase as any)
+      .from("transaction_items")
+      .select("product_id, qty, unit_conversion, transaction_id, transactions!inner(created_at)")
+      .gte("transactions.created_at", since)
+      .limit(20000);
+    if (error) { console.warn("salesStats:", error.message); return; }
+    const acc: Record<string, { qtyBase: number; receipts: Set<string> }> = {};
+    for (const row of (data || []) as any[]) {
+      if (!row.product_id) continue;
+      const cur = acc[row.product_id] || (acc[row.product_id] = { qtyBase: 0, receipts: new Set<string>() });
+      cur.qtyBase += (Number(row.qty) || 0) * Math.max(1, Number(row.unit_conversion) || 1);
+      if (row.transaction_id) cur.receipts.add(row.transaction_id);
+    }
+    const out: Record<string, { qtyBase: number; receipts: number }> = {};
+    for (const [id, v] of Object.entries(acc)) out[id] = { qtyBase: v.qtyBase, receipts: v.receipts.size };
+    setSalesStats(out);
+  };
+
+  useEffect(() => { load(); loadSalesStats(); }, []);
+
 
   const filteredPos = pos.filter((p) => {
     const q = query.trim().toLowerCase();
