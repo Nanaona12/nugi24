@@ -148,6 +148,7 @@ function POPage() {
   const [lowSort, setLowSort] = useState<"priority" | "name" | "stock">("priority");
   const [onlyFastMoving, setOnlyFastMoving] = useState(false);
   const [salesStats, setSalesStats] = useState<Record<string, { qtyBase: number; receipts: number }>>({});
+  const [cheapestBySupplier, setCheapestBySupplier] = useState<Record<string, CheapestInfo>>({});
 
 
   // Form
