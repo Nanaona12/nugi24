@@ -361,25 +361,31 @@ function POPage() {
 
 
 
-  const openCreateForLowStock = (mode: "out" | "low" | "selected") => {
-    const base = lowCategoryFilter ? filteredLowStock : lowStockProducts;
+  const suggestQty = (p: LowRow) => {
+    const need14 = Math.ceil((p.velocity || 0) * 14);
+    const target = Math.max(need14, effectiveThreshold(p) * 2, 10);
+    return Math.max(1, target - (p.stock ?? 0));
+  };
+
+  const openCreateForLowStock = (mode: "out" | "low" | "selected" | "priority") => {
+    const base = (lowCategoryFilter || onlyFastMoving) ? filteredLowStock : lowStockProducts;
     const pool = mode === "out"
       ? base.filter((p) => (p.stock ?? 0) <= 0)
       : mode === "selected"
         ? selectedLowProducts
-        : base;
+        : mode === "priority"
+          ? priorityProducts
+          : base;
     if (pool.length === 0) {
       toast.info(mode === "selected" ? "Pilih produk dulu" : "Tidak ada produk yang perlu di-restock");
       return;
     }
     resetForm();
-    setItems(pool.map((p) => {
-      const target = Math.max(effectiveThreshold(p) * 2, 10);
-      return buildDraftItem(p, target - (p.stock ?? 0));
-    }));
+    setItems(pool.map((p) => buildDraftItem(p, suggestQty(p))));
 
     setCreateOpen(true);
   };
+
 
   const addLowStockToDraft = (p: Product) => {
     const target = Math.max(effectiveThreshold(p) * 2, 10);
