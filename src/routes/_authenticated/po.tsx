@@ -250,11 +250,38 @@ function POPage() {
     p.min_stock != null && p.min_stock >= 0 ? p.min_stock : lowThreshold;
 
   const lowStockProducts = useMemo(() => {
-    return products
+    const rows = products
       .filter((p) => (p.stock ?? 0) <= effectiveThreshold(p))
-      .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0));
+      .map((p) => {
+        const st = salesStats[p.id];
+        const sold30 = st?.qtyBase ?? 0;
+        const receipts = st?.receipts ?? 0;
+        const velocity = sold30 / 30;
+        const stock = p.stock ?? 0;
+        const daysLeft = velocity > 0 ? stock / velocity : Infinity;
+        let score = 0;
+        if (velocity > 0) {
+          score = stock <= 0
+            ? 1e6 + velocity * Math.log(1 + receipts)
+            : (velocity * Math.log(1 + receipts)) / Math.max(daysLeft, 0.5);
+        }
+        const level: "urgent" | "high" | "medium" | "low" =
+          velocity <= 0 ? "low"
+            : daysLeft <= 3 ? "urgent"
+              : daysLeft <= 7 ? "high"
+                : daysLeft <= 14 ? "medium" : "low";
+        return { ...p, sold30, receipts, velocity, daysLeft, score, level };
+      });
+    return rows.sort((a, b) => {
+      if (lowSort === "name") return a.name.localeCompare(b.name);
+      if (lowSort === "stock") return (a.stock ?? 0) - (b.stock ?? 0);
+      if (b.score !== a.score) return b.score - a.score;
+      return (a.stock ?? 0) - (b.stock ?? 0);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, lowThreshold]);
+  }, [products, lowThreshold, salesStats, lowSort]);
+
+  type LowRow = (typeof lowStockProducts)[number];
 
   const outOfStockCount = lowStockProducts.filter((p) => (p.stock ?? 0) <= 0).length;
   const customThresholdCount = products.filter((p) => p.min_stock != null).length;
@@ -266,12 +293,19 @@ function POPage() {
   }, [lowStockProducts]);
 
   const filteredLowStock = useMemo(() => {
-    if (!lowCategoryFilter) return lowStockProducts;
     return lowStockProducts.filter((p) => {
+      if (onlyFastMoving && p.sold30 <= 0) return false;
+      if (!lowCategoryFilter) return true;
       const c = (p.category || "").trim() || "Tanpa Kategori";
       return c === lowCategoryFilter;
     });
-  }, [lowStockProducts, lowCategoryFilter]);
+  }, [lowStockProducts, lowCategoryFilter, onlyFastMoving]);
+
+  const priorityProducts = useMemo(
+    () => filteredLowStock.filter((p) => p.level === "urgent" || p.level === "high"),
+    [filteredLowStock],
+  );
+
 
   const selectedLowProducts = useMemo(
     () => filteredLowStock.filter((p) => selectedLowIds.has(p.id)),
