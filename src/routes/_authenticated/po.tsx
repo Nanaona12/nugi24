@@ -887,6 +887,35 @@ function POPage() {
                 })}
               </select>
             </div>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs whitespace-nowrap">Urutkan</Label>
+              <select
+                className="h-8 rounded-md border bg-background px-2 text-xs"
+                value={lowSort}
+                onChange={(e) => setLowSort(e.target.value as any)}
+              >
+                <option value="priority">Prioritas</option>
+                <option value="name">Nama</option>
+                <option value="stock">Stok terkecil</option>
+              </select>
+            </div>
+            <Button
+              size="sm"
+              variant={onlyFastMoving ? "default" : "outline"}
+              onClick={() => { setOnlyFastMoving((v) => !v); setSelectedLowIds(new Set()); }}
+              title="Sembunyikan produk yang tidak laku 30 hari terakhir"
+            >
+              Hanya laris
+            </Button>
+            {priorityProducts.length > 0 && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => openCreateForLowStock("priority")}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Buat PO Prioritas ({priorityProducts.length})
+              </Button>
+            )}
             {selectedLowProducts.length > 0 && (
               <Button
                 size="sm"
@@ -896,6 +925,7 @@ function POPage() {
                 <Plus className="mr-2 h-4 w-4" /> Buat PO Terpilih ({selectedLowProducts.length})
               </Button>
             )}
+
             {outOfStockCount > 0 && (
               <Button
                 size="sm"
