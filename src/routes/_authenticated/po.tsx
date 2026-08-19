@@ -1293,6 +1293,7 @@ function POPage() {
                             className="h-10 text-sm font-semibold pr-9"
                             placeholder="Nama barang / pilih"
                           />
+                          <CheapestHint productId={it.product_id} />
                           <Input
                             value={it.product_code}
                             onChange={(e) => updateItem(i, { product_code: e.target.value })}
