@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShowcaseSlugRouteImport } from './routes/showcase.$slug'
+import { Route as AuthenticatedSupplierRouteImport } from './routes/_authenticated/supplier'
 import { Route as AuthenticatedStokLogRouteImport } from './routes/_authenticated/stok-log'
 import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
 import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
@@ -65,6 +66,11 @@ const ShowcaseSlugRoute = ShowcaseSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => ShowcaseRoute,
+} as any)
+const AuthenticatedSupplierRoute = AuthenticatedSupplierRouteImport.update({
+  id: '/supplier',
+  path: '/supplier',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedStokLogRoute = AuthenticatedStokLogRouteImport.update({
   id: '/stok-log',
@@ -198,6 +204,7 @@ export interface FileRoutesByFullPath {
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/stok-log': typeof AuthenticatedStokLogRoute
+  '/supplier': typeof AuthenticatedSupplierRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
   '/oauth/google-sheets/return': typeof OauthGoogleSheetsReturnRoute
@@ -226,6 +233,7 @@ export interface FileRoutesByTo {
   '/riwayat': typeof AuthenticatedRiwayatRoute
   '/shift': typeof AuthenticatedShiftRoute
   '/stok-log': typeof AuthenticatedStokLogRoute
+  '/supplier': typeof AuthenticatedSupplierRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
   '/oauth/google-sheets/return': typeof OauthGoogleSheetsReturnRoute
@@ -256,6 +264,7 @@ export interface FileRoutesById {
   '/_authenticated/riwayat': typeof AuthenticatedRiwayatRoute
   '/_authenticated/shift': typeof AuthenticatedShiftRoute
   '/_authenticated/stok-log': typeof AuthenticatedStokLogRoute
+  '/_authenticated/supplier': typeof AuthenticatedSupplierRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
   '/oauth/google-sheets/return': typeof OauthGoogleSheetsReturnRoute
@@ -286,6 +295,7 @@ export interface FileRouteTypes {
     | '/riwayat'
     | '/shift'
     | '/stok-log'
+    | '/supplier'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
     | '/oauth/google-sheets/return'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
     | '/riwayat'
     | '/shift'
     | '/stok-log'
+    | '/supplier'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
     | '/oauth/google-sheets/return'
@@ -343,6 +354,7 @@ export interface FileRouteTypes {
     | '/_authenticated/riwayat'
     | '/_authenticated/shift'
     | '/_authenticated/stok-log'
+    | '/_authenticated/supplier'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
     | '/oauth/google-sheets/return'
@@ -401,6 +413,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/showcase/$slug'
       preLoaderRoute: typeof ShowcaseSlugRouteImport
       parentRoute: typeof ShowcaseRoute
+    }
+    '/_authenticated/supplier': {
+      id: '/_authenticated/supplier'
+      path: '/supplier'
+      fullPath: '/supplier'
+      preLoaderRoute: typeof AuthenticatedSupplierRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/stok-log': {
       id: '/_authenticated/stok-log'
@@ -572,6 +591,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRiwayatRoute: typeof AuthenticatedRiwayatRoute
   AuthenticatedShiftRoute: typeof AuthenticatedShiftRoute
   AuthenticatedStokLogRoute: typeof AuthenticatedStokLogRoute
+  AuthenticatedSupplierRoute: typeof AuthenticatedSupplierRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -594,6 +614,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRiwayatRoute: AuthenticatedRiwayatRoute,
   AuthenticatedShiftRoute: AuthenticatedShiftRoute,
   AuthenticatedStokLogRoute: AuthenticatedStokLogRoute,
+  AuthenticatedSupplierRoute: AuthenticatedSupplierRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -40,8 +40,11 @@ import {
   X as XIcon,
   CalendarIcon,
   ChevronsUpDown,
+  Truck,
 } from "lucide-react";
 import { AIInvoiceCapture } from "@/components/AIInvoiceCapture";
+import { SupplierCombobox } from "@/components/SupplierCombobox";
+import { loadCheapestSupplierMap, type CheapestInfo } from "@/lib/supplier-compare";
 import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
 import { ReceivingDialog } from "@/components/ReceivingDialog";
 import { PackageCheck } from "lucide-react";
@@ -146,6 +149,7 @@ function POPage() {
   const [lowSort, setLowSort] = useState<"priority" | "name" | "stock">("priority");
   const [onlyFastMoving, setOnlyFastMoving] = useState(false);
   const [salesStats, setSalesStats] = useState<Record<string, { qtyBase: number; receipts: number }>>({});
+  const [cheapestBySupplier, setCheapestBySupplier] = useState<Record<string, CheapestInfo>>({});
 
 
   // Form
@@ -207,7 +211,23 @@ function POPage() {
     setSalesStats(out);
   };
 
-  useEffect(() => { load(); loadSalesStats(); }, []);
+  useEffect(() => {
+    load();
+    loadSalesStats();
+    loadCheapestSupplierMap()
+      .then(setCheapestBySupplier)
+      .catch((e: any) => console.warn("cheapestSupplier:", e?.message || e));
+  }, []);
+
+  const CheapestHint = ({ productId }: { productId: string | null }) => {
+    const info = productId ? cheapestBySupplier[productId] : null;
+    if (!info) return null;
+    return (
+      <div className="truncate text-[10px] text-muted-foreground" title={`Termurah: ${info.supplier}`}>
+        Termurah: <span className="font-medium text-foreground">{info.supplier}</span> · {formatRupiah(info.perBase)}/pcs
+      </div>
+    );
+  };
 
 
   const filteredPos = pos.filter((p) => {
@@ -813,6 +833,11 @@ function POPage() {
             className="pl-9"
           />
         </div>
+        <Button asChild variant="outline">
+          <Link to="/supplier">
+            <Truck className="mr-2 h-4 w-4" /> Supplier
+          </Link>
+        </Button>
         <Button onClick={() => { resetForm(); setCreateOpen(true); }}>
           <Plus className="mr-2 h-4 w-4" /> Buat PO
         </Button>
@@ -1158,7 +1183,7 @@ function POPage() {
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
               <Label className="text-xs">Supplier *</Label>
-              <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="Nama supplier" />
+              <SupplierCombobox value={supplier} onChange={setSupplier} />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Catatan</Label>
@@ -1274,6 +1299,7 @@ function POPage() {
                             className="h-10 text-sm font-semibold pr-9"
                             placeholder="Nama barang / pilih"
                           />
+                          <CheapestHint productId={it.product_id} />
                           <Input
                             value={it.product_code}
                             onChange={(e) => updateItem(i, { product_code: e.target.value })}
@@ -1461,6 +1487,7 @@ function POPage() {
                                 className="h-9 w-full text-sm px-2 pr-8"
                                 placeholder="Nama / pilih"
                               />
+                              <CheapestHint productId={it.product_id} />
                             </td>
                             <td className="p-1">
                               <Input list="po-cats" value={it.category} onChange={(e) => updateItem(i, { category: e.target.value })} className="h-9 w-full text-xs px-2" placeholder="Pilih/ketik" disabled={!!it.product_id} title={it.category} />
