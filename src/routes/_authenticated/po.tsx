@@ -120,6 +120,15 @@ const STATUS_LABEL: Record<string, string> = {
   cancelled: "Dibatalkan",
 };
 
+const PRIORITY_META: Record<"urgent" | "high" | "medium" | "low", { label: string; variant: "destructive" | "default" | "secondary" | "outline" }> = {
+  urgent: { label: "Mendesak", variant: "destructive" },
+  high: { label: "Tinggi", variant: "default" },
+  medium: { label: "Sedang", variant: "secondary" },
+  low: { label: "Rendah", variant: "outline" },
+};
+
+
+
 function POPage() {
   const [pos, setPos] = useState<PO[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
@@ -134,6 +143,10 @@ function POPage() {
   });
   const [lowCategoryFilter, setLowCategoryFilter] = useState<string>("");
   const [selectedLowIds, setSelectedLowIds] = useState<Set<string>>(new Set());
+  const [lowSort, setLowSort] = useState<"priority" | "name" | "stock">("priority");
+  const [onlyFastMoving, setOnlyFastMoving] = useState(false);
+  const [salesStats, setSalesStats] = useState<Record<string, { qtyBase: number; receipts: number }>>({});
+
 
   // Form
   const [supplier, setSupplier] = useState("");
@@ -174,7 +187,28 @@ function POPage() {
     }
   };
 
-  useEffect(() => { load(); }, []);
+  const loadSalesStats = async () => {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const { data, error } = await (supabase as any)
+      .from("transaction_items")
+      .select("product_id, qty, unit_conversion, transaction_id, transactions!inner(created_at)")
+      .gte("transactions.created_at", since)
+      .limit(20000);
+    if (error) { console.warn("salesStats:", error.message); return; }
+    const acc: Record<string, { qtyBase: number; receipts: Set<string> }> = {};
+    for (const row of (data || []) as any[]) {
+      if (!row.product_id) continue;
+      const cur = acc[row.product_id] || (acc[row.product_id] = { qtyBase: 0, receipts: new Set<string>() });
+      cur.qtyBase += (Number(row.qty) || 0) * Math.max(1, Number(row.unit_conversion) || 1);
+      if (row.transaction_id) cur.receipts.add(row.transaction_id);
+    }
+    const out: Record<string, { qtyBase: number; receipts: number }> = {};
+    for (const [id, v] of Object.entries(acc)) out[id] = { qtyBase: v.qtyBase, receipts: v.receipts.size };
+    setSalesStats(out);
+  };
+
+  useEffect(() => { load(); loadSalesStats(); }, []);
+
 
   const filteredPos = pos.filter((p) => {
     const q = query.trim().toLowerCase();
@@ -225,11 +259,38 @@ function POPage() {
     p.min_stock != null && p.min_stock >= 0 ? p.min_stock : lowThreshold;
 
   const lowStockProducts = useMemo(() => {
-    return products
+    const rows = products
       .filter((p) => (p.stock ?? 0) <= effectiveThreshold(p))
-      .sort((a, b) => (a.stock ?? 0) - (b.stock ?? 0));
+      .map((p) => {
+        const st = salesStats[p.id];
+        const sold30 = st?.qtyBase ?? 0;
+        const receipts = st?.receipts ?? 0;
+        const velocity = sold30 / 30;
+        const stock = p.stock ?? 0;
+        const daysLeft = velocity > 0 ? stock / velocity : Infinity;
+        let score = 0;
+        if (velocity > 0) {
+          score = stock <= 0
+            ? 1e6 + velocity * Math.log(1 + receipts)
+            : (velocity * Math.log(1 + receipts)) / Math.max(daysLeft, 0.5);
+        }
+        const level: "urgent" | "high" | "medium" | "low" =
+          velocity <= 0 ? "low"
+            : daysLeft <= 3 ? "urgent"
+              : daysLeft <= 7 ? "high"
+                : daysLeft <= 14 ? "medium" : "low";
+        return { ...p, sold30, receipts, velocity, daysLeft, score, level };
+      });
+    return rows.sort((a, b) => {
+      if (lowSort === "name") return a.name.localeCompare(b.name);
+      if (lowSort === "stock") return (a.stock ?? 0) - (b.stock ?? 0);
+      if (b.score !== a.score) return b.score - a.score;
+      return (a.stock ?? 0) - (b.stock ?? 0);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [products, lowThreshold]);
+  }, [products, lowThreshold, salesStats, lowSort]);
+
+  type LowRow = (typeof lowStockProducts)[number];
 
   const outOfStockCount = lowStockProducts.filter((p) => (p.stock ?? 0) <= 0).length;
   const customThresholdCount = products.filter((p) => p.min_stock != null).length;
@@ -241,12 +302,19 @@ function POPage() {
   }, [lowStockProducts]);
 
   const filteredLowStock = useMemo(() => {
-    if (!lowCategoryFilter) return lowStockProducts;
     return lowStockProducts.filter((p) => {
+      if (onlyFastMoving && p.sold30 <= 0) return false;
+      if (!lowCategoryFilter) return true;
       const c = (p.category || "").trim() || "Tanpa Kategori";
       return c === lowCategoryFilter;
     });
-  }, [lowStockProducts, lowCategoryFilter]);
+  }, [lowStockProducts, lowCategoryFilter, onlyFastMoving]);
+
+  const priorityProducts = useMemo(
+    () => filteredLowStock.filter((p) => p.level === "urgent" || p.level === "high"),
+    [filteredLowStock],
+  );
+
 
   const selectedLowProducts = useMemo(
     () => filteredLowStock.filter((p) => selectedLowIds.has(p.id)),
@@ -302,25 +370,31 @@ function POPage() {
 
 
 
-  const openCreateForLowStock = (mode: "out" | "low" | "selected") => {
-    const base = lowCategoryFilter ? filteredLowStock : lowStockProducts;
+  const suggestQty = (p: LowRow) => {
+    const need14 = Math.ceil((p.velocity || 0) * 14);
+    const target = Math.max(need14, effectiveThreshold(p) * 2, 10);
+    return Math.max(1, target - (p.stock ?? 0));
+  };
+
+  const openCreateForLowStock = (mode: "out" | "low" | "selected" | "priority") => {
+    const base = (lowCategoryFilter || onlyFastMoving) ? filteredLowStock : lowStockProducts;
     const pool = mode === "out"
       ? base.filter((p) => (p.stock ?? 0) <= 0)
       : mode === "selected"
         ? selectedLowProducts
-        : base;
+        : mode === "priority"
+          ? priorityProducts
+          : base;
     if (pool.length === 0) {
       toast.info(mode === "selected" ? "Pilih produk dulu" : "Tidak ada produk yang perlu di-restock");
       return;
     }
     resetForm();
-    setItems(pool.map((p) => {
-      const target = Math.max(effectiveThreshold(p) * 2, 10);
-      return buildDraftItem(p, target - (p.stock ?? 0));
-    }));
+    setItems(pool.map((p) => buildDraftItem(p, suggestQty(p))));
 
     setCreateOpen(true);
   };
+
 
   const addLowStockToDraft = (p: Product) => {
     const target = Math.max(effectiveThreshold(p) * 2, 10);
@@ -822,6 +896,35 @@ function POPage() {
                 })}
               </select>
             </div>
+            <div className="flex items-center gap-1.5">
+              <Label className="text-xs whitespace-nowrap">Urutkan</Label>
+              <select
+                className="h-8 rounded-md border bg-background px-2 text-xs"
+                value={lowSort}
+                onChange={(e) => setLowSort(e.target.value as any)}
+              >
+                <option value="priority">Prioritas</option>
+                <option value="name">Nama</option>
+                <option value="stock">Stok terkecil</option>
+              </select>
+            </div>
+            <Button
+              size="sm"
+              variant={onlyFastMoving ? "default" : "outline"}
+              onClick={() => { setOnlyFastMoving((v) => !v); setSelectedLowIds(new Set()); }}
+              title="Sembunyikan produk yang tidak laku 30 hari terakhir"
+            >
+              Hanya laris
+            </Button>
+            {priorityProducts.length > 0 && (
+              <Button
+                size="sm"
+                variant="default"
+                onClick={() => openCreateForLowStock("priority")}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Buat PO Prioritas ({priorityProducts.length})
+              </Button>
+            )}
             {selectedLowProducts.length > 0 && (
               <Button
                 size="sm"
@@ -831,6 +934,7 @@ function POPage() {
                 <Plus className="mr-2 h-4 w-4" /> Buat PO Terpilih ({selectedLowProducts.length})
               </Button>
             )}
+
             {outOfStockCount > 0 && (
               <Button
                 size="sm"
@@ -867,9 +971,11 @@ function POPage() {
                       }}
                     />
                   </th>
+                  <th className="p-2">Prioritas</th>
                   <th className="p-2">Kode</th>
                   <th className="p-2">Nama</th>
                   <th className="p-2">Kategori</th>
+                  <th className="p-2 text-right">Laku 30hr</th>
                   <th className="p-2 text-right">Stok</th>
                   <th className="p-2 text-right w-24">Batas</th>
                   <th className="p-2 text-right">Harga</th>
@@ -881,6 +987,7 @@ function POPage() {
                   const out = (p.stock ?? 0) <= 0;
                   const isCustom = p.min_stock != null;
                   const checked = selectedLowIds.has(p.id);
+                  const prio = PRIORITY_META[p.level];
                   return (
                     <tr key={p.id} className="border-t hover:bg-muted/40">
                       <td className="p-2">
@@ -896,9 +1003,25 @@ function POPage() {
                           }}
                         />
                       </td>
+                      <td className="p-2">
+                        <Badge variant={prio.variant} className="text-[10px] whitespace-nowrap">{prio.label}</Badge>
+                      </td>
                       <td className="p-2 font-mono text-xs">{p.code}</td>
                       <td className="p-2 font-medium">{p.name}</td>
                       <td className="p-2 text-xs text-muted-foreground">{p.category || "-"}</td>
+                      <td className="p-2 text-right text-xs">
+                        {p.sold30 > 0 ? (
+                          <div className="leading-tight">
+                            <div className="font-medium">{p.sold30} pcs</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {p.receipts} struk • {out ? "stok habis" : `~${p.daysLeft < 1 ? "<1" : Math.round(p.daysLeft)} hr lagi`}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-[10px] text-muted-foreground">belum laku</span>
+                        )}
+                      </td>
+
                       <td className="p-2 text-right">
                         <Badge variant={out ? "destructive" : "secondary"}>
                           {out ? "Habis" : `${p.stock} tersisa`}
