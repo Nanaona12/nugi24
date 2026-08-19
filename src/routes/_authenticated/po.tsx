@@ -210,7 +210,23 @@ function POPage() {
     setSalesStats(out);
   };
 
-  useEffect(() => { load(); loadSalesStats(); }, []);
+  useEffect(() => {
+    load();
+    loadSalesStats();
+    loadCheapestSupplierMap()
+      .then(setCheapestBySupplier)
+      .catch((e: any) => console.warn("cheapestSupplier:", e?.message || e));
+  }, []);
+
+  const CheapestHint = ({ productId }: { productId: string | null }) => {
+    const info = productId ? cheapestBySupplier[productId] : null;
+    if (!info) return null;
+    return (
+      <div className="truncate text-[10px] text-muted-foreground" title={`Termurah: ${info.supplier}`}>
+        Termurah: <span className="font-medium text-foreground">{info.supplier}</span> · {formatRupiah(info.perBase)}/pcs
+      </div>
+    );
+  };
 
 
   const filteredPos = pos.filter((p) => {
