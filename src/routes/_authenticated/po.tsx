@@ -1480,6 +1480,7 @@ function POPage() {
                                 className="h-9 w-full text-sm px-2 pr-8"
                                 placeholder="Nama / pilih"
                               />
+                              <CheapestHint productId={it.product_id} />
                             </td>
                             <td className="p-1">
                               <Input list="po-cats" value={it.category} onChange={(e) => updateItem(i, { category: e.target.value })} className="h-9 w-full text-xs px-2" placeholder="Pilih/ketik" disabled={!!it.product_id} title={it.category} />
