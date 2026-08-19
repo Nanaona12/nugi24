@@ -262,37 +262,80 @@ function AuthedLayout() {
 
   const ownerPlan = sub?.plan ?? "warung";
   const isGrosir = ownerPlan === "grosir";
-  const ownerNav: Array<{ to: string; icon: any; label: string }> = [
-    { to: "/produk", icon: Package, label: "Produk" },
-    { to: "/stok-log", icon: History, label: "Log Stok" },
-    { to: "/pelanggan", icon: Users, label: "Pelanggan" },
-    ...(isGrosir ? [{ to: "/karyawan", icon: UserCog, label: "Karyawan" }] : []),
-    ...(isGrosir ? [{ to: "/po", icon: ClipboardList, label: "PO" }] : []),
-    ...(isGrosir ? [{ to: "/kadaluarsa", icon: AlarmClock, label: "Kadaluarsa" }] : []),
-    { to: "/riwayat", icon: Receipt, label: "Riwayat" },
-    { to: "/hutang", icon: Wallet, label: "Hutang" },
-    { to: "/shift", icon: Layers, label: "Riwayat Shift" },
-    ...(isGrosir ? [{ to: "/pengambilan", icon: Home, label: "Pengambilan" }] : []),
-    { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
-    { to: "/promo", icon: Gift, label: "Promo" },
-    { to: "/pembukuan", icon: BookOpen, label: "Pembukuan" },
-    { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
-    { to: "/backup", icon: DatabaseBackup, label: "Backup Data" },
-    { to: "/langganan", icon: CreditCard, label: "Langganan" },
-    { to: "/pengaturan", icon: Settings, label: "Pengaturan" },
+  type NavItem = { to: string; icon: any; label: string };
+  type NavGroup = { label: string; items: NavItem[] };
+
+  const ownerGroups: NavGroup[] = [
+    {
+      label: "Operasional",
+      items: [
+        { to: "/riwayat", icon: Receipt, label: "Riwayat" },
+        { to: "/shift", icon: Layers, label: "Riwayat Shift" },
+        { to: "/hutang", icon: Wallet, label: "Hutang" },
+        { to: "/pelanggan", icon: Users, label: "Pelanggan" },
+      ],
+    },
+    {
+      label: "Barang",
+      items: [
+        { to: "/produk", icon: Package, label: "Produk" },
+        { to: "/stok-log", icon: History, label: "Log Stok" },
+        ...(isGrosir ? [{ to: "/kadaluarsa", icon: AlarmClock, label: "Kadaluarsa" }] : []),
+        ...(isGrosir ? [{ to: "/pengambilan", icon: Home, label: "Pengambilan" }] : []),
+        { to: "/promo", icon: Gift, label: "Promo" },
+      ],
+    },
+    {
+      label: "Pembelian",
+      items: [
+        ...(isGrosir ? [{ to: "/po", icon: ClipboardList, label: "PO" }] : []),
+        ...(isGrosir ? [{ to: "/supplier", icon: Truck, label: "Supplier" }] : []),
+      ],
+    },
+    {
+      label: "Laporan",
+      items: [
+        { to: "/keuntungan", icon: TrendingUp, label: "Untung" },
+        { to: "/pembukuan", icon: BookOpen, label: "Pembukuan" },
+      ],
+    },
+    {
+      label: "Pengaturan",
+      items: [
+        ...(isGrosir ? [{ to: "/karyawan", icon: UserCog, label: "Karyawan" }] : []),
+        { to: "/cek-koneksi", icon: Wifi, label: "Koneksi" },
+        { to: "/backup", icon: DatabaseBackup, label: "Backup Data" },
+        { to: "/langganan", icon: CreditCard, label: "Langganan" },
+        { to: "/pengaturan", icon: Settings, label: "Pengaturan" },
+      ],
+    },
   ];
 
-  const navItems = sub?.isSuperAdmin
-    ? [{ to: "/admin", icon: Shield, label: "Admin" }]
-    : isCashierSession
-    ? [
+  const cashierGroups: NavGroup[] = [
+    {
+      label: "Operasional",
+      items: [
         { to: "/kasir", icon: ShoppingCart, label: "Kasir" },
-        { to: "/pelanggan", icon: Users, label: "Pelanggan" },
-        { to: "/hutang", icon: Wallet, label: "Hutang" },
         { to: "/shift", icon: Layers, label: "Shift Saya" },
         { to: "/riwayat", icon: Receipt, label: "Riwayat" },
-      ]
-    : ownerNav;
+      ],
+    },
+    {
+      label: "Data",
+      items: [
+        { to: "/pelanggan", icon: Users, label: "Pelanggan" },
+        { to: "/hutang", icon: Wallet, label: "Hutang" },
+      ],
+    },
+  ];
+
+  const navGroups: NavGroup[] = (
+    sub?.isSuperAdmin
+      ? [{ label: "Menu", items: [{ to: "/admin", icon: Shield, label: "Admin" }] }]
+      : isCashierSession
+        ? cashierGroups
+        : ownerGroups
+  ).filter((g) => g.items.length > 0);
 
   const title = sub?.isSuperAdmin ? "Dagang Pintar" : (tenantName || "Toko Saya");
 
