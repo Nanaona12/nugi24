@@ -1814,25 +1814,29 @@ function POPage() {
       />
 
       <Dialog open={!!receiptViewOpen} onOpenChange={(o) => !o && setReceiptViewOpen(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Struk / Nota — {receiptViewOpen?.supplier}</DialogTitle>
             <DialogDescription>Foto struk yang disimpan bersama PO.</DialogDescription>
           </DialogHeader>
           {receiptViewOpen && (
-            <div className="space-y-2">
-              <img
-                src={receiptViewOpen.url}
-                alt="Struk PO"
-                className="max-h-[70vh] w-full rounded border object-contain bg-muted"
-              />
-              <div className="flex justify-end">
-                <a href={receiptViewOpen.url} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline">
-                    <Download className="mr-2 h-4 w-4" /> Buka di tab baru
-                  </Button>
-                </a>
-              </div>
+            <div className="space-y-3">
+              {receiptViewOpen.urls.map((u, i) => (
+                <div key={i} className="space-y-1">
+                  <img
+                    src={u}
+                    alt={`Struk PO ${i + 1}`}
+                    className="max-h-[70vh] w-full rounded border object-contain bg-muted"
+                  />
+                  <div className="flex justify-end">
+                    <a href={u} target="_blank" rel="noreferrer">
+                      <Button size="sm" variant="outline">
+                        <Download className="mr-2 h-4 w-4" /> Buka foto {i + 1}
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </DialogContent>
