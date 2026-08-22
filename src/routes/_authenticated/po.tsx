@@ -83,6 +83,7 @@ type PO = {
   item_count: number;
   created_at: string;
   receipt_image_path?: string | null;
+  receipt_image_paths?: string[] | null;
 };
 
 
