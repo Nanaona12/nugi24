@@ -1217,41 +1217,67 @@ function POPage() {
           <div className="mt-3 rounded-md border bg-muted/30 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-primary" />
-              <div className="text-sm font-semibold">Foto Struk / Nota (opsional)</div>
-              {existingReceiptPath && !receiptFile && (
-                <Badge variant="secondary" className="ml-auto">Sudah ada — pilih file baru untuk ganti</Badge>
+              <div className="text-sm font-semibold">Foto Struk / Nota (bisa banyak)</div>
+              {(existingReceiptPaths.length + receiptFiles.length) > 0 && (
+                <Badge variant="secondary" className="ml-auto">{existingReceiptPaths.length + receiptFiles.length} foto</Badge>
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Input
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
-                  const f = e.target.files?.[0] || null;
-                  setReceiptFile(f);
-                  if (f) {
-                    const reader = new FileReader();
-                    reader.onload = () => setReceiptPreview(String(reader.result || ""));
-                    reader.readAsDataURL(f);
-                  } else {
-                    setReceiptPreview("");
+                multiple
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files || []);
+                  e.target.value = "";
+                  for (const f of files) {
+                    const dataUrl = await new Promise<string>((res) => {
+                      const r = new FileReader();
+                      r.onload = () => res(String(r.result || ""));
+                      r.readAsDataURL(f);
+                    });
+                    setReceiptFiles((p) => [...p, { file: f, dataUrl }]);
                   }
                 }}
                 className="h-9 text-xs max-w-xs"
               />
-              {(receiptPreview || existingReceiptPath) && (
+              {receiptFiles.length > 0 && (
+                <Button type="button" size="sm" variant="secondary" onClick={() => setAiOpen(true)}>
+                  <ImageIcon className="mr-1 h-3.5 w-3.5" /> Scan AI dari {receiptFiles.length} foto ini
+                </Button>
+              )}
+              {(receiptFiles.length > 0 || existingReceiptPaths.length > 0) && (
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => { setReceiptFile(null); setReceiptPreview(""); }}
+                  onClick={() => { setReceiptFiles([]); setExistingReceiptPaths([]); }}
                 >
-                  <XIcon className="mr-1 h-3.5 w-3.5" /> Batalkan pilihan
+                  <XIcon className="mr-1 h-3.5 w-3.5" /> Hapus semua
                 </Button>
               )}
             </div>
-            {receiptPreview && (
-              <img src={receiptPreview} alt="Preview struk" className="max-h-40 rounded border" />
+            {(receiptFiles.length > 0 || existingReceiptPaths.length > 0) && (
+              <div className="flex flex-wrap gap-2">
+                {existingReceiptPaths.map((p, i) => (
+                  <div key={"e" + i} className="relative rounded border bg-background px-2 py-1 text-[11px]">
+                    Foto tersimpan #{i + 1}
+                    <button type="button" className="ml-2 text-destructive" onClick={() => setExistingReceiptPaths((s) => s.filter((_, idx) => idx !== i))}>×</button>
+                  </div>
+                ))}
+                {receiptFiles.map((f, i) => (
+                  <div key={"n" + i} className="relative">
+                    <img src={f.dataUrl} alt="Preview struk" className="h-24 w-24 rounded border object-cover" />
+                    <Button
+                      type="button" size="icon" variant="ghost"
+                      className="absolute right-0.5 top-0.5 h-6 w-6 bg-background/80"
+                      onClick={() => setReceiptFiles((s) => s.filter((_, idx) => idx !== i))}
+                    >
+                      <XIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
             <div className="text-[11px] text-muted-foreground">
               Foto disimpan pribadi per toko dan bisa dibuka lagi dari detail PO.
