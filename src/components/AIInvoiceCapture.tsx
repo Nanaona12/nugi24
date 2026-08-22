@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -18,9 +18,11 @@ type Props = {
   existingProducts?: { id: string; name: string; barcode?: string | null; code?: string }[];
   existingCategories?: string[];
   inline?: boolean;
+  /** Foto yang sudah ditambahkan di form (data URL) — bisa dipakai langsung untuk analisa */
+  availableImages?: string[];
 };
 
-export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [], existingCategories = [], inline = false }: Props) {
+export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [], existingCategories = [], inline = false, availableImages = [] }: Props) {
 
   const [images, setImages] = useState<string[]>([]);
   const [analyzing, setAnalyzing] = useState(false);
@@ -29,6 +31,13 @@ export function AIInvoiceCapture({ open, onClose, onResult, existingProducts = [
   const fileRef = useRef<HTMLInputElement>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const analyze = useServerFn(analyzeInvoicePhoto);
+
+  // Saat dibuka, otomatis pakai foto struk yang sudah ditambahkan di form PO
+  useEffect(() => {
+    if (open && availableImages.length > 0) {
+      setImages((prev) => (prev.length === 0 ? availableImages.slice(0, 4) : prev));
+    }
+  }, [open, availableImages]);
 
   const reset = () => { setImages([]); setPreview(null); setAnalyzing(false); };
   const handleClose = () => { if (analyzing) return; reset(); onClose(); };
