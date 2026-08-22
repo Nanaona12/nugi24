@@ -714,9 +714,8 @@ function POPage() {
     setNotes(po.notes || "");
     setItems(drafted);
     setEditingPoId(po.id);
-    setReceiptFile(null);
-    setReceiptPreview("");
-    setExistingReceiptPath((po as any).receipt_image_path || null);
+    setReceiptFiles([]);
+    setExistingReceiptPaths(poReceiptPaths(po));
     setDetailOpen(null);
     setCreateOpen(true);
   };
