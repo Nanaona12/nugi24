@@ -267,9 +267,8 @@ function POPage() {
     setItems([]);
     setPickQuery("");
     setEditingPoId(null);
-    setReceiptFile(null);
-    setReceiptPreview("");
-    setExistingReceiptPath(null);
+    setReceiptFiles([]);
+    setExistingReceiptPaths([]);
   };
 
 
