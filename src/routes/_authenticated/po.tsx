@@ -609,25 +609,38 @@ function POPage() {
     const { error: e2 } = await (supabase as any).from("purchase_order_items").insert(rows);
     if (e2) { setSaving(false); return toast.error(e2.message); }
 
-    // Upload struk (opsional)
-    if (receiptFile && poId) {
+    // Upload struk (opsional, bisa banyak foto)
+    if (receiptFiles.length > 0 && poId) {
       try {
         const { data: tid } = await (supabase as any).rpc("current_tenant_id");
         if (tid) {
-          const ext = (receiptFile.name.split(".").pop() || "jpg").toLowerCase();
-          const path = `${tid}/po/${poId}.${ext}`;
-          const { error: upErr } = await supabase.storage
-            .from("receipts")
-            .upload(path, receiptFile, { upsert: true, contentType: receiptFile.type || "image/jpeg" });
-          if (upErr) {
-            toast.error("Struk gagal diunggah: " + upErr.message);
-          } else {
-            await supabase.from("purchase_orders").update({ receipt_image_path: path } as any).eq("id", poId);
+          const uploaded: string[] = [];
+          for (let i = 0; i < receiptFiles.length; i++) {
+            const f = receiptFiles[i].file;
+            const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+            const path = `${tid}/po/${poId}-${Date.now()}-${i}.${ext}`;
+            const { error: upErr } = await supabase.storage
+              .from("receipts")
+              .upload(path, f, { upsert: true, contentType: f.type || "image/jpeg" });
+            if (upErr) toast.error("Struk gagal diunggah: " + upErr.message);
+            else uploaded.push(path);
+          }
+          if (uploaded.length > 0) {
+            const all = [...existingReceiptPaths, ...uploaded];
+            await supabase
+              .from("purchase_orders")
+              .update({ receipt_image_paths: all, receipt_image_path: all[0] } as any)
+              .eq("id", poId);
           }
         }
       } catch (e: any) {
         toast.error("Struk gagal diunggah: " + (e?.message || ""));
       }
+    } else if (poId && editingPoId) {
+      await supabase
+        .from("purchase_orders")
+        .update({ receipt_image_paths: existingReceiptPaths, receipt_image_path: existingReceiptPaths[0] ?? null } as any)
+        .eq("id", poId);
     }
 
     setSaving(false);
