@@ -1229,6 +1229,7 @@ export type Database = {
           item_count: number
           notes: string | null
           receipt_image_path: string | null
+          receipt_image_paths: string[]
           received_at: string | null
           received_status: string
           status: string
@@ -1244,6 +1245,7 @@ export type Database = {
           item_count?: number
           notes?: string | null
           receipt_image_path?: string | null
+          receipt_image_paths?: string[]
           received_at?: string | null
           received_status?: string
           status?: string
@@ -1259,6 +1261,7 @@ export type Database = {
           item_count?: number
           notes?: string | null
           receipt_image_path?: string | null
+          receipt_image_paths?: string[]
           received_at?: string | null
           received_status?: string
           status?: string

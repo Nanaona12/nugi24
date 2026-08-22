@@ -1,0 +1,2 @@
+ALTER TABLE public.purchase_orders ADD COLUMN IF NOT EXISTS receipt_image_paths text[] NOT NULL DEFAULT '{}';
+UPDATE public.purchase_orders SET receipt_image_paths = ARRAY[receipt_image_path] WHERE receipt_image_path IS NOT NULL AND cardinality(receipt_image_paths) = 0;

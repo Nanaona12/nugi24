@@ -83,6 +83,7 @@ type PO = {
   item_count: number;
   created_at: string;
   receipt_image_path?: string | null;
+  receipt_image_paths?: string[] | null;
 };
 
 
@@ -161,10 +162,9 @@ function POPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [receiveFor, setReceiveFor] = useState<PO | null>(null);
   const [editingPoId, setEditingPoId] = useState<string | null>(null);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string>("");
-  const [existingReceiptPath, setExistingReceiptPath] = useState<string | null>(null);
-  const [receiptViewOpen, setReceiptViewOpen] = useState<{ url: string; supplier: string } | null>(null);
+  const [receiptFiles, setReceiptFiles] = useState<{ file: File; dataUrl: string }[]>([]);
+  const [existingReceiptPaths, setExistingReceiptPaths] = useState<string[]>([]);
+  const [receiptViewOpen, setReceiptViewOpen] = useState<{ urls: string[]; supplier: string } | null>(null);
   const [receiptLoading, setReceiptLoading] = useState(false);
   const poActionsRef = useRef<HTMLDivElement>(null);
 
@@ -268,9 +268,8 @@ function POPage() {
     setItems([]);
     setPickQuery("");
     setEditingPoId(null);
-    setReceiptFile(null);
-    setReceiptPreview("");
-    setExistingReceiptPath(null);
+    setReceiptFiles([]);
+    setExistingReceiptPaths([]);
   };
 
 
@@ -610,25 +609,38 @@ function POPage() {
     const { error: e2 } = await (supabase as any).from("purchase_order_items").insert(rows);
     if (e2) { setSaving(false); return toast.error(e2.message); }
 
-    // Upload struk (opsional)
-    if (receiptFile && poId) {
+    // Upload struk (opsional, bisa banyak foto)
+    if (receiptFiles.length > 0 && poId) {
       try {
         const { data: tid } = await (supabase as any).rpc("current_tenant_id");
         if (tid) {
-          const ext = (receiptFile.name.split(".").pop() || "jpg").toLowerCase();
-          const path = `${tid}/po/${poId}.${ext}`;
-          const { error: upErr } = await supabase.storage
-            .from("receipts")
-            .upload(path, receiptFile, { upsert: true, contentType: receiptFile.type || "image/jpeg" });
-          if (upErr) {
-            toast.error("Struk gagal diunggah: " + upErr.message);
-          } else {
-            await supabase.from("purchase_orders").update({ receipt_image_path: path } as any).eq("id", poId);
+          const uploaded: string[] = [];
+          for (let i = 0; i < receiptFiles.length; i++) {
+            const f = receiptFiles[i].file;
+            const ext = (f.name.split(".").pop() || "jpg").toLowerCase();
+            const path = `${tid}/po/${poId}-${Date.now()}-${i}.${ext}`;
+            const { error: upErr } = await supabase.storage
+              .from("receipts")
+              .upload(path, f, { upsert: true, contentType: f.type || "image/jpeg" });
+            if (upErr) toast.error("Struk gagal diunggah: " + upErr.message);
+            else uploaded.push(path);
+          }
+          if (uploaded.length > 0) {
+            const all = [...existingReceiptPaths, ...uploaded];
+            await supabase
+              .from("purchase_orders")
+              .update({ receipt_image_paths: all, receipt_image_path: all[0] } as any)
+              .eq("id", poId);
           }
         }
       } catch (e: any) {
         toast.error("Struk gagal diunggah: " + (e?.message || ""));
       }
+    } else if (poId && editingPoId) {
+      await supabase
+        .from("purchase_orders")
+        .update({ receipt_image_paths: existingReceiptPaths, receipt_image_path: existingReceiptPaths[0] ?? null } as any)
+        .eq("id", poId);
     }
 
     setSaving(false);
@@ -653,14 +665,25 @@ function POPage() {
     setDetailItems((data || []) as POItem[]);
   };
 
+  const poReceiptPaths = (po: PO): string[] => {
+    const arr = ((po as any).receipt_image_paths as string[] | null) || [];
+    if (arr.length > 0) return arr;
+    const single = (po as any).receipt_image_path as string | null;
+    return single ? [single] : [];
+  };
+
   const openReceipt = async (po: PO) => {
-    const path = (po as any).receipt_image_path as string | null;
-    if (!path) { toast.info("Struk PO ini belum diunggah"); return; }
+    const paths = poReceiptPaths(po);
+    if (paths.length === 0) { toast.info("Struk PO ini belum diunggah"); return; }
     setReceiptLoading(true);
-    const { data, error } = await supabase.storage.from("receipts").createSignedUrl(path, 60 * 30);
+    const urls: string[] = [];
+    for (const p of paths) {
+      const { data } = await supabase.storage.from("receipts").createSignedUrl(p, 60 * 30);
+      if (data?.signedUrl) urls.push(data.signedUrl);
+    }
     setReceiptLoading(false);
-    if (error || !data?.signedUrl) { toast.error(error?.message || "Gagal buka struk"); return; }
-    setReceiptViewOpen({ url: data.signedUrl, supplier: po.supplier });
+    if (urls.length === 0) { toast.error("Gagal buka struk"); return; }
+    setReceiptViewOpen({ urls, supplier: po.supplier });
   };
 
 
@@ -691,9 +714,8 @@ function POPage() {
     setNotes(po.notes || "");
     setItems(drafted);
     setEditingPoId(po.id);
-    setReceiptFile(null);
-    setReceiptPreview("");
-    setExistingReceiptPath((po as any).receipt_image_path || null);
+    setReceiptFiles([]);
+    setExistingReceiptPaths(poReceiptPaths(po));
     setDetailOpen(null);
     setCreateOpen(true);
   };
@@ -1195,41 +1217,67 @@ function POPage() {
           <div className="mt-3 rounded-md border bg-muted/30 p-3 space-y-2">
             <div className="flex items-center gap-2">
               <ImageIcon className="h-4 w-4 text-primary" />
-              <div className="text-sm font-semibold">Foto Struk / Nota (opsional)</div>
-              {existingReceiptPath && !receiptFile && (
-                <Badge variant="secondary" className="ml-auto">Sudah ada — pilih file baru untuk ganti</Badge>
+              <div className="text-sm font-semibold">Foto Struk / Nota (bisa banyak)</div>
+              {(existingReceiptPaths.length + receiptFiles.length) > 0 && (
+                <Badge variant="secondary" className="ml-auto">{existingReceiptPaths.length + receiptFiles.length} foto</Badge>
               )}
             </div>
             <div className="flex items-center gap-2 flex-wrap">
               <Input
                 type="file"
                 accept="image/*"
-                onChange={(e) => {
-                  const f = e.target.files?.[0] || null;
-                  setReceiptFile(f);
-                  if (f) {
-                    const reader = new FileReader();
-                    reader.onload = () => setReceiptPreview(String(reader.result || ""));
-                    reader.readAsDataURL(f);
-                  } else {
-                    setReceiptPreview("");
+                multiple
+                onChange={async (e) => {
+                  const files = Array.from(e.target.files || []);
+                  e.target.value = "";
+                  for (const f of files) {
+                    const dataUrl = await new Promise<string>((res) => {
+                      const r = new FileReader();
+                      r.onload = () => res(String(r.result || ""));
+                      r.readAsDataURL(f);
+                    });
+                    setReceiptFiles((p) => [...p, { file: f, dataUrl }]);
                   }
                 }}
                 className="h-9 text-xs max-w-xs"
               />
-              {(receiptPreview || existingReceiptPath) && (
+              {receiptFiles.length > 0 && (
+                <Button type="button" size="sm" variant="secondary" onClick={() => setAiOpen(true)}>
+                  <ImageIcon className="mr-1 h-3.5 w-3.5" /> Scan AI dari {receiptFiles.length} foto ini
+                </Button>
+              )}
+              {(receiptFiles.length > 0 || existingReceiptPaths.length > 0) && (
                 <Button
                   type="button"
                   size="sm"
                   variant="ghost"
-                  onClick={() => { setReceiptFile(null); setReceiptPreview(""); }}
+                  onClick={() => { setReceiptFiles([]); setExistingReceiptPaths([]); }}
                 >
-                  <XIcon className="mr-1 h-3.5 w-3.5" /> Batalkan pilihan
+                  <XIcon className="mr-1 h-3.5 w-3.5" /> Hapus semua
                 </Button>
               )}
             </div>
-            {receiptPreview && (
-              <img src={receiptPreview} alt="Preview struk" className="max-h-40 rounded border" />
+            {(receiptFiles.length > 0 || existingReceiptPaths.length > 0) && (
+              <div className="flex flex-wrap gap-2">
+                {existingReceiptPaths.map((p, i) => (
+                  <div key={"e" + i} className="relative rounded border bg-background px-2 py-1 text-[11px]">
+                    Foto tersimpan #{i + 1}
+                    <button type="button" className="ml-2 text-destructive" onClick={() => setExistingReceiptPaths((s) => s.filter((_, idx) => idx !== i))}>×</button>
+                  </div>
+                ))}
+                {receiptFiles.map((f, i) => (
+                  <div key={"n" + i} className="relative">
+                    <img src={f.dataUrl} alt="Preview struk" className="h-24 w-24 rounded border object-cover" />
+                    <Button
+                      type="button" size="icon" variant="ghost"
+                      className="absolute right-0.5 top-0.5 h-6 w-6 bg-background/80"
+                      onClick={() => setReceiptFiles((s) => s.filter((_, idx) => idx !== i))}
+                    >
+                      <XIcon className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
             <div className="text-[11px] text-muted-foreground">
               Foto disimpan pribadi per toko dan bisa dibuka lagi dari detail PO.
@@ -1601,6 +1649,7 @@ function POPage() {
                 onResult={applyInvoiceResult}
                 existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
                 existingCategories={Array.from(new Set(products.map((p) => (p.category || "").trim()).filter(Boolean)))}
+                availableImages={receiptFiles.map((f) => f.dataUrl)}
               />
 
             </div>
@@ -1722,7 +1771,7 @@ function POPage() {
                 <Button size="sm" variant="outline" onClick={() => printPO(detailOpen, detailItems)}>
                   <Download className="mr-2 h-4 w-4" /> Cetak / PDF
                 </Button>
-                {(detailOpen as any).receipt_image_path && (
+                {poReceiptPaths(detailOpen).length > 0 && (
                   <Button size="sm" variant="outline" onClick={() => openReceipt(detailOpen)} disabled={receiptLoading}>
                     <ImageIcon className="mr-2 h-4 w-4" /> {receiptLoading ? "Membuka..." : "Lihat Struk"}
                   </Button>
@@ -1766,25 +1815,29 @@ function POPage() {
       />
 
       <Dialog open={!!receiptViewOpen} onOpenChange={(o) => !o && setReceiptViewOpen(null)}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Struk / Nota — {receiptViewOpen?.supplier}</DialogTitle>
             <DialogDescription>Foto struk yang disimpan bersama PO.</DialogDescription>
           </DialogHeader>
           {receiptViewOpen && (
-            <div className="space-y-2">
-              <img
-                src={receiptViewOpen.url}
-                alt="Struk PO"
-                className="max-h-[70vh] w-full rounded border object-contain bg-muted"
-              />
-              <div className="flex justify-end">
-                <a href={receiptViewOpen.url} target="_blank" rel="noreferrer">
-                  <Button size="sm" variant="outline">
-                    <Download className="mr-2 h-4 w-4" /> Buka di tab baru
-                  </Button>
-                </a>
-              </div>
+            <div className="space-y-3">
+              {receiptViewOpen.urls.map((u, i) => (
+                <div key={i} className="space-y-1">
+                  <img
+                    src={u}
+                    alt={`Struk PO ${i + 1}`}
+                    className="max-h-[70vh] w-full rounded border object-contain bg-muted"
+                  />
+                  <div className="flex justify-end">
+                    <a href={u} target="_blank" rel="noreferrer">
+                      <Button size="sm" variant="outline">
+                        <Download className="mr-2 h-4 w-4" /> Buka foto {i + 1}
+                      </Button>
+                    </a>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </DialogContent>
