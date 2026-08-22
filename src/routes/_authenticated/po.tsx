@@ -1770,7 +1770,7 @@ function POPage() {
                 <Button size="sm" variant="outline" onClick={() => printPO(detailOpen, detailItems)}>
                   <Download className="mr-2 h-4 w-4" /> Cetak / PDF
                 </Button>
-                {(detailOpen as any).receipt_image_path && (
+                {poReceiptPaths(detailOpen).length > 0 && (
                   <Button size="sm" variant="outline" onClick={() => openReceipt(detailOpen)} disabled={receiptLoading}>
                     <ImageIcon className="mr-2 h-4 w-4" /> {receiptLoading ? "Membuka..." : "Lihat Struk"}
                   </Button>
