@@ -1649,6 +1649,7 @@ function POPage() {
                 onResult={applyInvoiceResult}
                 existingProducts={products.map((p) => ({ id: p.id, name: p.name, barcode: p.barcode, code: p.code }))}
                 existingCategories={Array.from(new Set(products.map((p) => (p.category || "").trim()).filter(Boolean)))}
+                availableImages={receiptFiles.map((f) => f.dataUrl)}
               />
 
             </div>
