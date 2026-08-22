@@ -161,10 +161,9 @@ function POPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [receiveFor, setReceiveFor] = useState<PO | null>(null);
   const [editingPoId, setEditingPoId] = useState<string | null>(null);
-  const [receiptFile, setReceiptFile] = useState<File | null>(null);
-  const [receiptPreview, setReceiptPreview] = useState<string>("");
-  const [existingReceiptPath, setExistingReceiptPath] = useState<string | null>(null);
-  const [receiptViewOpen, setReceiptViewOpen] = useState<{ url: string; supplier: string } | null>(null);
+  const [receiptFiles, setReceiptFiles] = useState<{ file: File; dataUrl: string }[]>([]);
+  const [existingReceiptPaths, setExistingReceiptPaths] = useState<string[]>([]);
+  const [receiptViewOpen, setReceiptViewOpen] = useState<{ urls: string[]; supplier: string } | null>(null);
   const [receiptLoading, setReceiptLoading] = useState(false);
   const poActionsRef = useRef<HTMLDivElement>(null);
 
