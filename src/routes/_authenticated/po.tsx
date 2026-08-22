@@ -665,14 +665,25 @@ function POPage() {
     setDetailItems((data || []) as POItem[]);
   };
 
+  const poReceiptPaths = (po: PO): string[] => {
+    const arr = ((po as any).receipt_image_paths as string[] | null) || [];
+    if (arr.length > 0) return arr;
+    const single = (po as any).receipt_image_path as string | null;
+    return single ? [single] : [];
+  };
+
   const openReceipt = async (po: PO) => {
-    const path = (po as any).receipt_image_path as string | null;
-    if (!path) { toast.info("Struk PO ini belum diunggah"); return; }
+    const paths = poReceiptPaths(po);
+    if (paths.length === 0) { toast.info("Struk PO ini belum diunggah"); return; }
     setReceiptLoading(true);
-    const { data, error } = await supabase.storage.from("receipts").createSignedUrl(path, 60 * 30);
+    const urls: string[] = [];
+    for (const p of paths) {
+      const { data } = await supabase.storage.from("receipts").createSignedUrl(p, 60 * 30);
+      if (data?.signedUrl) urls.push(data.signedUrl);
+    }
     setReceiptLoading(false);
-    if (error || !data?.signedUrl) { toast.error(error?.message || "Gagal buka struk"); return; }
-    setReceiptViewOpen({ url: data.signedUrl, supplier: po.supplier });
+    if (urls.length === 0) { toast.error("Gagal buka struk"); return; }
+    setReceiptViewOpen({ urls, supplier: po.supplier });
   };
 
 
