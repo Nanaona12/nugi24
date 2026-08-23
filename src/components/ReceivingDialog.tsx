@@ -142,6 +142,20 @@ export function ReceivingDialog({
         await supabase.from("purchase_order_items").update({ product_id: newP.id, product_code: code }).eq("id", it.id);
       }
 
+      // Modal lama sebelum diperbarui (untuk deteksi kenaikan harga)
+      const existingIds = items.map((it) => it.product_id).filter(Boolean) as string[];
+      const oldCostMap: Record<string, { cost: number; name: string }> = {};
+      if (existingIds.length > 0) {
+        const { data: prodRows } = await supabase
+          .from("products")
+          .select("id,name,cost_price")
+          .in("id", existingIds);
+        for (const p of (prodRows as any[]) || []) {
+          oldCostMap[p.id] = { cost: Number(p.cost_price || 0), name: p.name };
+        }
+      }
+      const increases: { productId: string; name: string; oldCost: number; newCost: number }[] = [];
+
       let totalNew = 0;
       let allReceived = true;
       for (const it of items) {
