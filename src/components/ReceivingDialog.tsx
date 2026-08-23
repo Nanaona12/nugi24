@@ -404,5 +404,75 @@ export function ReceivingDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!priceAlerts} onOpenChange={(o) => { if (!o) setPriceAlerts(null); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-amber-600">
+            <TrendingUp className="h-5 w-5" /> Harga Modal Naik
+          </DialogTitle>
+          <DialogDescription>
+            Modal produk berikut lebih mahal dari pembelian sebelumnya. Atur ulang harga jual agar untung tetap terjaga.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto space-y-3">
+          {(priceAlerts || []).map((a) => {
+            const naik = a.newCost - a.oldCost;
+            const pct = a.oldCost > 0 ? Math.round((naik / a.oldCost) * 100) : 0;
+            return (
+              <div key={a.productId} className="rounded-lg border p-3 space-y-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="font-medium">{a.name}</div>
+                  <div className="text-xs">
+                    <span className="text-muted-foreground line-through">{formatRupiah(a.oldCost)}</span>
+                    <span className="mx-1">→</span>
+                    <span className="font-semibold text-amber-600">{formatRupiah(a.newCost)}/pcs</span>
+                    <span className="ml-1 text-amber-600">(+{pct}%)</span>
+                  </div>
+                </div>
+                {a.units.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Produk belum punya satuan harga. Atur di halaman Produk.</p>
+                ) : (
+                  a.units.map((u) => (
+                    <div key={u.id} className="space-y-1">
+                      <div className="text-[11px] uppercase text-muted-foreground">
+                        {u.name} {u.conversion > 1 && `(1 = ${u.conversion} pcs)`}
+                      </div>
+                      {u.tiers.map((t) => {
+                        const val = parseFloat(tierEdits[t.id || ""] || "0") || 0;
+                        const modalUnit = a.newCost * Math.max(1, u.conversion);
+                        const untung = val - modalUnit;
+                        return (
+                          <div key={t.id} className="flex items-center gap-2">
+                            <span className="w-20 text-xs text-muted-foreground">≥ {t.min_qty} {u.name}</span>
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={tierEdits[t.id || ""] ?? ""}
+                              onChange={(e) => setTierEdits({ ...tierEdits, [t.id || ""]: e.target.value })}
+                              className="h-8 w-32 text-right text-xs"
+                            />
+                            <span className={`text-[11px] font-semibold ${untung > 0 ? "text-emerald-600" : "text-destructive"}`}>
+                              {untung > 0 ? "Untung" : "Rugi"} {formatRupiah(Math.abs(untung))}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setPriceAlerts(null)} disabled={savingPrice}>Nanti Saja</Button>
+          <Button onClick={savePrices} disabled={savingPrice}>
+            {savingPrice && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Simpan Harga Baru
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
