@@ -213,8 +213,57 @@ export function ReceivingDialog({
       toast.success(`${totalNew} pcs diterima${createdCount > 0 ? ` • ${createdCount} produk baru dibuat` : ""}. ${allReceived ? "PO selesai." : "Penerimaan sebagian."}`);
       onOpenChange(false);
       onDone?.();
+
+      // Peringatan kenaikan harga modal + atur ulang harga jual
+      if (increases.length > 0) {
+        toast.warning(
+          `Harga modal naik pada ${increases.length} produk. Silakan cek & atur ulang harga jual.`,
+          { duration: 8000 },
+        );
+        const unitsMap = await loadUnitsForProducts(increases.map((i) => i.productId));
+        const alerts: PriceAlert[] = increases.map((i) => ({ ...i, units: unitsMap[i.productId] || [] }));
+        const edits: Record<string, string> = {};
+        for (const a of alerts) {
+          for (const u of a.units) {
+            for (const t of a.units.length ? u.tiers : []) {
+              if (t.id) edits[t.id] = String(Math.round(Number(t.price)));
+            }
+          }
+        }
+        setTierEdits(edits);
+        setPriceAlerts(alerts);
+      }
     } catch (e: any) { toast.error(e.message); }
     finally { setSaving(false); }
+  };
+
+  const savePrices = async () => {
+    if (!priceAlerts) return;
+    setSavingPrice(true);
+    try {
+      for (const a of priceAlerts) {
+        for (const u of a.units) {
+          for (const t of u.tiers) {
+            if (!t.id) continue;
+            const val = parseFloat(tierEdits[t.id] || "");
+            if (!Number.isFinite(val) || val === Number(t.price)) continue;
+            const { error } = await (supabase as any)
+              .from("product_price_tiers")
+              .update({ price: val })
+              .eq("id", t.id);
+            if (error) throw error;
+            // Harga dasar produk mengikuti tier terendah satuan dasar
+            if (u.is_base && t.min_qty <= 1) {
+              await supabase.from("products").update({ price: val }).eq("id", a.productId);
+            }
+          }
+        }
+      }
+      toast.success("Harga jual diperbarui");
+      setPriceAlerts(null);
+      onDone?.();
+    } catch (e: any) { toast.error(e.message || "Gagal simpan harga"); }
+    finally { setSavingPrice(false); }
   };
 
   const newItems = items.filter((it) => !it.product_id);
