@@ -269,6 +269,7 @@ export function ReceivingDialog({
   const newItems = items.filter((it) => !it.product_id);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
