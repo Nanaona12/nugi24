@@ -32,6 +32,14 @@ type NewProdCfg = {
   sell_price: string; // per pcs
 };
 
+type PriceAlert = {
+  productId: string;
+  name: string;
+  oldCost: number;
+  newCost: number;
+  units: ProductUnit[];
+};
+
 export function ReceivingDialog({
   open, onOpenChange, poId, poSupplier, onDone,
 }: {
