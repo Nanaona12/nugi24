@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { PackageCheck, Loader2, PackagePlus } from "lucide-react";
+import { PackageCheck, Loader2, PackagePlus, TrendingUp } from "lucide-react";
+import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
 
 type POItem = {
   id: string;
