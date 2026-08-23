@@ -47,6 +47,9 @@ export function ReceivingDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
+  const [priceAlerts, setPriceAlerts] = useState<PriceAlert[] | null>(null);
+  const [tierEdits, setTierEdits] = useState<Record<string, string>>({});
+  const [savingPrice, setSavingPrice] = useState(false);
 
 
   useEffect(() => {
