@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { PackageCheck, Loader2, PackagePlus } from "lucide-react";
+import { PackageCheck, Loader2, PackagePlus, TrendingUp } from "lucide-react";
+import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
 
 type POItem = {
   id: string;
@@ -31,6 +32,14 @@ type NewProdCfg = {
   sell_price: string; // per pcs
 };
 
+type PriceAlert = {
+  productId: string;
+  name: string;
+  oldCost: number;
+  newCost: number;
+  units: ProductUnit[];
+};
+
 export function ReceivingDialog({
   open, onOpenChange, poId, poSupplier, onDone,
 }: {
@@ -46,6 +55,9 @@ export function ReceivingDialog({
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [existingCategories, setExistingCategories] = useState<string[]>([]);
+  const [priceAlerts, setPriceAlerts] = useState<PriceAlert[] | null>(null);
+  const [tierEdits, setTierEdits] = useState<Record<string, string>>({});
+  const [savingPrice, setSavingPrice] = useState(false);
 
 
   useEffect(() => {
@@ -130,6 +142,20 @@ export function ReceivingDialog({
         await supabase.from("purchase_order_items").update({ product_id: newP.id, product_code: code }).eq("id", it.id);
       }
 
+      // Modal lama sebelum diperbarui (untuk deteksi kenaikan harga)
+      const existingIds = items.map((it) => it.product_id).filter(Boolean) as string[];
+      const oldCostMap: Record<string, { cost: number; name: string }> = {};
+      if (existingIds.length > 0) {
+        const { data: prodRows } = await supabase
+          .from("products")
+          .select("id,name,cost_price")
+          .in("id", existingIds);
+        for (const p of (prodRows as any[]) || []) {
+          oldCostMap[p.id] = { cost: Number(p.cost_price || 0), name: p.name };
+        }
+      }
+      const increases: { productId: string; name: string; oldCost: number; newCost: number }[] = [];
+
       let totalNew = 0;
       let allReceived = true;
       for (const it of items) {
@@ -147,6 +173,10 @@ export function ReceivingDialog({
         const addStockBase = addQty * conv;
         const perPcsCost = it.unit_cost && it.unit_cost > 0 ? Number(it.unit_cost) / conv : 0;
         if (productId) {
+          const prev = oldCostMap[productId];
+          if (prev && prev.cost > 0 && perPcsCost > prev.cost * 1.005) {
+            increases.push({ productId, name: prev.name || it.product_name, oldCost: prev.cost, newCost: perPcsCost });
+          }
           // Harga modal & jual produk = referensi terbaru (perhitungan untung tetap pakai modal per batch/FIFO)
           const upd: { cost_price?: number; price?: number } = {};
           if (perPcsCost > 0) upd.cost_price = perPcsCost;
@@ -183,13 +213,63 @@ export function ReceivingDialog({
       toast.success(`${totalNew} pcs diterima${createdCount > 0 ? ` • ${createdCount} produk baru dibuat` : ""}. ${allReceived ? "PO selesai." : "Penerimaan sebagian."}`);
       onOpenChange(false);
       onDone?.();
+
+      // Peringatan kenaikan harga modal + atur ulang harga jual
+      if (increases.length > 0) {
+        toast.warning(
+          `Harga modal naik pada ${increases.length} produk. Silakan cek & atur ulang harga jual.`,
+          { duration: 8000 },
+        );
+        const unitsMap = await loadUnitsForProducts(increases.map((i) => i.productId));
+        const alerts: PriceAlert[] = increases.map((i) => ({ ...i, units: unitsMap[i.productId] || [] }));
+        const edits: Record<string, string> = {};
+        for (const a of alerts) {
+          for (const u of a.units) {
+            for (const t of a.units.length ? u.tiers : []) {
+              if (t.id) edits[t.id] = String(Math.round(Number(t.price)));
+            }
+          }
+        }
+        setTierEdits(edits);
+        setPriceAlerts(alerts);
+      }
     } catch (e: any) { toast.error(e.message); }
     finally { setSaving(false); }
+  };
+
+  const savePrices = async () => {
+    if (!priceAlerts) return;
+    setSavingPrice(true);
+    try {
+      for (const a of priceAlerts) {
+        for (const u of a.units) {
+          for (const t of u.tiers) {
+            if (!t.id) continue;
+            const val = parseFloat(tierEdits[t.id] || "");
+            if (!Number.isFinite(val) || val === Number(t.price)) continue;
+            const { error } = await (supabase as any)
+              .from("product_price_tiers")
+              .update({ price: val })
+              .eq("id", t.id);
+            if (error) throw error;
+            // Harga dasar produk mengikuti tier terendah satuan dasar
+            if (u.is_base && t.min_qty <= 1) {
+              await supabase.from("products").update({ price: val }).eq("id", a.productId);
+            }
+          }
+        }
+      }
+      toast.success("Harga jual diperbarui");
+      setPriceAlerts(null);
+      onDone?.();
+    } catch (e: any) { toast.error(e.message || "Gagal simpan harga"); }
+    finally { setSavingPrice(false); }
   };
 
   const newItems = items.filter((it) => !it.product_id);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl">
         <DialogHeader>
@@ -324,5 +404,75 @@ export function ReceivingDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!priceAlerts} onOpenChange={(o) => { if (!o) setPriceAlerts(null); }}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-amber-600">
+            <TrendingUp className="h-5 w-5" /> Harga Modal Naik
+          </DialogTitle>
+          <DialogDescription>
+            Modal produk berikut lebih mahal dari pembelian sebelumnya. Atur ulang harga jual agar untung tetap terjaga.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="max-h-[60vh] overflow-y-auto space-y-3">
+          {(priceAlerts || []).map((a) => {
+            const naik = a.newCost - a.oldCost;
+            const pct = a.oldCost > 0 ? Math.round((naik / a.oldCost) * 100) : 0;
+            return (
+              <div key={a.productId} className="rounded-lg border p-3 space-y-2">
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <div className="font-medium">{a.name}</div>
+                  <div className="text-xs">
+                    <span className="text-muted-foreground line-through">{formatRupiah(a.oldCost)}</span>
+                    <span className="mx-1">→</span>
+                    <span className="font-semibold text-amber-600">{formatRupiah(a.newCost)}/pcs</span>
+                    <span className="ml-1 text-amber-600">(+{pct}%)</span>
+                  </div>
+                </div>
+                {a.units.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">Produk belum punya satuan harga. Atur di halaman Produk.</p>
+                ) : (
+                  a.units.map((u) => (
+                    <div key={u.id} className="space-y-1">
+                      <div className="text-[11px] uppercase text-muted-foreground">
+                        {u.name} {u.conversion > 1 && `(1 = ${u.conversion} pcs)`}
+                      </div>
+                      {u.tiers.map((t) => {
+                        const val = parseFloat(tierEdits[t.id || ""] || "0") || 0;
+                        const modalUnit = a.newCost * Math.max(1, u.conversion);
+                        const untung = val - modalUnit;
+                        return (
+                          <div key={t.id} className="flex items-center gap-2">
+                            <span className="w-20 text-xs text-muted-foreground">≥ {t.min_qty} {u.name}</span>
+                            <Input
+                              type="number"
+                              inputMode="decimal"
+                              value={tierEdits[t.id || ""] ?? ""}
+                              onChange={(e) => setTierEdits({ ...tierEdits, [t.id || ""]: e.target.value })}
+                              className="h-8 w-32 text-right text-xs"
+                            />
+                            <span className={`text-[11px] font-semibold ${untung > 0 ? "text-emerald-600" : "text-destructive"}`}>
+                              {untung > 0 ? "Untung" : "Rugi"} {formatRupiah(Math.abs(untung))}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))
+                )}
+              </div>
+            );
+          })}
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setPriceAlerts(null)} disabled={savingPrice}>Nanti Saja</Button>
+          <Button onClick={savePrices} disabled={savingPrice}>
+            {savingPrice && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Simpan Harga Baru
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
