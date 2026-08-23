@@ -173,6 +173,10 @@ export function ReceivingDialog({
         const addStockBase = addQty * conv;
         const perPcsCost = it.unit_cost && it.unit_cost > 0 ? Number(it.unit_cost) / conv : 0;
         if (productId) {
+          const prev = oldCostMap[productId];
+          if (prev && prev.cost > 0 && perPcsCost > prev.cost * 1.005) {
+            increases.push({ productId, name: prev.name || it.product_name, oldCost: prev.cost, newCost: perPcsCost });
+          }
           // Harga modal & jual produk = referensi terbaru (perhitungan untung tetap pakai modal per batch/FIFO)
           const upd: { cost_price?: number; price?: number } = {};
           if (perPcsCost > 0) upd.cost_price = perPcsCost;
