@@ -135,11 +135,9 @@ export const updateMyTenant = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { name: string; phone?: string; address?: string; static_qris_payload?: string | null; slug?: string | null; showcase_enabled?: boolean; showcase_description?: string | null; latitude?: number | null; longitude?: number | null }) => d)
   .handler(async ({ data, context }) => {
-    const patch: any = {
-      name: data.name,
-      phone: data.phone ?? null,
-      address: data.address ?? null,
-    };
+    const patch: any = { name: data.name };
+    if (data.phone !== undefined) patch.phone = data.phone || null;
+    if (data.address !== undefined) patch.address = data.address || null;
     if (data.static_qris_payload !== undefined) {
       patch.static_qris_payload = data.static_qris_payload || null;
     }
