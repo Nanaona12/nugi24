@@ -401,12 +401,12 @@ function ShowcaseCard() {
       await updateTenant({ data: {
         name: tenant.name,
         showcase_enabled: enabled,
-        slug: slug || null,
+        slug: finalSlug || null,
         showcase_description: description || null,
         latitude: latNum,
         longitude: lngNum,
       } });
-      toast.success("Galeri tersimpan");
+      toast.success(enabled ? `Galeri aktif di /showcase/${finalSlug}` : "Galeri tersimpan");
       qc.invalidateQueries({ queryKey: ["billing"] });
     } catch (e: any) {
       toast.error(e.message);
