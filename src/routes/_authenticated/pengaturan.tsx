@@ -383,9 +383,17 @@ function ShowcaseCard() {
 
   const clearLocation = () => { setLat(""); setLng(""); };
 
+  const makeSlug = (s: string) =>
+    s.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+
   const save = async () => {
     setSaving(true);
     try {
+      let finalSlug = makeSlug(slug);
+      if (enabled && !finalSlug) {
+        finalSlug = makeSlug(tenant.name) || `toko-${Math.random().toString(36).slice(2, 6)}`;
+        setSlug(finalSlug);
+      }
       const latNum = lat.trim() === "" ? null : Number(lat);
       const lngNum = lng.trim() === "" ? null : Number(lng);
       if (latNum != null && (Number.isNaN(latNum) || latNum < -90 || latNum > 90)) throw new Error("Latitude tidak valid");
