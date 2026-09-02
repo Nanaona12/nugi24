@@ -84,6 +84,9 @@ type PO = {
   created_at: string;
   receipt_image_path?: string | null;
   receipt_image_paths?: string[] | null;
+  payment_terms?: string | null;
+  due_date?: string | null;
+  supplier_invoice_no?: string | null;
 };
 
 
