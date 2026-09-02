@@ -268,6 +268,9 @@ function POPage() {
   const resetForm = () => {
     setSupplier("");
     setNotes("");
+    setPaymentTerms("cash");
+    setDueDate("");
+    setInvoiceNo("");
     setItems([]);
     setPickQuery("");
     setEditingPoId(null);
