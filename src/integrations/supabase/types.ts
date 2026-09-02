@@ -1225,15 +1225,18 @@ export type Database = {
       purchase_orders: {
         Row: {
           created_at: string
+          due_date: string | null
           id: string
           item_count: number
           notes: string | null
+          payment_terms: string
           receipt_image_path: string | null
           receipt_image_paths: string[]
           received_at: string | null
           received_status: string
           status: string
           supplier: string
+          supplier_invoice_no: string | null
           tenant_id: string
           total: number
           updated_at: string
@@ -1241,15 +1244,18 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          due_date?: string | null
           id?: string
           item_count?: number
           notes?: string | null
+          payment_terms?: string
           receipt_image_path?: string | null
           receipt_image_paths?: string[]
           received_at?: string | null
           received_status?: string
           status?: string
           supplier: string
+          supplier_invoice_no?: string | null
           tenant_id?: string
           total?: number
           updated_at?: string
@@ -1257,15 +1263,18 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          due_date?: string | null
           id?: string
           item_count?: number
           notes?: string | null
+          payment_terms?: string
           receipt_image_path?: string | null
           receipt_image_paths?: string[]
           received_at?: string | null
           received_status?: string
           status?: string
           supplier?: string
+          supplier_invoice_no?: string | null
           tenant_id?: string
           total?: number
           updated_at?: string
@@ -1572,6 +1581,131 @@ export type Database = {
             foreignKeyName: "subscriptions_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: true
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_debt_payments: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          debt_id: string
+          id: string
+          method: string
+          note: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          debt_id: string
+          id?: string
+          method?: string
+          note?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          debt_id?: string
+          id?: string
+          method?: string
+          note?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_debt_payments_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_debts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_debt_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_debt_payments_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_debts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          due_date: string | null
+          id: string
+          invoice_no: string | null
+          note: string | null
+          paid_amount: number
+          po_id: string | null
+          status: string
+          supplier: string
+          tenant_id: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_no?: string | null
+          note?: string | null
+          paid_amount?: number
+          po_id?: string | null
+          status?: string
+          supplier: string
+          tenant_id: string
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          due_date?: string | null
+          id?: string
+          invoice_no?: string | null
+          note?: string | null
+          paid_amount?: number
+          po_id?: string | null
+          status?: string
+          supplier?: string
+          tenant_id?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_debts_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_debts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_debts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
             referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },
