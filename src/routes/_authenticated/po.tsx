@@ -727,6 +727,9 @@ function POPage() {
 
     setSupplier(po.supplier);
     setNotes(po.notes || "");
+    setPaymentTerms(((po as any).payment_terms === "credit" ? "credit" : "cash"));
+    setDueDate(((po as any).due_date as string | null) || "");
+    setInvoiceNo(((po as any).supplier_invoice_no as string | null) || "");
     setItems(drafted);
     setEditingPoId(po.id);
     setReceiptFiles([]);
