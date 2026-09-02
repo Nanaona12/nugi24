@@ -156,6 +156,9 @@ function POPage() {
   // Form
   const [supplier, setSupplier] = useState("");
   const [notes, setNotes] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState<"cash" | "credit">("cash");
+  const [dueDate, setDueDate] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
   const [items, setItems] = useState<DraftItem[]>([]);
   const [pickQuery, setPickQuery] = useState("");
   const [saving, setSaving] = useState(false);
