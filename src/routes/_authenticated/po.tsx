@@ -562,9 +562,12 @@ function POPage() {
           supplier: supplier.trim(),
           status,
           notes: notes.trim() || null,
+          payment_terms: paymentTerms,
+          due_date: paymentTerms === "credit" && dueDate ? dueDate : null,
+          supplier_invoice_no: invoiceNo.trim() || null,
           total,
           item_count: itemCount,
-        })
+        } as any)
         .eq("id", editingPoId);
       if (uErr) {
         setSaving(false);
