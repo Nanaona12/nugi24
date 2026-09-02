@@ -31,6 +31,7 @@ import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authentic
 import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
 import { Route as AuthenticatedKaryawanRouteImport } from './routes/_authenticated/karyawan'
 import { Route as AuthenticatedKadaluarsaRouteImport } from './routes/_authenticated/kadaluarsa'
+import { Route as AuthenticatedHutangSupplierRouteImport } from './routes/_authenticated/hutang-supplier'
 import { Route as AuthenticatedHutangRouteImport } from './routes/_authenticated/hutang'
 import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
 import { Route as AuthenticatedBackupRouteImport } from './routes/_authenticated/backup'
@@ -148,6 +149,12 @@ const AuthenticatedKadaluarsaRoute = AuthenticatedKadaluarsaRouteImport.update({
   path: '/kadaluarsa',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedHutangSupplierRoute =
+  AuthenticatedHutangSupplierRouteImport.update({
+    id: '/hutang-supplier',
+    path: '/hutang-supplier',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedHutangRoute = AuthenticatedHutangRouteImport.update({
   id: '/hutang',
   path: '/hutang',
@@ -189,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/backup': typeof AuthenticatedBackupRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/hutang': typeof AuthenticatedHutangRoute
+  '/hutang-supplier': typeof AuthenticatedHutangSupplierRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
   '/karyawan': typeof AuthenticatedKaryawanRoute
   '/kasir': typeof AuthenticatedKasirRoute
@@ -218,6 +226,7 @@ export interface FileRoutesByTo {
   '/backup': typeof AuthenticatedBackupRoute
   '/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/hutang': typeof AuthenticatedHutangRoute
+  '/hutang-supplier': typeof AuthenticatedHutangSupplierRoute
   '/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
   '/karyawan': typeof AuthenticatedKaryawanRoute
   '/kasir': typeof AuthenticatedKasirRoute
@@ -249,6 +258,7 @@ export interface FileRoutesById {
   '/_authenticated/backup': typeof AuthenticatedBackupRoute
   '/_authenticated/cek-koneksi': typeof AuthenticatedCekKoneksiRoute
   '/_authenticated/hutang': typeof AuthenticatedHutangRoute
+  '/_authenticated/hutang-supplier': typeof AuthenticatedHutangSupplierRoute
   '/_authenticated/kadaluarsa': typeof AuthenticatedKadaluarsaRoute
   '/_authenticated/karyawan': typeof AuthenticatedKaryawanRoute
   '/_authenticated/kasir': typeof AuthenticatedKasirRoute
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/backup'
     | '/cek-koneksi'
     | '/hutang'
+    | '/hutang-supplier'
     | '/kadaluarsa'
     | '/karyawan'
     | '/kasir'
@@ -309,6 +320,7 @@ export interface FileRouteTypes {
     | '/backup'
     | '/cek-koneksi'
     | '/hutang'
+    | '/hutang-supplier'
     | '/kadaluarsa'
     | '/karyawan'
     | '/kasir'
@@ -339,6 +351,7 @@ export interface FileRouteTypes {
     | '/_authenticated/backup'
     | '/_authenticated/cek-koneksi'
     | '/_authenticated/hutang'
+    | '/_authenticated/hutang-supplier'
     | '/_authenticated/kadaluarsa'
     | '/_authenticated/karyawan'
     | '/_authenticated/kasir'
@@ -526,6 +539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedKadaluarsaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/hutang-supplier': {
+      id: '/_authenticated/hutang-supplier'
+      path: '/hutang-supplier'
+      fullPath: '/hutang-supplier'
+      preLoaderRoute: typeof AuthenticatedHutangSupplierRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/hutang': {
       id: '/_authenticated/hutang'
       path: '/hutang'
@@ -576,6 +596,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedBackupRoute: typeof AuthenticatedBackupRoute
   AuthenticatedCekKoneksiRoute: typeof AuthenticatedCekKoneksiRoute
   AuthenticatedHutangRoute: typeof AuthenticatedHutangRoute
+  AuthenticatedHutangSupplierRoute: typeof AuthenticatedHutangSupplierRoute
   AuthenticatedKadaluarsaRoute: typeof AuthenticatedKadaluarsaRoute
   AuthenticatedKaryawanRoute: typeof AuthenticatedKaryawanRoute
   AuthenticatedKasirRoute: typeof AuthenticatedKasirRoute
@@ -599,6 +620,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedBackupRoute: AuthenticatedBackupRoute,
   AuthenticatedCekKoneksiRoute: AuthenticatedCekKoneksiRoute,
   AuthenticatedHutangRoute: AuthenticatedHutangRoute,
+  AuthenticatedHutangSupplierRoute: AuthenticatedHutangSupplierRoute,
   AuthenticatedKadaluarsaRoute: AuthenticatedKadaluarsaRoute,
   AuthenticatedKaryawanRoute: AuthenticatedKaryawanRoute,
   AuthenticatedKasirRoute: AuthenticatedKasirRoute,

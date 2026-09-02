@@ -84,6 +84,9 @@ type PO = {
   created_at: string;
   receipt_image_path?: string | null;
   receipt_image_paths?: string[] | null;
+  payment_terms?: string | null;
+  due_date?: string | null;
+  supplier_invoice_no?: string | null;
 };
 
 
@@ -156,6 +159,9 @@ function POPage() {
   // Form
   const [supplier, setSupplier] = useState("");
   const [notes, setNotes] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState<"cash" | "credit">("cash");
+  const [dueDate, setDueDate] = useState("");
+  const [invoiceNo, setInvoiceNo] = useState("");
   const [items, setItems] = useState<DraftItem[]>([]);
   const [pickQuery, setPickQuery] = useState("");
   const [saving, setSaving] = useState(false);
@@ -265,6 +271,9 @@ function POPage() {
   const resetForm = () => {
     setSupplier("");
     setNotes("");
+    setPaymentTerms("cash");
+    setDueDate("");
+    setInvoiceNo("");
     setItems([]);
     setPickQuery("");
     setEditingPoId(null);
@@ -553,9 +562,12 @@ function POPage() {
           supplier: supplier.trim(),
           status,
           notes: notes.trim() || null,
+          payment_terms: paymentTerms,
+          due_date: paymentTerms === "credit" && dueDate ? dueDate : null,
+          supplier_invoice_no: invoiceNo.trim() || null,
           total,
           item_count: itemCount,
-        })
+        } as any)
         .eq("id", editingPoId);
       if (uErr) {
         setSaving(false);
@@ -570,9 +582,12 @@ function POPage() {
           supplier: supplier.trim(),
           status,
           notes: notes.trim() || null,
+          payment_terms: paymentTerms,
+          due_date: paymentTerms === "credit" && dueDate ? dueDate : null,
+          supplier_invoice_no: invoiceNo.trim() || null,
           total,
           item_count: itemCount,
-        })
+        } as any)
         .select()
         .single();
       if (e1 || !po) {
@@ -712,6 +727,9 @@ function POPage() {
 
     setSupplier(po.supplier);
     setNotes(po.notes || "");
+    setPaymentTerms(((po as any).payment_terms === "credit" ? "credit" : "cash"));
+    setDueDate(((po as any).due_date as string | null) || "");
+    setInvoiceNo(((po as any).supplier_invoice_no as string | null) || "");
     setItems(drafted);
     setEditingPoId(po.id);
     setReceiptFiles([]);
