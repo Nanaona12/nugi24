@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
 import { PackageCheck, Loader2, PackagePlus, TrendingUp } from "lucide-react";
 import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
+import { settlePoFinance } from "@/lib/supplier-debt";
 
 type POItem = {
   id: string;
@@ -209,6 +210,15 @@ export function ReceivingDialog({
         received_at: new Date().toISOString(),
         ...(allReceived ? { status: "received" } : {}),
       }).eq("id", poId);
+      // PO selesai diterima: catat hutang supplier (tempo) atau uang keluar (tunai) — sekali saja
+      if (allReceived && poId) {
+        try {
+          await settlePoFinance(poId);
+        } catch (e) {
+          console.error("settlePoFinance gagal", e);
+          toast.warning("PO diterima, tapi pencatatan hutang/pembukuan gagal. Cek halaman Hutang Supplier.");
+        }
+      }
       const createdCount = Object.keys(createdMap).length;
       toast.success(`${totalNew} pcs diterima${createdCount > 0 ? ` • ${createdCount} produk baru dibuat` : ""}. ${allReceived ? "PO selesai." : "Penerimaan sebagian."}`);
       onOpenChange(false);
