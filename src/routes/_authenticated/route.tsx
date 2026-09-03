@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users, AlarmClock, Home, UserCog, Layers, BookOpen, Wallet, History, Gift, DatabaseBackup, Truck } from "lucide-react";
+import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users, AlarmClock, Home, UserCog, Layers, BookOpen, Wallet, History, Gift, DatabaseBackup, Truck, Landmark } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -290,6 +290,7 @@ function AuthedLayout() {
       items: [
         ...(isGrosir ? [{ to: "/po", icon: ClipboardList, label: "PO" }] : []),
         ...(isGrosir ? [{ to: "/supplier", icon: Truck, label: "Supplier" }] : []),
+        ...(isGrosir ? [{ to: "/hutang-supplier", icon: Landmark, label: "Hutang Supplier" }] : []),
       ],
     },
     {

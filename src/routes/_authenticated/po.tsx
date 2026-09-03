@@ -1231,6 +1231,55 @@ function POPage() {
             </div>
           </div>
 
+          {/* Termin pembayaran */}
+          <div className="mt-3 grid gap-3 sm:grid-cols-3 rounded-md border bg-muted/30 p-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Termin Pembayaran</Label>
+              <Select value={paymentTerms} onValueChange={(v) => setPaymentTerms(v as "cash" | "credit")}>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cash">Tunai — bayar langsung</SelectItem>
+                  <SelectItem value="credit">Tempo — bayar di jatuh tempo</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">
+                {paymentTerms === "cash"
+                  ? "Tercatat sebagai uang keluar di Pembukuan saat PO diterima."
+                  : "Tidak mengurangi kas; tercatat di Hutang Supplier sampai dibayar."}
+              </p>
+            </div>
+            {paymentTerms === "credit" && (
+              <div className="space-y-1.5">
+                <Label className="text-xs">Jatuh Tempo</Label>
+                <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className="h-9" />
+                <div className="flex gap-1">
+                  {[7, 14, 30].map((d) => (
+                    <Button
+                      key={d}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-6 px-2 text-[11px]"
+                      onClick={() => {
+                        const t = new Date();
+                        t.setDate(t.getDate() + d);
+                        setDueDate(t.toISOString().slice(0, 10));
+                      }}
+                    >
+                      {d} hari
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="space-y-1.5">
+              <Label className="text-xs">No. Faktur Supplier</Label>
+              <Input value={invoiceNo} onChange={(e) => setInvoiceNo(e.target.value)} placeholder="Opsional" className="h-9" />
+            </div>
+          </div>
+
           {/* Struk / Foto Nota (opsional) */}
           <div className="mt-3 rounded-md border bg-muted/30 p-3 space-y-2">
             <div className="flex items-center gap-2">
