@@ -151,6 +151,16 @@ function PembukuanPage() {
     setEntries(list);
     setLoading(false);
 
+    // Hutang supplier belum lunas (pembelian tempo)
+    const { data: sdRows } = await (supabase as any)
+      .from("supplier_debts")
+      .select("total, paid_amount")
+      .eq("tenant_id", tenant)
+      .neq("status", "paid");
+    setSupplierDebtOutstanding(
+      ((sdRows || []) as any[]).reduce((s, d) => s + (Number(d.total) - Number(d.paid_amount)), 0),
+    );
+
     // Keuntungan yang belum diambil (sinkron dengan halaman Untung)
     const { data: tRow } = await (supabase as any)
       .from("tenants")
