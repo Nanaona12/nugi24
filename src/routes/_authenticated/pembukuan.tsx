@@ -81,10 +81,10 @@ function PembukuanPage() {
       return;
     }
 
-    const [txRes, poRes, bkRes] = await Promise.all([
+    const [txRes, poRes, bkRes, debtRes] = await Promise.all([
       supabase
         .from("transactions")
-        .select("id, total, created_at, payment_method, customer_name")
+        .select("id, total, created_at, payment_method, customer_name, shift_id")
         .eq("tenant_id", tenant)
         .order("created_at", { ascending: false })
         .limit(5000),
@@ -101,10 +101,36 @@ function PembukuanPage() {
         .eq("tenant_id", tenant)
         .order("entry_date", { ascending: false })
         .limit(5000),
+      (supabase as any)
+        .from("debts")
+        .select("id, transaction_id")
+        .eq("tenant_id", tenant)
+        .limit(5000),
     ]);
 
+    const bkRows = (bkRes.data || []) as any[];
+
+    // Shift yang sudah ditutup menuliskan "Setoran kasir tunai" / "Penerimaan QRIS"
+    // ke pembukuan. Transaksi di shift tsb TIDAK boleh dihitung lagi, kalau tidak
+    // penjualan tercatat dua kali dan saldo kas jadi menggelembung.
+    const settledShiftIds = new Set<string>(
+      bkRows
+        .filter(
+          (b) =>
+            b.ref &&
+            (String(b.description || "").startsWith("Setoran kasir tunai") ||
+              String(b.description || "").startsWith("Penerimaan QRIS")),
+        )
+        .map((b) => String(b.ref)),
+    );
+
     const list: Entry[] = [];
+    const skippedTxIds = new Set<string>();
     for (const t of (txRes.data || []) as any[]) {
+      if (t.shift_id && settledShiftIds.has(String(t.shift_id))) {
+        skippedTxIds.add(String(t.id));
+        continue;
+      }
       list.push({
         id: "t-" + t.id,
         date: t.created_at,
@@ -116,9 +142,18 @@ function PembukuanPage() {
         kredit: 0,
       });
     }
+
+    // Kasbon dari transaksi yang di-skip juga harus di-skip: entri "Kasbon" hanya
+    // berfungsi menetralkan transaksi penjualan hutang tersebut.
+    const skippedDebtIds = new Set<string>(
+      ((debtRes.data || []) as any[])
+        .filter((d) => d.transaction_id && skippedTxIds.has(String(d.transaction_id)))
+        .map((d) => String(d.id)),
+    );
+
     // PO yang sudah punya entri pembukuan (tunai via settlePoFinance) atau bertempo
     // tidak boleh dihitung lagi di sini agar tidak dobel / mengurangi kas palsu.
-    const bkRefs = new Set(((bkRes.data || []) as any[]).map((b) => String(b.ref || "")));
+    const bkRefs = new Set(bkRows.map((b) => String(b.ref || "")));
     for (const p of (poRes.data || []) as any[]) {
       if (p.payment_terms === "credit") continue; // tempo: kas tidak berkurang, masuk Hutang Supplier
       if (bkRefs.has(String(p.id))) continue; // tunai: sudah tercatat sebagai entri pembukuan
@@ -133,7 +168,8 @@ function PembukuanPage() {
         kredit: Number(p.total) || 0,
       });
     }
-    for (const b of (bkRes.data || []) as any[]) {
+    for (const b of bkRows) {
+      if (b.ref && skippedDebtIds.has(String(b.ref)) && String(b.description || "").startsWith("Kasbon")) continue;
       const amt = Number(b.amount) || 0;
       list.push({
         id: "b-" + b.id,
@@ -147,6 +183,7 @@ function PembukuanPage() {
         kredit: b.kind === "out" ? amt : 0,
       });
     }
+
     list.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     setEntries(list);
     setLoading(false);
