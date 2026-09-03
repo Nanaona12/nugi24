@@ -360,7 +360,7 @@ function PembukuanPage() {
         Catatan debit/kredit otomatis dari penjualan & PO yang diterima, plus catatan manual.
       </p>
 
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="p-4">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <TrendingUp className="h-4 w-4 text-emerald-600" /> Total Debit (Masuk)
@@ -395,6 +395,17 @@ function PembukuanPage() {
             Saldo kas {formatRupiah(totals.saldoKas)} − untung belum diambil {formatRupiah(unwithdrawnProfit)}
           </div>
 
+        </Card>
+        <Card className="p-4">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Landmark className="h-4 w-4 text-amber-600" /> Hutang Supplier Belum Lunas
+          </div>
+          <div className={`mt-1 text-xl font-bold tabular-nums ${supplierDebtOutstanding > 0 ? "text-amber-600" : ""}`}>
+            {formatRupiah(supplierDebtOutstanding)}
+          </div>
+          <div className="mt-1 text-[11px] text-muted-foreground">
+            Pembelian tempo yang belum dibayar — kas di atas belum sepenuhnya milik toko.
+          </div>
         </Card>
       </div>
 
