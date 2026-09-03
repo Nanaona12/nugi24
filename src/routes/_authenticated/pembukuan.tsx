@@ -11,7 +11,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { BookOpen, TrendingUp, TrendingDown, Wallet, Download, Plus, Trash2 } from "lucide-react";
+import { BookOpen, TrendingUp, TrendingDown, Wallet, Download, Plus, Trash2, Landmark } from "lucide-react";
 import { formatRupiah } from "@/lib/format";
 import { toast } from "sonner";
 
@@ -50,6 +50,7 @@ function PembukuanPage() {
   const [q, setQ] = useState("");
   const [tenantId, setTenantId] = useState<string | null>(null);
   const [unwithdrawnProfit, setUnwithdrawnProfit] = useState(0);
+  const [supplierDebtOutstanding, setSupplierDebtOutstanding] = useState(0);
 
 
   // Add dialog
@@ -89,7 +90,7 @@ function PembukuanPage() {
         .limit(5000),
       supabase
         .from("purchase_orders")
-        .select("id, total, supplier, status, received_at, created_at")
+        .select("id, total, supplier, status, received_at, created_at, payment_terms")
         .eq("tenant_id", tenant)
         .eq("status", "received")
         .order("received_at", { ascending: false })
@@ -115,7 +116,12 @@ function PembukuanPage() {
         kredit: 0,
       });
     }
+    // PO yang sudah punya entri pembukuan (tunai via settlePoFinance) atau bertempo
+    // tidak boleh dihitung lagi di sini agar tidak dobel / mengurangi kas palsu.
+    const bkRefs = new Set(((bkRes.data || []) as any[]).map((b) => String(b.ref || "")));
     for (const p of (poRes.data || []) as any[]) {
+      if (p.payment_terms === "credit") continue; // tempo: kas tidak berkurang, masuk Hutang Supplier
+      if (bkRefs.has(String(p.id))) continue; // tunai: sudah tercatat sebagai entri pembukuan
       list.push({
         id: "p-" + p.id,
         date: p.received_at || p.created_at,
