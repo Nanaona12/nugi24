@@ -106,23 +106,23 @@ function PembukuanPage() {
         .select("id, transaction_id")
         .eq("tenant_id", tenant)
         .limit(5000),
+      supabase
+        .from("cashier_shifts")
+        .select("id")
+        .eq("tenant_id", tenant)
+        .eq("status", "closed")
+        .limit(5000),
     ]);
 
     const bkRows = (bkRes.data || []) as any[];
 
-    // Shift yang sudah ditutup menuliskan "Setoran kasir tunai" / "Penerimaan QRIS"
+    // Shift yang sudah ditutup menuliskan setoran resmi (tunai/QRIS/non-tunai lain)
     // ke pembukuan. Transaksi di shift tsb TIDAK boleh dihitung lagi, kalau tidak
     // penjualan tercatat dua kali dan saldo kas jadi menggelembung.
     const settledShiftIds = new Set<string>(
-      bkRows
-        .filter(
-          (b) =>
-            b.ref &&
-            (String(b.description || "").startsWith("Setoran kasir tunai") ||
-              String(b.description || "").startsWith("Penerimaan QRIS")),
-        )
-        .map((b) => String(b.ref)),
+      ((shiftRes.data || []) as any[]).map((s) => String(s.id)),
     );
+
 
     const list: Entry[] = [];
     const skippedTxIds = new Set<string>();
