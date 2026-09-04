@@ -120,7 +120,7 @@ function PembukuanPage() {
     // ke pembukuan. Transaksi di shift tsb TIDAK boleh dihitung lagi, kalau tidak
     // penjualan tercatat dua kali dan saldo kas jadi menggelembung.
     const settledShiftIds = new Set<string>(
-      ((shiftRes.data || []) as any[]).map((s) => String(s.id)),
+      ((closedShiftRes.data || []) as any[]).map((s) => String(s.id)),
     );
 
 
