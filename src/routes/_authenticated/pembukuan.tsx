@@ -81,7 +81,7 @@ function PembukuanPage() {
       return;
     }
 
-    const [txRes, poRes, bkRes, debtRes, shiftRes] = await Promise.all([
+    const [txRes, poRes, bkRes, debtRes, closedShiftRes] = await Promise.all([
       supabase
         .from("transactions")
         .select("id, total, created_at, payment_method, customer_name, shift_id")
