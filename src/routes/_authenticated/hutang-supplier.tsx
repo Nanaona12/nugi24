@@ -123,6 +123,42 @@ function SupplierDebtPage() {
         )}
       </h1>
 
+      <details className="rounded-lg border bg-muted/40 p-4 text-sm">
+        <summary className="cursor-pointer font-semibold">
+          Cara pakai Pembelian Tempo (klik untuk buka)
+        </summary>
+        <ol className="mt-3 list-decimal space-y-1.5 pl-5 text-muted-foreground">
+          <li>
+            Buka menu <b>PO</b> lalu buat pesanan ke supplier seperti biasa.
+          </li>
+          <li>
+            Di dialog PO, bagian <b>Termin</b> pilih <b>Tempo</b>, isi{" "}
+            <b>Tanggal Jatuh Tempo</b> (bisa pakai tombol cepat 7/14/30 hari) dan{" "}
+            <b>No. Faktur Supplier</b> bila ada. Pilih <b>Tunai</b> kalau bayar langsung saat barang datang.
+          </li>
+          <li>
+            Saat barang datang, buka PO tersebut lalu klik <b>Terima Barang</b> dan lengkapi jumlah yang
+            diterima. Setelah semua item diterima, stok bertambah otomatis.
+          </li>
+          <li>
+            PO <b>Tempo</b> akan muncul di halaman ini sebagai faktur belum lunas — kas di Pembukuan{" "}
+            <b>tidak</b> berkurang dulu. PO <b>Tunai</b> langsung tercatat sebagai uang keluar di Pembukuan.
+          </li>
+          <li>
+            Kalau sudah membayar supplier (boleh dicicil), klik tombol <b>Bayar</b> pada faktur, isi nominal
+            dan metode (tunai/transfer). Setiap pembayaran otomatis jadi entri uang keluar di Pembukuan dan
+            status faktur berubah jadi Sebagian / Lunas.
+          </li>
+          <li>
+            Pantau tanda <b>Jatuh Tempo</b> / <b>Terlambat</b> di daftar, dan lihat ringkasan{" "}
+            <b>Hutang Supplier Belum Lunas</b> di halaman Pembukuan agar tahu kas mana yang sebenarnya masih
+            harus dibayarkan.
+          </li>
+        </ol>
+      </details>
+
+
+
       {totals.openCount > 0 && (
         <Card className="flex items-start gap-3 border-amber-400 bg-amber-50 p-4 text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-100">
           <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0" />
