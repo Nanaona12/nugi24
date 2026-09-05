@@ -8,11 +8,49 @@ export type SupplierDebt = {
   invoice_no: string | null;
   total: number;
   paid_amount: number;
+  saved_amount: number;
   due_date: string | null;
   status: "open" | "partial" | "paid";
   note: string | null;
   created_at: string;
 };
+
+export type SupplierDebtSaving = {
+  id: string;
+  debt_id: string;
+  amount: number;
+  note: string | null;
+  created_at: string;
+};
+
+/**
+ * Estimasi nabung untuk melunasi faktur sebelum jatuh tempo.
+ * kurang = sisa hutang - uang yang sudah ditabung
+ */
+export function savingPlan(debt: {
+  total: number | string;
+  paid_amount: number | string;
+  saved_amount: number | string | null;
+  due_date: string | null;
+  status: string;
+}) {
+  const sisa = Math.max(Number(debt.total) - Number(debt.paid_amount), 0);
+  const saved = Math.max(Number(debt.saved_amount || 0), 0);
+  const kurang = Math.max(sisa - saved, 0);
+  const percent = sisa > 0 ? Math.min(Math.round((saved / sisa) * 100), 100) : 100;
+  let daysLeft: number | null = null;
+  if (debt.due_date && debt.status !== "paid") {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    daysLeft = Math.round(
+      (new Date(debt.due_date + "T00:00:00").getTime() - today.getTime()) / 86400000,
+    );
+  }
+  const effectiveDays = daysLeft != null && daysLeft > 0 ? daysLeft : null;
+  const perDay = kurang > 0 && effectiveDays ? Math.ceil(kurang / effectiveDays) : null;
+  const perWeek = kurang > 0 && effectiveDays ? Math.ceil(kurang / Math.max(effectiveDays / 7, 1)) : null;
+  return { sisa, saved, kurang, percent, daysLeft, perDay, perWeek };
+}
 
 export type SupplierDebtPayment = {
   id: string;
