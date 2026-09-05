@@ -1641,6 +1641,58 @@ export type Database = {
           },
         ]
       }
+      supplier_debt_savings: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          debt_id: string
+          id: string
+          note: string | null
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          created_by?: string | null
+          debt_id: string
+          id?: string
+          note?: string | null
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          debt_id?: string
+          id?: string
+          note?: string | null
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_debt_savings_debt_id_fkey"
+            columns: ["debt_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_debts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_debt_savings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_debt_savings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supplier_debts: {
         Row: {
           created_at: string
@@ -1651,6 +1703,7 @@ export type Database = {
           note: string | null
           paid_amount: number
           po_id: string | null
+          saved_amount: number
           status: string
           supplier: string
           tenant_id: string
@@ -1666,6 +1719,7 @@ export type Database = {
           note?: string | null
           paid_amount?: number
           po_id?: string | null
+          saved_amount?: number
           status?: string
           supplier: string
           tenant_id: string
@@ -1681,6 +1735,7 @@ export type Database = {
           note?: string | null
           paid_amount?: number
           po_id?: string | null
+          saved_amount?: number
           status?: string
           supplier?: string
           tenant_id?: string
