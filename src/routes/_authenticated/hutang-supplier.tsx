@@ -292,6 +292,11 @@ function SupplierDebtPage() {
                       </td>
                       <td className="p-3">
                         <div className="flex justify-end gap-1">
+                          {d.status !== "paid" && (
+                            <Button size="sm" variant="outline" onClick={() => setSaveDebt(d)}>
+                              <PiggyBank className="mr-1 h-3.5 w-3.5" /> Nabung
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             variant="ghost"
