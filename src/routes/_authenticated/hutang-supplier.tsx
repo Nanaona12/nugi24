@@ -87,6 +87,11 @@ function SupplierDebtPage() {
         { event: "*", schema: "public", table: "supplier_debt_payments" },
         () => load(),
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "supplier_debt_savings" },
+        () => load(),
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
