@@ -216,6 +216,7 @@ function SupplierDebtPage() {
                 <th className="p-3">Jatuh Tempo</th>
                 <th className="p-3 text-right">Total</th>
                 <th className="p-3 text-right">Dibayar</th>
+                <th className="p-3 text-right">Tabungan</th>
                 <th className="p-3 text-right">Sisa</th>
                 <th className="p-3">Status</th>
                 <th className="p-3"></th>
