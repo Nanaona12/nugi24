@@ -272,6 +272,30 @@ function SupplierDebtPage() {
                       </td>
                       <td className="p-3 text-right">{formatRupiah(d.total)}</td>
                       <td className="p-3 text-right text-success">{formatRupiah(d.paid_amount)}</td>
+                      <td className="p-3 text-right">
+                        {d.status === "paid" ? (
+                          "-"
+                        ) : (
+                          <div className="space-y-0.5">
+                            <div className="font-medium text-primary">
+                              {formatRupiah(plan.saved)}
+                            </div>
+                            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-primary"
+                                style={{ width: `${plan.percent}%` }}
+                              />
+                            </div>
+                            <div className="text-[11px] text-muted-foreground">
+                              {plan.kurang === 0
+                                ? "Dana siap ✔"
+                                : plan.perDay
+                                  ? `Nabung ${formatRupiah(plan.perDay)}/hari`
+                                  : `Kurang ${formatRupiah(plan.kurang)}`}
+                            </div>
+                          </div>
+                        )}
+                      </td>
                       <td className="p-3 text-right font-semibold">
                         {sisa > 0 ? (
                           <span className="text-destructive">{formatRupiah(sisa)}</span>
