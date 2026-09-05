@@ -16,8 +16,22 @@ import {
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
-import { AlertTriangle, Truck, Search, CheckCircle2, Trash2, CalendarClock } from "lucide-react";
-import { debtDueInfo, type SupplierDebt, type SupplierDebtPayment } from "@/lib/supplier-debt";
+import {
+  AlertTriangle,
+  Truck,
+  Search,
+  CheckCircle2,
+  Trash2,
+  CalendarClock,
+  PiggyBank,
+} from "lucide-react";
+import {
+  debtDueInfo,
+  savingPlan,
+  type SupplierDebt,
+  type SupplierDebtPayment,
+  type SupplierDebtSaving,
+} from "@/lib/supplier-debt";
 
 export const Route = createFileRoute("/_authenticated/hutang-supplier")({
   component: SupplierDebtPage,
