@@ -117,15 +117,22 @@ function SupplierDebtPage() {
   const totals = useMemo(() => {
     let openCount = 0,
       openAmount = 0,
-      dueSoon = 0;
+      dueSoon = 0,
+      saved = 0,
+      kurang = 0,
+      perDay = 0;
     for (const r of rows) {
       if (r.status === "paid") continue;
       openCount++;
       openAmount += Number(r.total) - Number(r.paid_amount);
       const info = debtDueInfo(r.due_date, r.status);
       if (info.days != null && info.days <= 3) dueSoon++;
+      const plan = savingPlan(r);
+      saved += plan.saved;
+      kurang += plan.kurang;
+      perDay += plan.perDay ?? 0;
     }
-    return { openCount, openAmount, dueSoon };
+    return { openCount, openAmount, dueSoon, saved, kurang, perDay };
   }, [rows]);
 
   return (
