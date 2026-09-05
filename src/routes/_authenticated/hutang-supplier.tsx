@@ -64,6 +64,7 @@ function SupplierDebtPage() {
   const [payDebt, setPayDebt] = useState<SupplierDebt | null>(null);
   const [detail, setDetail] = useState<SupplierDebt | null>(null);
   const [payments, setPayments] = useState<SupplierDebtPayment[]>([]);
+  const [saveDebt, setSaveDebt] = useState<SupplierDebt | null>(null);
 
   const load = async () => {
     setLoading(true);
