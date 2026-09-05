@@ -225,13 +225,13 @@ function SupplierDebtPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="p-8 text-center text-muted-foreground">
+                  <td colSpan={9} className="p-8 text-center text-muted-foreground">
                     Memuat...
                   </td>
                 </tr>
               ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="p-12 text-center text-muted-foreground">
+                  <td colSpan={9} className="p-12 text-center text-muted-foreground">
                     <Truck className="mx-auto mb-3 h-12 w-12 opacity-30" />
                     {tab === "open" ? "Tidak ada hutang supplier 🎉" : "Belum ada data"}
                   </td>
