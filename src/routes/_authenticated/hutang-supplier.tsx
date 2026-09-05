@@ -649,3 +649,209 @@ function DetailDialog({
     </Dialog>
   );
 }
+
+function SaveDialog({
+  debt,
+  onClose,
+  onSaved,
+}: {
+  debt: SupplierDebt | null;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [history, setHistory] = useState<SupplierDebtSaving[]>([]);
+
+  const loadHistory = async (debtId: string) => {
+    const { data } = await (supabase as any)
+      .from("supplier_debt_savings")
+      .select("*")
+      .eq("debt_id", debtId)
+      .order("created_at", { ascending: false });
+    setHistory((data || []) as SupplierDebtSaving[]);
+  };
+
+  useEffect(() => {
+    if (debt) {
+      setAmount("");
+      setNote("");
+      loadHistory(debt.id);
+    }
+  }, [debt]);
+
+  if (!debt) return null;
+  const plan = savingPlan(debt);
+
+  const submit = async () => {
+    const amt = Number(String(amount).replace(/[^\d]/g, ""));
+    if (amt <= 0) return toast.error("Nominal harus > 0");
+    if (amt > plan.kurang)
+      return toast.error(`Cukup ${formatRupiah(plan.kurang)} lagi untuk faktur ini`);
+    setSaving(true);
+    const { data: userRes } = await supabase.auth.getUser();
+    const { error } = await (supabase as any).from("supplier_debt_savings").insert({
+      tenant_id: debt.tenant_id,
+      debt_id: debt.id,
+      amount: amt,
+      note: note.trim() || null,
+      created_by: userRes.user?.id ?? null,
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(
+      amt >= plan.kurang
+        ? "🎉 Dana untuk faktur ini sudah lengkap!"
+        : `Tabungan ${formatRupiah(amt)} tercatat`,
+    );
+    onSaved();
+  };
+
+  return (
+    <Dialog open={!!debt} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <PiggyBank className="h-5 w-5 text-primary" /> Nabung — {debt.supplier}
+          </DialogTitle>
+          <DialogDescription>
+            Catat uang yang sudah Anda sisihkan untuk melunasi faktur ini.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="rounded-lg border p-3 text-sm">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Sisa hutang</span>
+              <span className="font-semibold">{formatRupiah(plan.sisa)}</span>
+            </div>
+            <div className="flex justify-between text-primary">
+              <span>Sudah terkumpul</span>
+              <span className="font-semibold">{formatRupiah(plan.saved)}</span>
+            </div>
+            <div className="flex justify-between text-destructive">
+              <span>Masih kurang</span>
+              <span className="font-semibold">{formatRupiah(plan.kurang)}</span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+              <div className="h-full rounded-full bg-primary" style={{ width: `${plan.percent}%` }} />
+            </div>
+            <div className="mt-2 border-t pt-2 text-xs text-muted-foreground">
+              {plan.kurang === 0 ? (
+                "Dana sudah cukup — tinggal klik Bayar pada faktur ini."
+              ) : plan.daysLeft == null ? (
+                "Faktur ini belum punya tanggal jatuh tempo, jadi target harian belum bisa dihitung."
+              ) : plan.daysLeft <= 0 ? (
+                "Sudah lewat jatuh tempo — sebaiknya segera dilunasi."
+              ) : (
+                <>
+                  Sisa <b>{plan.daysLeft} hari</b> lagi. Agar lunas tepat waktu, sisihkan{" "}
+                  <b className="text-foreground">{formatRupiah(plan.perDay || 0)}/hari</b> atau{" "}
+                  <b className="text-foreground">{formatRupiah(plan.perWeek || 0)}/minggu</b>.
+                </>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label>Uang yang ditabung sekarang</Label>
+            <Input
+              inputMode="numeric"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value.replace(/[^\d]/g, ""))}
+              className="h-12 text-2xl"
+              placeholder="0"
+            />
+            <div className="mt-2 flex flex-wrap gap-1">
+              {plan.perDay ? (
+                <Button size="sm" variant="outline" onClick={() => setAmount(String(plan.perDay))}>
+                  Target harian ({formatRupiah(plan.perDay)})
+                </Button>
+              ) : null}
+              {plan.perWeek ? (
+                <Button size="sm" variant="outline" onClick={() => setAmount(String(plan.perWeek))}>
+                  Target mingguan
+                </Button>
+              ) : null}
+              {plan.kurang > 0 && (
+                <Button size="sm" variant="outline" onClick={() => setAmount(String(plan.kurang))}>
+                  Lengkapi ({formatRupiah(plan.kurang)})
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <Label>Catatan (opsional)</Label>
+            <Input
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="mis. sisihan hasil jualan hari ini"
+            />
+          </div>
+
+          {history.length > 0 && (
+            <div>
+              <div className="mb-1 text-xs font-semibold uppercase text-muted-foreground">
+                Riwayat Tabungan
+              </div>
+              <div className="max-h-40 space-y-1 overflow-y-auto">
+                {history.map((h) => (
+                  <div
+                    key={h.id}
+                    className="flex items-center justify-between rounded border p-2 text-xs"
+                  >
+                    <div>
+                      <div
+                        className={
+                          Number(h.amount) < 0 ? "font-semibold text-destructive" : "font-semibold"
+                        }
+                      >
+                        {Number(h.amount) < 0 ? "-" : "+"}
+                        {formatRupiah(Math.abs(Number(h.amount)))}
+                      </div>
+                      <div className="text-muted-foreground">
+                        {new Date(h.created_at).toLocaleString("id-ID")}
+                        {h.note ? ` • ${h.note}` : ""}
+                      </div>
+                    </div>
+                    {Number(h.amount) > 0 && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7 text-destructive"
+                        onClick={async () => {
+                          if (!confirm("Hapus catatan tabungan ini?")) return;
+                          const { error } = await (supabase as any)
+                            .from("supplier_debt_savings")
+                            .delete()
+                            .eq("id", h.id);
+                          if (error) return toast.error(error.message);
+                          toast.success("Catatan tabungan dihapus");
+                          loadHistory(debt.id);
+                          onSaved();
+                        }}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Tutup
+          </Button>
+          <Button onClick={submit} disabled={saving}>
+            {saving ? "Menyimpan..." : "Simpan Tabungan"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
