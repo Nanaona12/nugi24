@@ -177,6 +177,12 @@ function SupplierDebtPage() {
             status faktur berubah jadi Sebagian / Lunas.
           </li>
           <li>
+            Supaya tidak kaget saat jatuh tempo, klik tombol <b>Nabung</b> pada faktur. Sistem
+            menghitung berapa yang perlu disisihkan per hari/minggu, dan Anda bisa mencatat uang yang
+            sudah terkumpul. Tabungan ini hanya penanda — kas di Pembukuan baru berkurang saat
+            faktur benar-benar dibayar, dan tabungannya ikut berkurang otomatis.
+          </li>
+          <li>
             Pantau tanda <b>Jatuh Tempo</b> / <b>Terlambat</b> di daftar, dan lihat ringkasan{" "}
             <b>Hutang Supplier Belum Lunas</b> di halaman Pembukuan agar tahu kas mana yang sebenarnya masih
             harus dibayarkan.
