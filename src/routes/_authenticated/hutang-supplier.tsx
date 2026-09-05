@@ -202,6 +202,46 @@ function SupplierDebtPage() {
         </Card>
       )}
 
+      {totals.openCount > 0 && (
+        <Card className="p-4">
+          <div className="mb-3 flex items-center gap-2 font-semibold">
+            <PiggyBank className="h-5 w-5 text-primary" /> Estimasi Nabung Jatuh Tempo
+          </div>
+          <div className="grid gap-3 sm:grid-cols-4">
+            <div>
+              <div className="text-xs text-muted-foreground">Perlu Disiapkan</div>
+              <div className="text-lg font-bold">{formatRupiah(totals.openAmount)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Sudah Terkumpul</div>
+              <div className="text-lg font-bold text-primary">{formatRupiah(totals.saved)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Masih Kurang</div>
+              <div className="text-lg font-bold text-destructive">{formatRupiah(totals.kurang)}</div>
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Target Nabung</div>
+              <div className="text-lg font-bold">
+                {totals.perDay > 0 ? `${formatRupiah(totals.perDay)}/hari` : "—"}
+              </div>
+            </div>
+          </div>
+          <div className="mt-3 h-2 overflow-hidden rounded-full bg-muted">
+            <div
+              className="h-full rounded-full bg-primary transition-all"
+              style={{
+                width: `${totals.openAmount > 0 ? Math.min(Math.round((totals.saved / totals.openAmount) * 100), 100) : 0}%`,
+              }}
+            />
+          </div>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Tabungan hanya penanda uang yang Anda sisihkan — tidak mengubah pembukuan. Saat faktur
+            dibayar, tabungannya otomatis berkurang.
+          </p>
+        </Card>
+      )}
+
       <div className="flex flex-wrap gap-2">
         {(["open", "paid", "all"] as const).map((k) => (
           <Button key={k} size="sm" variant={tab === k ? "default" : "outline"} onClick={() => setTab(k)}>
