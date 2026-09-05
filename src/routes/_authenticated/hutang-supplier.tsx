@@ -327,6 +327,15 @@ function SupplierDebtPage() {
         }}
       />
 
+      <SaveDialog
+        debt={saveDebt}
+        onClose={() => setSaveDebt(null)}
+        onSaved={() => {
+          setSaveDebt(null);
+          load();
+        }}
+      />
+
       <DetailDialog
         debt={detail}
         payments={payments}
