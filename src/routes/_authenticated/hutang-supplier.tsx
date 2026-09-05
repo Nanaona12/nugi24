@@ -238,6 +238,7 @@ function SupplierDebtPage() {
               ) : (
                 filtered.map((d) => {
                   const sisa = Number(d.total) - Number(d.paid_amount);
+                  const plan = savingPlan(d);
                   const info = debtDueInfo(d.due_date, d.status);
                   return (
                     <tr key={d.id} className="border-t hover:bg-muted/40">
