@@ -47,12 +47,26 @@ type TxItem = {
   subtotal: number;
   unit_cost?: number | null;
   unit_conversion?: number | null;
+  unit_name?: string | null;
+  unit_qty?: number | null;
 };
+
+/** Keterangan baris struk, sama persis seperti saat transaksi dibuat di kasir. */
+function receiptDetail(it: TxItem): string {
+  const uq = Number(it.unit_qty || 0);
+  const uname = (it.unit_name || "").trim();
+  if (uq > 0 && uname) {
+    const per = Number(it.subtotal || 0) / uq;
+    return `${uq} ${uname} × ${formatRupiah(per)}`;
+  }
+  return `${it.qty} × ${formatRupiah(Number(it.unit_price))}`;
+}
 
 function itemProfit(it: TxItem) {
   const cost = Number(it.unit_cost || 0) * Number(it.qty || 0) * Number(it.unit_conversion || 1);
   return Number(it.subtotal || 0) - cost;
 }
+
 
 function RiwayatPage() {
   const [txs, setTxs] = useState<Tx[]>([]);
