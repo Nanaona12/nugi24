@@ -47,12 +47,26 @@ type TxItem = {
   subtotal: number;
   unit_cost?: number | null;
   unit_conversion?: number | null;
+  unit_name?: string | null;
+  unit_qty?: number | null;
 };
+
+/** Keterangan baris struk, sama persis seperti saat transaksi dibuat di kasir. */
+function receiptDetail(it: TxItem): string {
+  const uq = Number(it.unit_qty || 0);
+  const uname = (it.unit_name || "").trim();
+  if (uq > 0 && uname) {
+    const per = Number(it.subtotal || 0) / uq;
+    return `${uq} ${uname} × ${formatRupiah(per)}`;
+  }
+  return `${it.qty} × ${formatRupiah(Number(it.unit_price))}`;
+}
 
 function itemProfit(it: TxItem) {
   const cost = Number(it.unit_cost || 0) * Number(it.qty || 0) * Number(it.unit_conversion || 1);
   return Number(it.subtotal || 0) - cost;
 }
+
 
 function RiwayatPage() {
   const [txs, setTxs] = useState<Tx[]>([]);
@@ -214,9 +228,9 @@ function RiwayatPage() {
       const imgItems: ReceiptItem[] = its.map((it) => ({
         name: it.product_name,
         qty: Number(it.qty),
-        unit: "",
+        unit: it.unit_name || "",
         isWholesale: !!it.is_wholesale,
-        detail: `${it.qty} × ${formatRupiah(Number(it.unit_price))}`,
+        detail: receiptDetail(it),
         subtotal: Number(it.subtotal),
       }));
       const { dataUrl } = renderReceiptPng({
@@ -444,7 +458,7 @@ function RiwayatPage() {
                       <div>
                         <div className="font-medium">{it.product_name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {it.qty} × {formatRupiah(Number(it.unit_price))}
+                          {receiptDetail(it)}
                           {it.is_wholesale && <Badge variant="secondary" className="ml-2 text-[10px]">grosir</Badge>}
                         </div>
                         {isAdmin && (
@@ -509,9 +523,9 @@ function RiwayatPage() {
                           items: items.map((it) => ({
                             name: it.product_name,
                             qty: Number(it.qty),
-                            unit: "",
+                            unit: it.unit_name || "",
                             isWholesale: !!it.is_wholesale,
-                            detail: `${it.qty} × ${formatRupiah(Number(it.unit_price))}`,
+                            detail: receiptDetail(it),
                             subtotal: Number(it.subtotal),
                           })),
                           total: Number(tx.total),
