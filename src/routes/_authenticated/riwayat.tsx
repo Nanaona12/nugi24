@@ -228,9 +228,9 @@ function RiwayatPage() {
       const imgItems: ReceiptItem[] = its.map((it) => ({
         name: it.product_name,
         qty: Number(it.qty),
-        unit: "",
+        unit: it.unit_name || "",
         isWholesale: !!it.is_wholesale,
-        detail: `${it.qty} × ${formatRupiah(Number(it.unit_price))}`,
+        detail: receiptDetail(it),
         subtotal: Number(it.subtotal),
       }));
       const { dataUrl } = renderReceiptPng({
@@ -458,7 +458,7 @@ function RiwayatPage() {
                       <div>
                         <div className="font-medium">{it.product_name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {it.qty} × {formatRupiah(Number(it.unit_price))}
+                          {receiptDetail(it)}
                           {it.is_wholesale && <Badge variant="secondary" className="ml-2 text-[10px]">grosir</Badge>}
                         </div>
                         {isAdmin && (
@@ -523,9 +523,9 @@ function RiwayatPage() {
                           items: items.map((it) => ({
                             name: it.product_name,
                             qty: Number(it.qty),
-                            unit: "",
+                            unit: it.unit_name || "",
                             isWholesale: !!it.is_wholesale,
-                            detail: `${it.qty} × ${formatRupiah(Number(it.unit_price))}`,
+                            detail: receiptDetail(it),
                             subtotal: Number(it.subtotal),
                           })),
                           total: Number(tx.total),
