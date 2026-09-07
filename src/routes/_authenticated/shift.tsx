@@ -4,15 +4,19 @@ import { useServerFn } from "@tanstack/react-start";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { listShifts } from "@/lib/cashier.functions";
+import { listShifts, reviseShiftClosing } from "@/lib/cashier.functions";
 import { formatRupiah } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Receipt as ReceiptIcon, FileText, FileDown } from "lucide-react";
+import { Loader2, Receipt as ReceiptIcon, FileText, FileDown, PencilLine } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/shift")({
   component: ShiftHistoryPage,
 });
+
 
 type ShiftRow = {
   id: string;
