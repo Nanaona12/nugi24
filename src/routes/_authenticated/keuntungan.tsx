@@ -343,23 +343,41 @@ function KeuntunganPage() {
 
   useEffect(() => {
     (async () => {
-      const [itemsRes, txRes] = await Promise.all([
-        supabase
+      // Ambil item transaksi 2 tahun terakhir secara bertahap.
+      // Sebelumnya diurut berdasarkan id (UUID acak) + limit 5000, sehingga
+      // sebagian transaksi terbaru (termasuk hari ini) bisa tidak ikut terhitung.
+      const cutoff = new Date();
+      cutoff.setFullYear(cutoff.getFullYear() - 2);
+      cutoff.setHours(0, 0, 0, 0);
+      const cutoffIso = cutoff.toISOString();
+
+      const PAGE = 1000;
+      const MAX_ROWS = 60000;
+      const allItems: any[] = [];
+      for (let from = 0; from < MAX_ROWS; from += PAGE) {
+        const { data, error } = await supabase
           .from("transaction_items")
           .select(
-            "qty, unit_price, unit_cost, subtotal, product_name, product_id, is_free, discount_amount, products(category), transactions(created_at)",
+            "qty, unit_price, unit_cost, subtotal, product_name, product_id, is_free, discount_amount, products(category), transactions!inner(created_at)",
           )
-          .order("id", { ascending: false })
-          .limit(5000),
-        supabase
-          .from("transactions")
-          .select("created_at, total, payment_method")
-          .order("created_at", { ascending: false })
-          .limit(5000),
-      ]);
-      if (itemsRes.error) toast.error(itemsRes.error.message);
-      else setItems((itemsRes.data || []) as unknown as Item[]);
+          .gte("transactions.created_at", cutoffIso)
+          .order("created_at", { ascending: false, referencedTable: "transactions" })
+          .range(from, from + PAGE - 1);
+        if (error) { toast.error(error.message); break; }
+        const page = (data || []) as any[];
+        allItems.push(...page);
+        if (page.length < PAGE) break;
+      }
+      setItems(allItems as unknown as Item[]);
+
+      const txRes = await supabase
+        .from("transactions")
+        .select("created_at, total, payment_method")
+        .gte("created_at", cutoffIso)
+        .order("created_at", { ascending: false })
+        .limit(20000);
       if (!txRes.error) setTxs((txRes.data || []) as { created_at: string; total: number; payment_method: string }[]);
+
 
       const { data: batches } = await (supabase as any).from("product_batches").select("product_id, qty, expiry_date");
       const today = new Date();
