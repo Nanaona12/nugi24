@@ -606,7 +606,72 @@ export const closeShift = createServerFn({ method: "POST" })
     return { ok: true, totals: { opening_cash, total_sales, total_cash, total_qris, total_other, total_transactions, total_expenses, expected_cash, actual_cash, difference } };
   });
 
+export const reviseShiftClosing = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { shift_id: string; actual_cash: number; note?: string }) => d)
+  .handler(async ({ data, context }) => {
+    const tenantId = await getTenantId(context);
+    const { data: cur } = await context.supabase
+      .from("cashier_shifts")
+      .select("id, status, opening_cash, expected_cash, actual_cash, notes, cashier_id")
+      .eq("id", data.shift_id)
+      .eq("tenant_id", tenantId)
+      .maybeSingle();
+    if (!cur) throw new Error("Shift tidak ditemukan");
+    if ((cur as any).status !== "closed") throw new Error("Hanya shift yang sudah ditutup yang bisa direvisi");
+
+    const oldActual = Number((cur as any).actual_cash) || 0;
+    const expected = Number((cur as any).expected_cash) || 0;
+    const newActual = Math.max(0, Number(data.actual_cash) || 0);
+    const delta = newActual - oldActual;
+    if (delta === 0) return { ok: true, delta: 0 };
+
+    const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
+    const note = data.note?.trim() || "";
+    const prevNotes = String((cur as any).notes || "");
+    const stamp = `Revisi closing: fisik kas ${oldActual} → ${newActual}${note ? ` (${note})` : ""}`;
+
+    const { error } = await context.supabase
+      .from("cashier_shifts")
+      .update({
+        actual_cash: newActual,
+        difference: newActual - expected,
+        notes: prevNotes ? `${prevNotes}\n${stamp}` : stamp,
+      })
+      .eq("id", data.shift_id)
+      .eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+
+    let cashierName = "";
+    if ((cur as any).cashier_id) {
+      const { data: cRow } = await context.supabase
+        .from("cashiers").select("name").eq("id", (cur as any).cashier_id).maybeSingle();
+      cashierName = (cRow as any)?.name || "";
+    }
+
+    await context.supabase.from("bookkeeping_entries").insert({
+      tenant_id: tenantId,
+      entry_date: new Date().toISOString(),
+      kind: delta > 0 ? "in" : "out",
+      description: `Revisi closing shift ${shortId}${cashierName ? " - " + cashierName : ""}${note ? ` (${note})` : ""}`,
+      ref: data.shift_id,
+      amount: Math.abs(delta),
+    } as any);
+
+    await (context.supabase as any).from("profit_activity_log").insert({
+      tenant_id: tenantId,
+      user_id: context.userId ?? null,
+      actor_name: cashierName || null,
+      action: "shift_revision",
+      amount: delta,
+      note: `Revisi closing shift ${shortId}: ${oldActual} → ${newActual}${note ? " - " + note : ""}`,
+    });
+
+    return { ok: true, delta, difference: newActual - expected };
+  });
+
 export const listShifts = createServerFn({ method: "GET" })
+
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     const tenantId = await getTenantId(context);
