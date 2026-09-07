@@ -43,19 +43,48 @@ function ShiftHistoryPage() {
   const [loading, setLoading] = useState(true);
   const [storeName, setStoreName] = useState<string>("Toko");
   const listFn = useServerFn(listShifts);
+  const reviseFn = useServerFn(reviseShiftClosing);
+  const [reviseShift, setReviseShift] = useState<ShiftRow | null>(null);
+  const [reviseCash, setReviseCash] = useState("");
+  const [reviseNote, setReviseNote] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const reload = async () => {
+    try { setRows(((await listFn()) as ShiftRow[]) || []); }
+    catch (e: any) { toast.error(e.message); }
+    finally { setLoading(false); }
+  };
 
   useEffect(() => {
-    (async () => {
-      try { setRows(((await listFn()) as ShiftRow[]) || []); }
-      catch (e: any) { toast.error(e.message); }
-      finally { setLoading(false); }
-    })();
+    reload();
     (async () => {
       const { data } = await supabase.rpc("current_tenant_info");
       const row = Array.isArray(data) ? data[0] : data;
       if (row?.name) setStoreName(row.name as string);
     })();
   }, []);
+
+  const openRevise = (s: ShiftRow) => {
+    setReviseShift(s);
+    setReviseCash(String(Number(s.actual_cash) || 0));
+    setReviseNote("");
+  };
+
+  const submitRevise = async () => {
+    if (!reviseShift) return;
+    const val = Number(String(reviseCash).replace(/[^\d]/g, ""));
+    if (!Number.isFinite(val) || val < 0) { toast.error("Nominal tidak valid"); return; }
+    setSaving(true);
+    try {
+      const res: any = await reviseFn({ data: { shift_id: reviseShift.id, actual_cash: val, note: reviseNote } });
+      const delta = Number(res?.delta) || 0;
+      toast.success(delta === 0 ? "Tidak ada perubahan" : delta > 0 ? `Uang bertambah ${formatRupiah(delta)}` : `Uang berkurang ${formatRupiah(Math.abs(delta))}`);
+      setReviseShift(null);
+      await reload();
+    } catch (e: any) { toast.error(e.message); }
+    finally { setSaving(false); }
+  };
+
 
   const esc = (s: string) => (s || "").replace(/[<>&]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;" }[c] || c));
 
