@@ -153,17 +153,42 @@ function RiwayatPage() {
   const loadProfits = async (rows: Tx[], admin: boolean) => {
     if (!admin || rows.length === 0) return;
     const ids = rows.map((r) => r.id);
-    const { data } = await supabase
-      .from("transaction_items")
-      .select("transaction_id, qty, unit_conversion, unit_cost, subtotal")
-      .in("transaction_id", ids);
     const map: Record<string, number> = {};
-    for (const it of (data || []) as any[]) {
+    // Semua transaksi dianggap 0 dulu supaya yang memang tanpa item tidak tampil "-"
+    for (const id of ids) map[id] = 0;
+
+    const CHUNK = 100; // batasi panjang URL
+    const PAGE = 1000; // batas baris default PostgREST
+    const chunks: string[][] = [];
+    for (let i = 0; i < ids.length; i += CHUNK) chunks.push(ids.slice(i, i + CHUNK));
+
+    const results = await Promise.all(
+      chunks.map(async (idsChunk) => {
+        const out: any[] = [];
+        let from = 0;
+        while (true) {
+          const { data, error } = await supabase
+            .from("transaction_items")
+            .select("transaction_id, qty, unit_conversion, unit_cost, subtotal")
+            .in("transaction_id", idsChunk)
+            .range(from, from + PAGE - 1);
+          if (error) break;
+          const page = (data || []) as any[];
+          out.push(...page);
+          if (page.length < PAGE) break;
+          from += PAGE;
+        }
+        return out;
+      }),
+    );
+
+    for (const it of results.flat()) {
       const p = Number(it.subtotal || 0) - Number(it.unit_cost || 0) * Number(it.qty || 0) * Number(it.unit_conversion || 1);
       map[it.transaction_id] = (map[it.transaction_id] || 0) + p;
     }
     setTxProfits(map);
   };
+
 
 
 
