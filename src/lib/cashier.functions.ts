@@ -632,7 +632,7 @@ export const reviseShiftClosing = createServerFn({ method: "POST" })
     const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
     const note = data.note?.trim() || "";
     const prevNotes = String((cur as any).notes || "");
-    const stamp = `Revisi closing: fisik kas ${oldActual} → ${newActual}${note ? ` (${note})` : ""}`;
+    const stamp = `Revisi closing [${new Date().toISOString()}]: fisik kas ${oldActual} → ${newActual}${note ? ` (${note})` : ""}`;
 
     const { error } = await context.supabase
       .from("cashier_shifts")
