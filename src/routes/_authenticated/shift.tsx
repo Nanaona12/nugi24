@@ -18,6 +18,18 @@ export const Route = createFileRoute("/_authenticated/shift")({
 });
 
 
+function parseRevisions(notes: string | null): { at: string | null; text: string }[] {
+  return (notes || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("Revisi closing"))
+    .map((l) => {
+      const m = l.match(/^Revisi closing\s*\[([^\]]+)\]:\s*(.*)$/);
+      if (m) return { at: m[1], text: m[2] };
+      return { at: null, text: l.replace(/^Revisi closing:\s*/, "") };
+    });
+}
+
 type ShiftRow = {
   id: string;
   cashier_id: string;
@@ -55,12 +67,24 @@ function ShiftHistoryPage() {
     finally { setLoading(false); }
   };
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
     reload();
     (async () => {
       const { data } = await supabase.rpc("current_tenant_info");
       const row = Array.isArray(data) ? data[0] : data;
       if (row?.name) setStoreName(row.name as string);
+    })();
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u?.user) return;
+      const { data: t } = await supabase
+        .from("tenants")
+        .select("id")
+        .eq("owner_user_id", u.user.id)
+        .maybeSingle();
+      setIsAdmin(!!t);
     })();
   }, []);
 
@@ -112,6 +136,20 @@ function ShiftHistoryPage() {
           <td class="r">${formatRupiah(Number(e.amount))}</td>
         </tr>`).join("")
       : `<tr><td colspan="4" class="c muted">Tidak ada pengeluaran shift</td></tr>`;
+
+    const revisions = parseRevisions(s.notes);
+    const otherNotes = (s.notes || "")
+      .split("\n")
+      .filter((l) => !l.trim().startsWith("Revisi closing"))
+      .join("\n")
+      .trim();
+    const revisionSection = revisions.length
+      ? `<h2>Riwayat Revisi Closing</h2>
+<table>
+  <thead><tr><th style="width:32px">#</th><th style="width:200px">Waktu Revisi</th><th>Keterangan</th></tr></thead>
+  <tbody>${revisions.map((r, i) => `<tr><td>${i + 1}</td><td>${r.at ? new Date(r.at).toLocaleString("id-ID") : "—"}</td><td>${esc(r.text)}</td></tr>`).join("")}</tbody>
+</table>`
+      : "";
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Laporan Shift - ${esc(s.cashiers?.name || "")}</title>
 <style>
@@ -188,7 +226,9 @@ function ShiftHistoryPage() {
   </div>
 </div>
 
-${s.notes && s.notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${esc(s.notes)}</div>` : ""}
+${revisionSection}
+
+${otherNotes ? `<div class="notes"><b>Catatan:</b>\n${esc(otherNotes)}</div>` : ""}
 
 <div class="foot">Dokumen ini dihasilkan otomatis dari sistem kasir ${esc(storeName || "")}.</div>
 <script>window.onload = () => { setTimeout(() => window.print(), 300); };</script>
@@ -304,10 +344,20 @@ ${s.notes && s.notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${esc(s.notes
                       <Badge variant={s.status === "open" ? "default" : "secondary"}>
                         {s.status === "open" ? "Berjalan" : "Ditutup"}
                       </Badge>
+                      {(() => {
+                        const revs = parseRevisions(s.notes);
+                        const last = revs[revs.length - 1];
+                        if (!last) return null;
+                        return (
+                          <div className="mt-1 text-[10px] text-muted-foreground">
+                            Direvisi {last.at ? new Date(last.at).toLocaleString("id-ID") : ""}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="p-3">
                       <div className="flex justify-end gap-2">
-                        {s.status === "closed" && (
+                        {s.status === "closed" && isAdmin && (
                           <Button size="sm" variant="secondary" onClick={() => openRevise(s)}>
                             <PencilLine className="mr-1 h-4 w-4" /> Revisi Closing
                           </Button>

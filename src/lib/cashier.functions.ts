@@ -610,6 +610,9 @@ export const reviseShiftClosing = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: { shift_id: string; actual_cash: number; note?: string }) => d)
   .handler(async ({ data, context }) => {
+    if (await isCashierSession(context)) {
+      throw new Error("Revisi closing hanya bisa dilakukan oleh admin/pemilik toko");
+    }
     const tenantId = await getTenantId(context);
     const { data: cur } = await context.supabase
       .from("cashier_shifts")
@@ -629,7 +632,7 @@ export const reviseShiftClosing = createServerFn({ method: "POST" })
     const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
     const note = data.note?.trim() || "";
     const prevNotes = String((cur as any).notes || "");
-    const stamp = `Revisi closing: fisik kas ${oldActual} → ${newActual}${note ? ` (${note})` : ""}`;
+    const stamp = `Revisi closing [${new Date().toISOString()}]: fisik kas ${oldActual} → ${newActual}${note ? ` (${note})` : ""}`;
 
     const { error } = await context.supabase
       .from("cashier_shifts")
