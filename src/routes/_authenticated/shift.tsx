@@ -55,12 +55,24 @@ function ShiftHistoryPage() {
     finally { setLoading(false); }
   };
 
+  const [isAdmin, setIsAdmin] = useState(false);
+
   useEffect(() => {
     reload();
     (async () => {
       const { data } = await supabase.rpc("current_tenant_info");
       const row = Array.isArray(data) ? data[0] : data;
       if (row?.name) setStoreName(row.name as string);
+    })();
+    (async () => {
+      const { data: u } = await supabase.auth.getUser();
+      if (!u?.user) return;
+      const { data: t } = await supabase
+        .from("tenants")
+        .select("id")
+        .eq("owner_user_id", u.user.id)
+        .maybeSingle();
+      setIsAdmin(!!t);
     })();
   }, []);
 
