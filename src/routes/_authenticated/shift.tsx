@@ -305,10 +305,17 @@ ${s.notes && s.notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${esc(s.notes
                         {s.status === "open" ? "Berjalan" : "Ditutup"}
                       </Badge>
                     </td>
-                    <td className="p-3 text-right">
-                      <Button size="sm" variant="outline" onClick={() => openPdf(s)}>
-                        <FileText className="mr-1 h-4 w-4" /> PDF
-                      </Button>
+                    <td className="p-3">
+                      <div className="flex justify-end gap-2">
+                        {s.status === "closed" && (
+                          <Button size="sm" variant="secondary" onClick={() => openRevise(s)}>
+                            <PencilLine className="mr-1 h-4 w-4" /> Revisi Closing
+                          </Button>
+                        )}
+                        <Button size="sm" variant="outline" onClick={() => openPdf(s)}>
+                          <FileText className="mr-1 h-4 w-4" /> PDF
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -317,6 +324,56 @@ ${s.notes && s.notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${esc(s.notes
           </table>
         </div>
       </Card>
+
+      <Dialog open={!!reviseShift} onOpenChange={(o) => !o && setReviseShift(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Revisi Closing Shift</DialogTitle>
+            <DialogDescription>
+              Perbaiki jumlah uang fisik bila setelah closing ternyata ada uang yang ketemu atau kurang.
+              Selisih otomatis dicatat di pembukuan dan memperbaiki keuntungan.
+            </DialogDescription>
+          </DialogHeader>
+          {reviseShift && (
+            <div className="space-y-3 text-sm">
+              <div className="rounded-md bg-muted p-3 space-y-1">
+                <div className="flex justify-between"><span>Kas seharusnya</span><span>{formatRupiah(Number(reviseShift.expected_cash) || 0)}</span></div>
+                <div className="flex justify-between"><span>Fisik kas tercatat</span><span>{formatRupiah(Number(reviseShift.actual_cash) || 0)}</span></div>
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="revise-cash">Fisik kas yang benar</Label>
+                <Input
+                  id="revise-cash"
+                  inputMode="numeric"
+                  value={reviseCash}
+                  onChange={(e) => setReviseCash(e.target.value.replace(/[^\d]/g, ""))}
+                />
+                {(() => {
+                  const val = Number(reviseCash || 0);
+                  const d = val - (Number(reviseShift.actual_cash) || 0);
+                  if (!d) return null;
+                  return (
+                    <p className={`text-xs ${d > 0 ? "text-success" : "text-destructive"}`}>
+                      {d > 0 ? `Uang bertambah ${formatRupiah(d)}` : `Uang berkurang ${formatRupiah(Math.abs(d))}`}
+                    </p>
+                  );
+                })()}
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="revise-note">Catatan (opsional)</Label>
+                <Input id="revise-note" value={reviseNote} onChange={(e) => setReviseNote(e.target.value)} placeholder="mis. uang ketemu di laci" />
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReviseShift(null)} disabled={saving}>Batal</Button>
+            <Button onClick={submitRevise} disabled={saving}>
+              {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Simpan Revisi
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
+
   );
 }
