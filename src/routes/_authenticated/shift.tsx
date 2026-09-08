@@ -344,6 +344,16 @@ ${otherNotes ? `<div class="notes"><b>Catatan:</b>\n${esc(otherNotes)}</div>` : 
                       <Badge variant={s.status === "open" ? "default" : "secondary"}>
                         {s.status === "open" ? "Berjalan" : "Ditutup"}
                       </Badge>
+                      {(() => {
+                        const revs = parseRevisions(s.notes);
+                        const last = revs[revs.length - 1];
+                        if (!last) return null;
+                        return (
+                          <div className="mt-1 text-[10px] text-muted-foreground">
+                            Direvisi {last.at ? new Date(last.at).toLocaleString("id-ID") : ""}
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="p-3">
                       <div className="flex justify-end gap-2">
