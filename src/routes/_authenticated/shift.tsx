@@ -335,7 +335,7 @@ ${otherNotes ? `<div class="notes"><b>Catatan:</b>\n${esc(otherNotes)}</div>` : 
                     </td>
                     <td className="p-3">
                       <div className="flex justify-end gap-2">
-                        {s.status === "closed" && (
+                        {s.status === "closed" && isAdmin && (
                           <Button size="sm" variant="secondary" onClick={() => openRevise(s)}>
                             <PencilLine className="mr-1 h-4 w-4" /> Revisi Closing
                           </Button>
