@@ -214,7 +214,9 @@ function ShiftHistoryPage() {
   </div>
 </div>
 
-${s.notes && s.notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${esc(s.notes)}</div>` : ""}
+${revisionSection}
+
+${otherNotes ? `<div class="notes"><b>Catatan:</b>\n${esc(otherNotes)}</div>` : ""}
 
 <div class="foot">Dokumen ini dihasilkan otomatis dari sistem kasir ${esc(storeName || "")}.</div>
 <script>window.onload = () => { setTimeout(() => window.print(), 300); };</script>
