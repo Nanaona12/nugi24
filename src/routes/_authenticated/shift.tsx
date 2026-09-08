@@ -125,6 +125,20 @@ function ShiftHistoryPage() {
         </tr>`).join("")
       : `<tr><td colspan="4" class="c muted">Tidak ada pengeluaran shift</td></tr>`;
 
+    const revisions = parseRevisions(s.notes);
+    const otherNotes = (s.notes || "")
+      .split("\n")
+      .filter((l) => !l.trim().startsWith("Revisi closing"))
+      .join("\n")
+      .trim();
+    const revisionSection = revisions.length
+      ? `<h2>Riwayat Revisi Closing</h2>
+<table>
+  <thead><tr><th style="width:32px">#</th><th style="width:200px">Waktu Revisi</th><th>Keterangan</th></tr></thead>
+  <tbody>${revisions.map((r, i) => `<tr><td>${i + 1}</td><td>${r.at ? new Date(r.at).toLocaleString("id-ID") : "—"}</td><td>${esc(r.text)}</td></tr>`).join("")}</tbody>
+</table>`
+      : "";
+
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Laporan Shift - ${esc(s.cashiers?.name || "")}</title>
 <style>
   @page { size: A4; margin: 16mm; }
