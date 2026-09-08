@@ -18,6 +18,18 @@ export const Route = createFileRoute("/_authenticated/shift")({
 });
 
 
+function parseRevisions(notes: string | null): { at: string | null; text: string }[] {
+  return (notes || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith("Revisi closing"))
+    .map((l) => {
+      const m = l.match(/^Revisi closing\s*\[([^\]]+)\]:\s*(.*)$/);
+      if (m) return { at: m[1], text: m[2] };
+      return { at: null, text: l.replace(/^Revisi closing:\s*/, "") };
+    });
+}
+
 type ShiftRow = {
   id: string;
   cashier_id: string;
