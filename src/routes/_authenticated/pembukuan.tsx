@@ -35,6 +35,12 @@ type Entry = {
   manualId?: string;
 };
 
+const BALANCE_RESET_REF = "balance_reset";
+
+function isBalanceReset(entry: Entry) {
+  return entry.source === "Manual" && entry.ref === BALANCE_RESET_REF;
+}
+
 function todayStr(off = 0) {
   const d = new Date();
   d.setDate(d.getDate() + off);
@@ -260,16 +266,28 @@ function PembukuanPage() {
     });
   }, [entries, fromDate, toDate, filterKind, q]);
 
-  const withBalance = useMemo(() => {
-    const asc = [...filtered].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  const balanceByEntryId = useMemo(() => {
+    const asc = [...entries].sort((a, b) => {
+      const dateDiff = new Date(a.date).getTime() - new Date(b.date).getTime();
+      return dateDiff || a.id.localeCompare(b.id);
+    });
     let bal = 0;
     const map = new Map<string, number>();
     for (const e of asc) {
-      bal += e.debit - e.kredit;
+      if (isBalanceReset(e)) {
+        bal = 0;
+      } else {
+        bal += e.debit - e.kredit;
+      }
       map.set(e.id, bal);
     }
-    return filtered.map((e) => ({ ...e, balance: map.get(e.id) ?? 0 }));
-  }, [filtered]);
+    return map;
+  }, [entries]);
+
+  const withBalance = useMemo(
+    () => filtered.map((e) => ({ ...e, balance: balanceByEntryId.get(e.id) ?? 0 })),
+    [filtered, balanceByEntryId],
+  );
 
   const totals = useMemo(() => {
     let debit = 0, kredit = 0, prive = 0;
@@ -278,9 +296,16 @@ function PembukuanPage() {
       kredit += e.kredit;
       if (e.ref === "profit_withdrawal") prive += e.kredit;
     }
-    const saldoKas = debit - kredit;
+    const to = toDate ? new Date(toDate + "T23:59:59") : null;
+    const lastEntry = entries
+      .filter((e) => !to || new Date(e.date) <= to)
+      .sort((a, b) => {
+        const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+        return dateDiff || b.id.localeCompare(a.id);
+      })[0];
+    const saldoKas = lastEntry ? (balanceByEntryId.get(lastEntry.id) ?? 0) : 0;
     return { debit, kredit, prive, saldoKas, saldo: saldoKas - unwithdrawnProfit };
-  }, [filtered, unwithdrawnProfit]);
+  }, [filtered, entries, toDate, balanceByEntryId, unwithdrawnProfit]);
 
 
   const exportCsv = () => {
@@ -523,7 +548,12 @@ function PembukuanPage() {
                       {e.source}
                     </Badge>
                   </td>
-                  <td className="p-2">{e.description}</td>
+                  <td className="p-2">
+                    {e.description}
+                    {isBalanceReset(e) && (
+                      <Badge variant="outline" className="ml-2">Saldo mulai Rp0</Badge>
+                    )}
+                  </td>
                   <td className="p-2 font-mono text-xs text-muted-foreground">{e.ref}</td>
                   <td className="p-2 text-right tabular-nums text-emerald-600">
                     {e.debit ? formatRupiah(e.debit) : "—"}
