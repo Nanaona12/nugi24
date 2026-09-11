@@ -105,7 +105,12 @@ function RiwayatPage() {
   const [txs, setTxs] = useState<Tx[]>([]);
   const [selected, setSelected] = useState<Tx | null>(null);
   const [items, setItems] = useState<TxItem[]>([]);
+  const [itemUnits, setItemUnits] = useState<Record<string, ProductUnit[]>>({});
   const [storeName, setStoreName] = useState<string>("Toko");
+
+  /** Detail struk untuk satu item, memakai satuan produk bila perlu rekonstruksi. */
+  const detailFor = (it: TxItem) =>
+    receiptDetail(it, (it.product_id && itemUnits[it.product_id]) || []);
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
   const [buildingImg, setBuildingImg] = useState(false);
 
@@ -274,7 +279,18 @@ function RiwayatPage() {
     setSelected(tx);
     setReceiptImg(null);
     const { data } = await supabase.from("transaction_items").select("*").eq("transaction_id", tx.id);
-    setItems((data || []) as TxItem[]);
+    const its = (data || []) as TxItem[];
+    setItems(its);
+    const pids = [...new Set(its.map((it) => it.product_id).filter(Boolean))] as string[];
+    if (pids.length > 0) {
+      try {
+        setItemUnits(await loadUnitsForProducts(pids));
+      } catch {
+        setItemUnits({});
+      }
+    } else {
+      setItemUnits({});
+    }
   };
 
   const buildReceiptImage = async (tx: Tx, its: TxItem[]) => {
