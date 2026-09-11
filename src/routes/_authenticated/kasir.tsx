@@ -1205,6 +1205,7 @@ function KasirPage() {
         unit_name: "pcs",
         unit_qty: f.qty,
         unit_conversion: 1,
+        receipt_detail: `${f.qty} pcs (GRATIS)`,
         promo_id: f.promoId,
         is_free: true,
         discount_amount: 0,
