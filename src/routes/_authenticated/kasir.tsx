@@ -1162,7 +1162,8 @@ function KasirPage() {
       return;
     }
     const items = cart.map((l) => {
-      const c = computeLine(l, getUnits(l.product, unitsByProduct));
+      const lineUnits = getUnits(l.product, unitsByProduct);
+      const c = computeLine(l, lineUnits);
       const avgUnitPrice = l.qty > 0 ? c.total / l.qty : 0;
       const cl = clearanceMap[l.product.id];
       const discountAmount = cl ? Math.max(0, (cl.normalPrice - cl.price) * l.qty) : 0;
@@ -1181,6 +1182,7 @@ function KasirPage() {
         unit_name: l.mode === "grosiran" ? `${l.unit.name}+pcs` : l.baseUnit.name,
         unit_qty: l.qty,
         unit_conversion: 1,
+        receipt_detail: buildReceiptLine(l, lineUnits).detail,
         promo_id: cl?.promoId ?? null,
         is_free: false,
         discount_amount: discountAmount,
@@ -1203,6 +1205,7 @@ function KasirPage() {
         unit_name: "pcs",
         unit_qty: f.qty,
         unit_conversion: 1,
+        receipt_detail: `${f.qty} pcs (GRATIS)`,
         promo_id: f.promoId,
         is_free: true,
         discount_amount: 0,

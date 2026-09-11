@@ -16,6 +16,7 @@ import { Receipt, Eye, Trash2, Download, ImageIcon, Printer, Search, Pencil } fr
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 import { printReceipt } from "@/lib/printer";
 import { loadPrinterSettings } from "@/lib/printer-settings";
+import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
 
 
 
@@ -39,6 +40,7 @@ type Tx = {
 
 type TxItem = {
   id: string;
+  product_id?: string | null;
   product_code: string;
   product_name: string;
   qty: number;
@@ -49,17 +51,48 @@ type TxItem = {
   unit_conversion?: number | null;
   unit_name?: string | null;
   unit_qty?: number | null;
+  receipt_detail?: string | null;
 };
 
 /** Keterangan baris struk, sama persis seperti saat transaksi dibuat di kasir. */
-function receiptDetail(it: TxItem): string {
+function receiptDetail(it: TxItem, units: ProductUnit[] = []): string {
+  // Transaksi baru: pakai teks detail yang disimpan persis seperti struk asli.
+  const saved = (it.receipt_detail || "").trim();
+  if (saved) return saved;
+
+  const qty = Number(it.qty || 0);
+  const subtotal = Number(it.subtotal || 0);
+
+  // Transaksi lama grosir: unit_name tersimpan sebagai "<satuan>+pcs" dan qty dalam pcs.
+  // Rekonstruksi ke format struk asli: "5 bks × Rp 16.700" (bukan "60 Grosir*1+pcs × ...").
+  if (it.is_wholesale) {
+    const raw = (it.unit_name || "").trim();
+    const packName = raw.endsWith("+pcs") ? raw.slice(0, -4) : raw;
+    const unit =
+      units.find((u) => u.name.trim().toLowerCase() === packName.toLowerCase()) ||
+      units
+        .filter((u) => !u.is_base && u.conversion > 1)
+        .sort((a, b) => b.conversion - a.conversion)[0];
+    if (unit && unit.conversion > 1 && qty >= unit.conversion) {
+      const packs = Math.floor(qty / unit.conversion);
+      const rem = qty - packs * unit.conversion;
+      const parts: string[] = [];
+      if (packs > 0) {
+        const packPrice = rem === 0 ? subtotal / packs : Number(it.unit_price || 0) * unit.conversion;
+        parts.push(`${packs} ${unit.name} × ${formatRupiah(packPrice)}`);
+      }
+      if (rem > 0) parts.push(`${rem} pcs × ${formatRupiah(Number(it.unit_price || 0))}`);
+      return parts.join(" + ");
+    }
+  }
+
   const uq = Number(it.unit_qty || 0);
   const uname = (it.unit_name || "").trim();
   if (uq > 0 && uname) {
-    const per = Number(it.subtotal || 0) / uq;
+    const per = subtotal / uq;
     return `${uq} ${uname} × ${formatRupiah(per)}`;
   }
-  return `${it.qty} × ${formatRupiah(Number(it.unit_price))}`;
+  return `${qty} × ${formatRupiah(Number(it.unit_price))}`;
 }
 
 function itemProfit(it: TxItem) {
@@ -72,7 +105,12 @@ function RiwayatPage() {
   const [txs, setTxs] = useState<Tx[]>([]);
   const [selected, setSelected] = useState<Tx | null>(null);
   const [items, setItems] = useState<TxItem[]>([]);
+  const [itemUnits, setItemUnits] = useState<Record<string, ProductUnit[]>>({});
   const [storeName, setStoreName] = useState<string>("Toko");
+
+  /** Detail struk untuk satu item, memakai satuan produk bila perlu rekonstruksi. */
+  const detailFor = (it: TxItem) =>
+    receiptDetail(it, (it.product_id && itemUnits[it.product_id]) || []);
   const [receiptImg, setReceiptImg] = useState<string | null>(null);
   const [buildingImg, setBuildingImg] = useState(false);
 
@@ -241,7 +279,18 @@ function RiwayatPage() {
     setSelected(tx);
     setReceiptImg(null);
     const { data } = await supabase.from("transaction_items").select("*").eq("transaction_id", tx.id);
-    setItems((data || []) as TxItem[]);
+    const its = (data || []) as TxItem[];
+    setItems(its);
+    const pids = [...new Set(its.map((it) => it.product_id).filter(Boolean))] as string[];
+    if (pids.length > 0) {
+      try {
+        setItemUnits(await loadUnitsForProducts(pids));
+      } catch {
+        setItemUnits({});
+      }
+    } else {
+      setItemUnits({});
+    }
   };
 
   const buildReceiptImage = async (tx: Tx, its: TxItem[]) => {
@@ -255,7 +304,7 @@ function RiwayatPage() {
         qty: Number(it.qty),
         unit: it.unit_name || "",
         isWholesale: !!it.is_wholesale,
-        detail: receiptDetail(it),
+        detail: detailFor(it),
         subtotal: Number(it.subtotal),
       }));
       const { dataUrl } = renderReceiptPng({
@@ -483,7 +532,7 @@ function RiwayatPage() {
                       <div>
                         <div className="font-medium">{it.product_name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {receiptDetail(it)}
+                          {detailFor(it)}
                           {it.is_wholesale && <Badge variant="secondary" className="ml-2 text-[10px]">grosir</Badge>}
                         </div>
                         {isAdmin && (
@@ -550,7 +599,7 @@ function RiwayatPage() {
                             qty: Number(it.qty),
                             unit: it.unit_name || "",
                             isWholesale: !!it.is_wholesale,
-                            detail: receiptDetail(it),
+                            detail: detailFor(it),
                             subtotal: Number(it.subtotal),
                           })),
                           total: Number(tx.total),
