@@ -49,17 +49,48 @@ type TxItem = {
   unit_conversion?: number | null;
   unit_name?: string | null;
   unit_qty?: number | null;
+  receipt_detail?: string | null;
 };
 
 /** Keterangan baris struk, sama persis seperti saat transaksi dibuat di kasir. */
-function receiptDetail(it: TxItem): string {
+function receiptDetail(it: TxItem, units: ProductUnit[] = []): string {
+  // Transaksi baru: pakai teks detail yang disimpan persis seperti struk asli.
+  const saved = (it.receipt_detail || "").trim();
+  if (saved) return saved;
+
+  const qty = Number(it.qty || 0);
+  const subtotal = Number(it.subtotal || 0);
+
+  // Transaksi lama grosir: unit_name tersimpan sebagai "<satuan>+pcs" dan qty dalam pcs.
+  // Rekonstruksi ke format struk asli: "5 bks × Rp 16.700" (bukan "60 Grosir*1+pcs × ...").
+  if (it.is_wholesale) {
+    const raw = (it.unit_name || "").trim();
+    const packName = raw.endsWith("+pcs") ? raw.slice(0, -4) : raw;
+    const unit =
+      units.find((u) => u.name.trim().toLowerCase() === packName.toLowerCase()) ||
+      units
+        .filter((u) => !u.is_base && u.conversion > 1)
+        .sort((a, b) => b.conversion - a.conversion)[0];
+    if (unit && unit.conversion > 1 && qty >= unit.conversion) {
+      const packs = Math.floor(qty / unit.conversion);
+      const rem = qty - packs * unit.conversion;
+      const parts: string[] = [];
+      if (packs > 0) {
+        const packPrice = rem === 0 ? subtotal / packs : Number(it.unit_price || 0) * unit.conversion;
+        parts.push(`${packs} ${unit.name} × ${formatRupiah(packPrice)}`);
+      }
+      if (rem > 0) parts.push(`${rem} pcs × ${formatRupiah(Number(it.unit_price || 0))}`);
+      return parts.join(" + ");
+    }
+  }
+
   const uq = Number(it.unit_qty || 0);
   const uname = (it.unit_name || "").trim();
   if (uq > 0 && uname) {
-    const per = Number(it.subtotal || 0) / uq;
+    const per = subtotal / uq;
     return `${uq} ${uname} × ${formatRupiah(per)}`;
   }
-  return `${it.qty} × ${formatRupiah(Number(it.unit_price))}`;
+  return `${qty} × ${formatRupiah(Number(it.unit_price))}`;
 }
 
 function itemProfit(it: TxItem) {
