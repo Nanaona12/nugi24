@@ -304,7 +304,7 @@ function RiwayatPage() {
         qty: Number(it.qty),
         unit: it.unit_name || "",
         isWholesale: !!it.is_wholesale,
-        detail: receiptDetail(it),
+        detail: detailFor(it),
         subtotal: Number(it.subtotal),
       }));
       const { dataUrl } = renderReceiptPng({
@@ -532,7 +532,7 @@ function RiwayatPage() {
                       <div>
                         <div className="font-medium">{it.product_name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {receiptDetail(it)}
+                          {detailFor(it)}
                           {it.is_wholesale && <Badge variant="secondary" className="ml-2 text-[10px]">grosir</Badge>}
                         </div>
                         {isAdmin && (
@@ -599,7 +599,7 @@ function RiwayatPage() {
                             qty: Number(it.qty),
                             unit: it.unit_name || "",
                             isWholesale: !!it.is_wholesale,
-                            detail: receiptDetail(it),
+                            detail: detailFor(it),
                             subtotal: Number(it.subtotal),
                           })),
                           total: Number(tx.total),
