@@ -16,6 +16,7 @@ import { Receipt, Eye, Trash2, Download, ImageIcon, Printer, Search, Pencil } fr
 import { renderReceiptPng, type ReceiptItem } from "@/lib/receipt-image";
 import { printReceipt } from "@/lib/printer";
 import { loadPrinterSettings } from "@/lib/printer-settings";
+import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
 
 
 
@@ -39,6 +40,7 @@ type Tx = {
 
 type TxItem = {
   id: string;
+  product_id?: string | null;
   product_code: string;
   product_name: string;
   qty: number;
