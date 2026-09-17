@@ -1,5 +1,51 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHash } from "crypto";
+import { PLANS } from "@/lib/plans";
+import { SUBSCRIPTION_ADMIN_WHATSAPP } from "@/lib/subscription-contact";
+
+function formatRupiah(amount: number) {
+  return new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(amount);
+}
+
+async function notifyAdminPayment(details: {
+  tenantName: string;
+  tenantPhone: string | null;
+  orderId: string;
+  amount: number;
+  planId: "warung" | "grosir";
+  period: "monthly" | "yearly";
+  paymentType?: string;
+}) {
+  const token = process.env.FONNTE_TOKEN;
+  if (!token) {
+    console.error("FONNTE_TOKEN tidak dikonfigurasi untuk notifikasi langganan");
+    return;
+  }
+
+  const message = [
+    "Pembayaran langganan QRIS berhasil.",
+    `Toko: ${details.tenantName}`,
+    `WhatsApp toko: ${details.tenantPhone || "-"}`,
+    `Order: ${details.orderId}`,
+    `Paket: ${PLANS[details.planId].name} (${details.period === "yearly" ? "tahunan" : "bulanan"})`,
+    `Jumlah: ${formatRupiah(details.amount)}`,
+    `Metode: ${details.paymentType || "QRIS"}`,
+    "Paket sudah diaktifkan otomatis oleh sistem.",
+  ].join("\n");
+
+  const form = new URLSearchParams({
+    target: SUBSCRIPTION_ADMIN_WHATSAPP,
+    message,
+    countryCode: "62",
+  });
+  const response = await fetch("https://api.fonnte.com/send", {
+    method: "POST",
+    headers: { Authorization: token, "Content-Type": "application/x-www-form-urlencoded" },
+    body: form.toString(),
+  });
+  const responseBody = await response.text();
+  if (!response.ok) console.error(`Notifikasi WhatsApp langganan gagal [${response.status}]: ${responseBody}`);
+}
 
 export const Route = createFileRoute("/api/public/midtrans-webhook")({
   server: {
@@ -23,7 +69,7 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
 
         const { data: pay } = await supabaseAdmin
           .from("payments")
-          .select("id, tenant_id, raw_response")
+          .select("id, tenant_id, amount, status, raw_response")
           .eq("midtrans_order_id", order_id)
           .maybeSingle();
         if (!pay) return new Response("order not found", { status: 404 });
@@ -46,7 +92,8 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
           })
           .eq("id", pay.id);
 
-        if (newStatus === "paid") {
+        const isFirstPaidConfirmation = newStatus === "paid" && pay.status !== "paid";
+        if (isFirstPaidConfirmation) {
           const period = prevMeta.period === "yearly" ? "yearly" : "monthly";
           const extendDays = period === "yearly" ? 365 : 30;
           const planId = prevMeta.plan === "grosir" ? "grosir" : "warung";
@@ -82,6 +129,25 @@ export const Route = createFileRoute("/api/public/midtrans-webhook")({
               new_period: period,
               note: `Order ${order_id}`,
             });
+          }
+
+          const { data: tenant } = await supabaseAdmin
+            .from("tenants")
+            .select("name, phone")
+            .eq("id", pay.tenant_id)
+            .maybeSingle();
+          try {
+            await notifyAdminPayment({
+              tenantName: tenant?.name ?? "Toko",
+              tenantPhone: tenant?.phone ?? null,
+              orderId: order_id,
+              amount: Number(pay.amount ?? gross_amount ?? 0),
+              planId,
+              period,
+              paymentType: payment_type,
+            });
+          } catch (error) {
+            console.error("Notifikasi WhatsApp langganan gagal", error);
           }
         }
 

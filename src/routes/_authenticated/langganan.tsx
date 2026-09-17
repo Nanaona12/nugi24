@@ -11,9 +11,20 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
+import { subscriptionWhatsAppUrl } from "@/lib/subscription-contact";
 import { CreditCard, Store, ShieldCheck, ArrowLeft, Check, Sparkles, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/langganan")({
+  head: () => ({
+    meta: [
+      { title: "Langganan & Pembayaran QRIS | Dagang Pintar" },
+      { name: "description", content: "Pilih paket Dagang Pintar dan bayar langganan dengan QRIS secara aman." },
+      { property: "og:title", content: "Langganan & Pembayaran QRIS | Dagang Pintar" },
+      { property: "og:description", content: "Pilih paket Dagang Pintar dan bayar langganan dengan QRIS secara aman." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: LanggananPage,
   errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error.message}</div>,
   notFoundComponent: () => <div className="p-6 text-sm">Tidak ditemukan</div>,
@@ -87,7 +98,15 @@ function LanggananPage() {
       }
       if (window.snap && snapReady && res.token) {
         window.snap.pay(res.token, {
-          onSuccess: () => { toast.success("Pembayaran sukses!"); refresh(); },
+          onSuccess: () => {
+            toast.success("Pembayaran sukses! Membuka WhatsApp admin...");
+            refresh();
+            window.location.assign(subscriptionWhatsAppUrl({
+              orderId: res.order_id,
+              plan: PLANS[res.plan as PlanId]?.name ?? res.plan,
+              period: res.period,
+            }));
+          },
           onPending: () => { toast.info("Menunggu pembayaran..."); refresh(); },
           onError: () => toast.error("Pembayaran gagal"),
           onClose: () => refresh(),
