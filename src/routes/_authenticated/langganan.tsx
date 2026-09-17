@@ -11,6 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { formatRupiah } from "@/lib/format";
+import { subscriptionWhatsAppUrl } from "@/lib/subscription-contact";
 import { CreditCard, Store, ShieldCheck, ArrowLeft, Check, Sparkles, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/langganan")({
@@ -87,7 +88,15 @@ function LanggananPage() {
       }
       if (window.snap && snapReady && res.token) {
         window.snap.pay(res.token, {
-          onSuccess: () => { toast.success("Pembayaran sukses!"); refresh(); },
+          onSuccess: () => {
+            toast.success("Pembayaran sukses! Membuka WhatsApp admin...");
+            refresh();
+            window.location.assign(subscriptionWhatsAppUrl({
+              orderId: res.order_id,
+              plan: PLANS[res.plan as PlanId]?.name ?? res.plan,
+              period: res.period,
+            }));
+          },
           onPending: () => { toast.info("Menunggu pembayaran..."); refresh(); },
           onError: () => toast.error("Pembayaran gagal"),
           onClose: () => refresh(),

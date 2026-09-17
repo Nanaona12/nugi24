@@ -263,10 +263,11 @@ export const createMidtransPayment = createServerFn({ method: "POST" })
       },
       body: JSON.stringify({
         transaction_details: { order_id: orderId, gross_amount: amount },
+        enabled_payments: ["qris"],
         item_details: [
           { id: `sub-${planId}-${period}`, price: amount, quantity: 1, name: itemName },
         ],
-        customer_details: { first_name: tenant.name },
+        customer_details: { first_name: tenant.name, phone: tenant.phone || undefined },
       }),
     });
     const json: any = await res.json();
