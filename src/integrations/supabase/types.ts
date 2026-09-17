@@ -2027,6 +2027,7 @@ export type Database = {
           product_name: string
           promo_id: string | null
           qty: number
+          receipt_detail: string | null
           subtotal: number
           tenant_id: string
           transaction_id: string
@@ -2047,6 +2048,7 @@ export type Database = {
           product_name: string
           promo_id?: string | null
           qty: number
+          receipt_detail?: string | null
           subtotal: number
           tenant_id?: string
           transaction_id: string
@@ -2067,6 +2069,7 @@ export type Database = {
           product_name?: string
           promo_id?: string | null
           qty?: number
+          receipt_detail?: string | null
           subtotal?: number
           tenant_id?: string
           transaction_id?: string
