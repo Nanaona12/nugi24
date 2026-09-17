@@ -15,6 +15,16 @@ import { subscriptionWhatsAppUrl } from "@/lib/subscription-contact";
 import { CreditCard, Store, ShieldCheck, ArrowLeft, Check, Sparkles, Zap } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/langganan")({
+  head: () => ({
+    meta: [
+      { title: "Langganan & Pembayaran QRIS | Dagang Pintar" },
+      { name: "description", content: "Pilih paket Dagang Pintar dan bayar langganan dengan QRIS secara aman." },
+      { property: "og:title", content: "Langganan & Pembayaran QRIS | Dagang Pintar" },
+      { property: "og:description", content: "Pilih paket Dagang Pintar dan bayar langganan dengan QRIS secara aman." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: LanggananPage,
   errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error.message}</div>,
   notFoundComponent: () => <div className="p-6 text-sm">Tidak ditemukan</div>,
