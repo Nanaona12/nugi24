@@ -130,11 +130,6 @@ function PembukuanPage() {
     const bkRows = (bkRes.data || []) as any[];
     // Uang supplier sudah keluar dari laci dan ikut mengurangi setoran shift.
     // Jangan kurangi saldo lagi saat PO tunai otomatis menulis entri pembelian.
-    const paidFromShiftPoIds = new Set<string>(
-      ((shiftExpenseRes.data || []) as any[])
-        .filter((e) => e.approval_status === "approved" && e.po_id)
-        .map((e) => String(e.po_id)),
-    );
     const paidFromShiftAmounts = new Map<string, number>();
     for (const e of ((shiftExpenseRes.data || []) as any[])) {
       if (e.approval_status !== "approved" || !e.po_id) continue;
@@ -195,7 +190,7 @@ function PembukuanPage() {
       });
     }
     for (let b of bkRows) {
-      if (b.ref && paidFromShiftPoIds.has(String(b.ref)) && String(b.description || "").startsWith("Pembelian tunai:")) {
+      if (b.ref && paidFromShiftAmounts.has(String(b.ref)) && String(b.description || "").startsWith("Pembelian tunai:")) {
         const covered = Math.min(Number(b.amount) || 0, paidFromShiftAmounts.get(String(b.ref)) || 0);
         paidFromShiftAmounts.set(String(b.ref), (paidFromShiftAmounts.get(String(b.ref)) || 0) - covered);
         if (covered >= Number(b.amount)) continue;

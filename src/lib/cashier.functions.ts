@@ -501,12 +501,12 @@ export const resolveShiftShortage = createServerFn({ method: "POST" })
     if (!["salary_deduction", "cashier_debt", "store_loss"].includes(data.resolution)) throw new Error("Pilihan tidak valid");
     const tenantId = await getTenantId(context);
     const { data: s } = await context.supabase
-      .from("cashier_shifts").select("id, difference, status, shortage_resolution")
+      .from("cashier_shifts").select("id, difference, status, shortage_resolution, shortage_debt_id")
       .eq("id", data.shift_id).eq("tenant_id", tenantId).maybeSingle();
     if (!s) throw new Error("Shift tidak ditemukan");
     const diff = Number((s as any).difference) || 0;
     if ((s as any).status !== "closed" || diff >= 0) throw new Error("Shift ini tidak punya kas kurang");
-    if ((s as any).shortage_resolution !== "pending") throw new Error("Kas kurang shift ini sudah diputuskan");
+    if ((s as any).shortage_resolution !== "pending" || (s as any).shortage_debt_id) throw new Error("Kas kurang shift ini sudah diputuskan");
     await applyShortageResolution(context, tenantId, data.shift_id, Math.abs(diff), data.resolution, null);
     return { ok: true };
   });
@@ -545,9 +545,10 @@ export const approveShiftExpense = createServerFn({ method: "POST" })
     const selectedPo = data.po_id || (expense as any).po_id;
     if (data.action === "approve") {
       if (!selectedPo) throw new Error("Pilih PO supplier terlebih dahulu (wajib PO)");
-      const { data: approved } = await context.supabase.from("shift_expenses")
+      const { data: approved, error: approvedError } = await context.supabase.from("shift_expenses")
         .select("id, amount").eq("tenant_id", tenantId).eq("po_id", selectedPo)
         .eq("approval_status", "approved").neq("id", data.id);
+      if (approvedError) throw new Error(approvedError.message);
       const { data: po } = await context.supabase
         .from("purchase_orders").select("id, total, payment_terms").eq("id", selectedPo).eq("tenant_id", tenantId).maybeSingle();
       if (!po) throw new Error("PO tidak ditemukan");
@@ -560,8 +561,9 @@ export const approveShiftExpense = createServerFn({ method: "POST" })
           .select("id, total, paid_amount").eq("po_id", selectedPo).eq("tenant_id", tenantId).maybeSingle();
         if (!debt) throw new Error("Hutang PO belum tercatat. Terima PO terlebih dahulu sebelum konfirmasi pembayaran");
         const paymentNote = `Dari pengeluaran shift:${data.id}`;
-        const { data: existing } = await context.supabase.from("supplier_debt_payments")
+        const { data: existing, error: existingError } = await context.supabase.from("supplier_debt_payments")
           .select("id").eq("tenant_id", tenantId).eq("note", paymentNote).maybeSingle();
+        if (existingError) throw new Error(existingError.message);
         if (!existing) {
           const remaining = Number(debt.total) - Number(debt.paid_amount);
           if (Number((expense as any).amount) > remaining) throw new Error("Nominal melebihi sisa hutang supplier");
@@ -671,7 +673,7 @@ export const closeShift = createServerFn({ method: "POST" })
       .eq("tenant_id", tenantId);
     if (error) throw new Error(error.message);
 
-    // Auto-catat setoran kasir ke pembukuan: uang kasir dikurangi kas modal
+    // Auto-catat perubahan kas laci di pembukuan; modal awal tidak dihitung ulang.
     const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
     // Penjualan bersih sebelum selisih; selisih dicatat terpisah supaya tidak dobel.
     const setoran = total_cash - total_expenses;
@@ -809,7 +811,7 @@ export const reviseShiftClosing = createServerFn({ method: "POST" })
       cashierName = (cRow as any)?.name || "";
     }
 
-    await context.supabase.from("bookkeeping_entries").insert({
+    const { error: revisionEntryError } = await context.supabase.from("bookkeeping_entries").insert({
       tenant_id: tenantId,
       entry_date: new Date().toISOString(),
       kind: delta > 0 ? "in" : "out",
@@ -817,6 +819,7 @@ export const reviseShiftClosing = createServerFn({ method: "POST" })
       ref: data.shift_id,
       amount: Math.abs(delta),
     } as any);
+    if (revisionEntryError) throw new Error(revisionEntryError.message);
 
     await (context.supabase as any).from("profit_activity_log").insert({
       tenant_id: tenantId,
