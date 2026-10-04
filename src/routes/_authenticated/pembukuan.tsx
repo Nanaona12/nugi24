@@ -194,7 +194,7 @@ function PembukuanPage() {
         kredit: Number(p.total) || 0,
       });
     }
-    for (const b of bkRows) {
+    for (let b of bkRows) {
       if (b.ref && paidFromShiftPoIds.has(String(b.ref)) && String(b.description || "").startsWith("Pembelian tunai:")) {
         const covered = Math.min(Number(b.amount) || 0, paidFromShiftAmounts.get(String(b.ref)) || 0);
         paidFromShiftAmounts.set(String(b.ref), (paidFromShiftAmounts.get(String(b.ref)) || 0) - covered);

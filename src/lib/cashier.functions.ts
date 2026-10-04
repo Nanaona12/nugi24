@@ -545,27 +545,36 @@ export const approveShiftExpense = createServerFn({ method: "POST" })
     const selectedPo = data.po_id || (expense as any).po_id;
     if (data.action === "approve") {
       if (!selectedPo) throw new Error("Pilih PO supplier terlebih dahulu (wajib PO)");
+      const { data: approved } = await context.supabase.from("shift_expenses")
+        .select("id, amount").eq("tenant_id", tenantId).eq("po_id", selectedPo)
+        .eq("approval_status", "approved").neq("id", data.id);
       const { data: po } = await context.supabase
         .from("purchase_orders").select("id, total, payment_terms").eq("id", selectedPo).eq("tenant_id", tenantId).maybeSingle();
       if (!po) throw new Error("PO tidak ditemukan");
-      if ((po as any).payment_terms !== "credit" && Number((po as any).total) !== Number((expense as any).amount)) {
+      const approvedAmount = ((approved ?? []) as any[]).reduce((sum, row) => sum + Number(row.amount || 0), 0);
+      if ((po as any).payment_terms !== "credit" && (approvedAmount > 0 || Number((po as any).total) !== Number((expense as any).amount))) {
         throw new Error("Nominal pengeluaran harus sama dengan total PO tunai agar pembukuan tidak dobel");
       }
       if ((po as any).payment_terms === "credit") {
         const { data: debt } = await context.supabase.from("supplier_debts")
           .select("id, total, paid_amount").eq("po_id", selectedPo).eq("tenant_id", tenantId).maybeSingle();
         if (!debt) throw new Error("Hutang PO belum tercatat. Terima PO terlebih dahulu sebelum konfirmasi pembayaran");
-        const remaining = Number(debt.total) - Number(debt.paid_amount);
-        if (Number((expense as any).amount) > remaining) throw new Error("Nominal melebihi sisa hutang supplier");
-        const { error: paymentError } = await context.supabase.from("supplier_debt_payments").insert({
-          tenant_id: tenantId,
-          debt_id: debt.id,
-          amount: Number((expense as any).amount),
-          method: "cash",
-          note: `Dari pengeluaran shift:${data.id}`,
-          created_by: context.userId,
-        } as any);
-        if (paymentError) throw new Error(paymentError.message);
+        const paymentNote = `Dari pengeluaran shift:${data.id}`;
+        const { data: existing } = await context.supabase.from("supplier_debt_payments")
+          .select("id").eq("tenant_id", tenantId).eq("note", paymentNote).maybeSingle();
+        if (!existing) {
+          const remaining = Number(debt.total) - Number(debt.paid_amount);
+          if (Number((expense as any).amount) > remaining) throw new Error("Nominal melebihi sisa hutang supplier");
+          const { error: paymentError } = await context.supabase.from("supplier_debt_payments").insert({
+            tenant_id: tenantId,
+            debt_id: debt.id,
+            amount: Number((expense as any).amount),
+            method: "cash",
+            note: paymentNote,
+            created_by: context.userId,
+          } as any);
+          if (paymentError) throw new Error(paymentError.message);
+        }
       }
     }
     const { error } = await context.supabase.from("shift_expenses").update({
