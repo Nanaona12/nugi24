@@ -1050,7 +1050,7 @@ function KeuntunganPage() {
             Selisih Closing Kasir
           </div>
           <div className="text-muted-foreground">
-            Selisih kurang mengurangi keuntungan. Selisih lebih hanya masuk pembukuan, bukan keuntungan.
+            Kas kurang yang ditanggung toko mengurangi keuntungan. Kas kurang yang diganti kasir tidak; kas lebih hanya masuk Pembukuan.
           </div>
         </div>
       </Card>
@@ -1060,7 +1060,7 @@ function KeuntunganPage() {
           <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 font-medium text-destructive">
               <AlertTriangle className="h-4 w-4" />
-              Selisih Kurang Kasir (mengurangi keuntungan)
+              Kas Kurang Ditanggung Toko (mengurangi keuntungan)
             </div>
             <div className="flex flex-wrap gap-3 text-muted-foreground">
               <span>Hari ini: <b className="text-destructive">-{formatRupiah(stats.shortageToday)}</b></span>

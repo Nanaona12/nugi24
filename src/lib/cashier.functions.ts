@@ -481,6 +481,7 @@ async function applyShortageResolution(
       debtor_type: "employee",
       original_amount: shortage,
       cashier_id: shiftRow?.cashier_id ?? null,
+      shift_id: shiftId,
       note: `Selisih kurang closing shift ${shortId} - ${label}${notes?.trim() ? ` - ${notes.trim()}` : ""}`,
     } as any).select("id").single();
     if (error) throw new Error(error.message);
