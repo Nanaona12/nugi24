@@ -18,7 +18,7 @@ const SHORTAGE_OPTIONS: { value: ShortageResolution; label: string; desc: string
   { value: "pending", label: "Diputuskan admin nanti", desc: "Admin memilih penyelesaiannya di Riwayat Shift." },
   { value: "salary_deduction", label: "Usulkan potong gaji kasir", desc: "Admin meninjau dahulu. Bila disetujui, dicatat sebagai piutang kasir untuk dipotong saat gajian." },
   { value: "cashier_debt", label: "Usulkan kasbon kasir (dicicil)", desc: "Admin meninjau dahulu. Bila disetujui, kasir mengganti bertahap lewat menu Hutang." },
-  { value: "store_loss", label: "Ditanggung toko", desc: "Dicatat sebagai kerugian dan mengurangi keuntungan." },
+  { value: "store_loss", label: "Usulkan ditanggung toko", desc: "Bila admin menyetujui, dicatat sebagai kerugian dan mengurangi keuntungan." },
 ];
 
 type Summary = {
@@ -113,7 +113,11 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
     if (actual < 0) { toast.error("Fisik kas tidak valid"); return; }
     setSubmitting(true);
     try {
-      const res = (await closeFn({ data: { shift_id: shift.shift_id, actual_cash: actual, notes: notes.trim() || undefined, shortage_resolution: "pending" } })) as any;
+      const suggestion = diff < 0 && resolution !== "pending"
+        ? `Usulan kasir: ${SHORTAGE_OPTIONS.find((option) => option.value === resolution)?.label || "Menunggu admin"}`
+        : "";
+      const closeNotes = [notes.trim(), suggestion].filter(Boolean).join("\n");
+      const res = (await closeFn({ data: { shift_id: shift.shift_id, actual_cash: actual, notes: closeNotes || undefined, shortage_resolution: "pending" } })) as any;
       setClosed(res.totals);
       toast.success("Shift ditutup");
       onClosed();

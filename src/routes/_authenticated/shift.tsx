@@ -404,6 +404,9 @@ ${otherNotes ? `<div class="notes"><b>Catatan:</b>\n${esc(otherNotes)}</div>` : 
                       </Badge>
                       {s.status === "closed" && diff < 0 && s.shortage_resolution && (
                         <div className="mt-1 text-[10px]">
+                          {s.notes?.split("\n").find((line) => line.startsWith("Usulan kasir:")) && (
+                            <div className="mb-1 text-muted-foreground">{s.notes.split("\n").find((line) => line.startsWith("Usulan kasir:"))}</div>
+                          )}
                           {s.shortage_resolution === "pending" ? (
                             isAdmin ? (
                               <select
