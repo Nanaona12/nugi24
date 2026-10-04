@@ -548,6 +548,7 @@ function ProdukPage() {
     }
     setImporting(true);
     setImportProgress({ done: 0, total: named.length, stage: "Menyiapkan barang" });
+    let wroteProducts = false;
     try {
       const { data: tenantId, error: tenantError } = await supabase.rpc("current_tenant_id");
       if (tenantError || !tenantId) throw new Error("Toko aktif tidak ditemukan. Silakan masuk ulang lalu coba impor lagi.");
@@ -590,6 +591,7 @@ function ProdukPage() {
             if (error) { failures.push(`${r.code}: ${error.message}`); skipped++; return; }
             if (!data) { skipped++; return; }
             prodId = data.id;
+            wroteProducts = true;
             updated++;
           } else {
             const { data, error } = await supabase.from("products").select("id").eq("tenant_id", tenantId).eq("code", r.code).maybeSingle();
@@ -615,15 +617,19 @@ function ProdukPage() {
         toast.success(`${updated} produk diupdate${unitsApplied ? `, ${unitsApplied} dgn satuan` : ""}${skipped ? `, ${skipped} dilewati` : ""}`);
       } else {
         // Upsert: auto-generate code for rows missing one
-        setImportProgress({ done: 0, total: named.length, stage: "Membuat kode barang kosong" });
-        const rows = await Promise.all(
-          named.filter((r) => r.name).map(async (r) => {
-            if (r.code) return r;
+        const rows = named.filter((r) => r.name);
+        const missingCode = rows.filter((r) => !r.code);
+        setImportProgress({ done: 0, total: missingCode.length, stage: "Membuat kode barang kosong" });
+        let generated = 0;
+        await runImportWorkers(missingCode, async (r) => {
             const { data, error } = await supabase.rpc("next_product_code");
             if (error || !data) throw new Error(`Gagal membuat kode untuk ${r.name}: ${error?.message || "kode kosong"}`);
-            return { ...r, code: String(data) };
-          }),
-        );
+            r.code = String(data);
+            generated++;
+            if (generated % 5 === 0 || generated === missingCode.length) {
+              setImportProgress({ done: generated, total: missingCode.length, stage: "Membuat kode barang kosong" });
+            }
+        });
         const final = rows.filter((r) => r.code);
 
         const codeCounts = new Map<string, number>();
@@ -698,6 +704,7 @@ function ProdukPage() {
             return;
           }
           upserted.push(...((data || []) as { id: string; code: string }[]));
+          wroteProducts = true;
           setImportProgress({ done: Math.min(i + IMPORT_CHUNK, dbRows.length), total, stage: "Menyimpan barang" });
         }
         const idByCode = new Map((upserted || []).map((p: any) => [p.code, p.id]));
@@ -729,11 +736,11 @@ function ProdukPage() {
 
       setImportOpen(false);
       setImportPreview([]);
-      load();
     } catch (e: any) {
       toast.error(e?.message || "Gagal mengimpor barang");
     } finally {
       setImporting(false);
+      if (wroteProducts) void load();
     }
   };
 
