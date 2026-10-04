@@ -87,7 +87,7 @@ function PembukuanPage() {
       return;
     }
 
-    const [txRes, poRes, bkRes, debtRes, closedShiftRes] = await Promise.all([
+    const [txRes, poRes, bkRes, debtRes, closedShiftRes, shiftExpenseRes] = await Promise.all([
       supabase
         .from("transactions")
         .select("id, total, created_at, payment_method, customer_name, shift_id")
@@ -118,9 +118,23 @@ function PembukuanPage() {
         .eq("tenant_id", tenant)
         .eq("status", "closed")
         .limit(5000),
+      supabase
+        .from("shift_expenses")
+        .select("po_id, approval_status, amount")
+        .eq("tenant_id", tenant)
+        .eq("category", "supplier")
+        .not("po_id", "is", null)
+        .limit(5000),
     ]);
 
     const bkRows = (bkRes.data || []) as any[];
+    // Uang supplier sudah keluar dari laci dan ikut mengurangi setoran shift.
+    // Jangan kurangi saldo lagi saat PO tunai otomatis menulis entri pembelian.
+    const paidFromShiftAmounts = new Map<string, number>();
+    for (const e of ((shiftExpenseRes.data || []) as any[])) {
+      if (e.approval_status !== "approved" || !e.po_id) continue;
+      paidFromShiftAmounts.set(String(e.po_id), (paidFromShiftAmounts.get(String(e.po_id)) || 0) + Number(e.amount || 0));
+    }
 
     // Shift yang sudah ditutup menuliskan setoran resmi (tunai/QRIS/non-tunai lain)
     // ke pembukuan. Transaksi di shift tsb TIDAK boleh dihitung lagi, kalau tidak
@@ -162,6 +176,7 @@ function PembukuanPage() {
     const bkRefs = new Set(bkRows.map((b) => String(b.ref || "")));
     for (const p of (poRes.data || []) as any[]) {
       if (p.payment_terms === "credit") continue; // tempo: kas tidak berkurang, masuk Hutang Supplier
+      if ((paidFromShiftAmounts.get(String(p.id)) || 0) >= Number(p.total)) continue; // sudah dibayar penuh dari uang shift
       if (bkRefs.has(String(p.id))) continue; // tunai: sudah tercatat sebagai entri pembukuan
       list.push({
         id: "p-" + p.id,
@@ -174,7 +189,13 @@ function PembukuanPage() {
         kredit: Number(p.total) || 0,
       });
     }
-    for (const b of bkRows) {
+    for (let b of bkRows) {
+      if (b.ref && paidFromShiftAmounts.has(String(b.ref)) && String(b.description || "").startsWith("Pembelian tunai:")) {
+        const covered = Math.min(Number(b.amount) || 0, paidFromShiftAmounts.get(String(b.ref)) || 0);
+        paidFromShiftAmounts.set(String(b.ref), (paidFromShiftAmounts.get(String(b.ref)) || 0) - covered);
+        if (covered >= Number(b.amount)) continue;
+        b = { ...b, amount: Number(b.amount) - covered };
+      }
       if (b.ref && skippedDebtIds.has(String(b.ref)) && String(b.description || "").startsWith("Kasbon")) continue;
       const amt = Number(b.amount) || 0;
       list.push({
@@ -223,6 +244,7 @@ function PembukuanPage() {
         .select("closed_at, difference")
         .eq("status", "closed")
         .lt("difference", 0)
+        .or("shortage_resolution.is.null,shortage_resolution.eq.store_loss")
         .limit(500),
     ]);
 

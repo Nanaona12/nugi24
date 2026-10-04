@@ -16,9 +16,9 @@ import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-sc
 const CATEGORY_LABEL: Record<string, string> = { supplier: "Supplier", shopping: "Belanja", other: "Lainnya" };
 const SHORTAGE_OPTIONS: { value: ShortageResolution; label: string; desc: string }[] = [
   { value: "pending", label: "Diputuskan admin nanti", desc: "Admin memilih penyelesaiannya di Riwayat Shift." },
-  { value: "salary_deduction", label: "Potong gaji kasir", desc: "Dicatat sebagai hutang kasir, dipotong saat gajian. Tidak mengurangi keuntungan." },
-  { value: "cashier_debt", label: "Kasbon kasir (dicicil)", desc: "Kasir mengganti bertahap lewat menu Hutang. Tidak mengurangi keuntungan." },
-  { value: "store_loss", label: "Ditanggung toko", desc: "Dicatat sebagai kerugian dan mengurangi keuntungan." },
+  { value: "salary_deduction", label: "Usulkan potong gaji kasir", desc: "Admin meninjau dahulu. Bila disetujui, dicatat sebagai piutang kasir untuk dipotong saat gajian." },
+  { value: "cashier_debt", label: "Usulkan kasbon kasir (dicicil)", desc: "Admin meninjau dahulu. Bila disetujui, kasir mengganti bertahap lewat menu Hutang." },
+  { value: "store_loss", label: "Usulkan ditanggung toko", desc: "Bila admin menyetujui, dicatat sebagai kerugian dan mengurangi keuntungan." },
 ];
 
 type Summary = {
@@ -94,7 +94,7 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
     setAddingExp(true);
     try {
       await addExpFn({ data: { shift_id: shift.shift_id, label: newExpLabel.trim(), amount: amt, category: newExpCategory, po_id: newExpPo || null } });
-      if (newExpCategory === "supplier" && !newExpPo) toast.info("Dikirim ke admin untuk konfirmasi & dibuatkan PO");
+      if (newExpCategory === "supplier") toast.info("Dikirim ke admin untuk konfirmasi PO");
       setNewExpLabel(""); setNewExpAmount(""); setNewExpPo("");
       await reload();
     } catch (e: any) { toast.error(e.message); }
@@ -113,7 +113,11 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
     if (actual < 0) { toast.error("Fisik kas tidak valid"); return; }
     setSubmitting(true);
     try {
-      const res = (await closeFn({ data: { shift_id: shift.shift_id, actual_cash: actual, notes: notes.trim() || undefined, shortage_resolution: resolution } })) as any;
+      const suggestion = diff < 0 && resolution !== "pending"
+        ? `Usulan kasir: ${SHORTAGE_OPTIONS.find((option) => option.value === resolution)?.label || "Menunggu admin"}`
+        : "";
+      const closeNotes = [notes.trim(), suggestion].filter(Boolean).join("\n");
+      const res = (await closeFn({ data: { shift_id: shift.shift_id, actual_cash: actual, notes: closeNotes || undefined, shortage_resolution: "pending" } })) as any;
       setClosed(res.totals);
       toast.success("Shift ditutup");
       onClosed();
@@ -422,6 +426,7 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                           <span className="mr-1 font-semibold">[{CATEGORY_LABEL[e.category || "other"] || "Lainnya"}]</span>
                           {e.label}
                           {e.approval_status === "pending" && <span className="ml-1 text-destructive">· menunggu konfirmasi admin (wajib PO)</span>}
+                          {e.approval_status === "rejected" && <span className="ml-1 text-destructive">· ditolak admin, cek kembali catatan</span>}
                           {e.po_id && <span className="ml-1 text-success">· PO terhubung</span>}
                         </span>
                         <span className="flex items-center gap-2">
@@ -467,7 +472,7 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                   </Button>
                 </div>
                 {newExpCategory === "supplier" && !newExpPo && (
-                  <p className="text-[11px] text-muted-foreground">Uang laci untuk supplier wajib punya PO. Tanpa PO, catatan ini dikirim ke admin untuk dikonfirmasi dan dibuatkan PO.</p>
+                  <p className="text-[11px] text-muted-foreground">Uang laci untuk supplier wajib punya PO. Jika belum ada, admin membuat PO sebelum menyetujui catatan.</p>
                 )}
               </div>
             )}
@@ -492,7 +497,8 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                 )}
                 {actualCash !== "" && diff < 0 && (
                   <div className="space-y-1">
-                    <Label className="text-xs">Kekurangan {formatRupiah(Math.abs(diff))} diselesaikan dengan</Label>
+                    <Label className="text-xs">Usulan penyelesaian kas kurang {formatRupiah(Math.abs(diff))}</Label>
+                    <p className="text-[11px] text-muted-foreground">Hanya admin yang dapat memutuskan. Kas kurang langsung dicatat di Pembukuan.</p>
                     <div className="grid gap-1">
                       {SHORTAGE_OPTIONS.map((o) => (
                         <label key={o.value} className={`flex cursor-pointer items-start gap-2 rounded border p-2 text-xs ${resolution === o.value ? "border-primary bg-primary/5" : ""}`}>
