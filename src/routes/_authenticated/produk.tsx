@@ -73,6 +73,8 @@ const emptyForm: ProductForm = {
 function ProdukPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [unitsByProduct, setUnitsByProduct] = useState<Record<string, ProductUnit[]>>({});
+  const [unitsLoading, setUnitsLoading] = useState(true);
+  const [exporting, setExporting] = useState(false);
   const [expiryByProduct, setExpiryByProduct] = useState<Record<string, { minDays: number; totalQty: number; batches: number }>>({});
   const [query, setQuery] = useState("");
   const [editOpen, setEditOpen] = useState(false);
@@ -91,8 +93,9 @@ function ProdukPage() {
 
 
   const load = async () => {
+    setUnitsLoading(true);
     const { data, error } = await supabase.from("products").select("*").order("name");
-    if (error) { toast.error(error.message); return; }
+    if (error) { toast.error(error.message); setUnitsLoading(false); return; }
     const prods = (data || []) as Product[];
     setProducts(prods);
     try {
@@ -100,6 +103,8 @@ function ProdukPage() {
       setUnitsByProduct(map);
     } catch (e: any) {
       toast.error("Gagal memuat satuan: " + e.message);
+    } finally {
+      setUnitsLoading(false);
     }
     // Load expiry batches summary per product
     const { data: bs } = await (supabase as any)
@@ -764,8 +769,20 @@ function ProdukPage() {
       .join(" | ");
   };
 
-  const exportExcel = () => {
+  const exportExcel = async () => {
     if (products.length === 0) { toast.error("Tidak ada produk untuk diexport"); return; }
+    setExporting(true);
+    let completeUnits: Record<string, ProductUnit[]>;
+    try {
+      // Ambil ulang saat tombol ditekan supaya ekspor tidak memakai state satuan
+      // yang masih dimuat atau tertinggal setelah perubahan produk.
+      completeUnits = await loadUnitsForProducts(products.map((p) => p.id));
+      setUnitsByProduct(completeUnits);
+    } catch (e: any) {
+      toast.error("Gagal menyiapkan seluruh data satuan: " + e.message);
+      setExporting(false);
+      return;
+    }
     const rows = products.map((p) => ({
       Kode: p.code,
       Barcode: p.barcode || "",
@@ -776,7 +793,11 @@ function ProdukPage() {
       "Harga Grosir": p.wholesale_price ?? "",
       "Min Grosir": p.wholesale_min_qty ?? "",
       Stok: p.stock || 0,
-      Satuan: buildSatuanString(unitsByProduct[p.id] || []),
+      // Produk lama yang belum memiliki baris satuan tetap diekspor dari harga
+      // ecer/grosir lama agar saat diimpor tidak kehilangan tingkatan harganya.
+      Satuan: buildSatuanString(
+        completeUnits[p.id]?.length ? completeUnits[p.id] : [fallbackUnitFromProduct(p)],
+      ),
     }));
     const ws = XLSX.utils.json_to_sheet(rows);
     (ws as any)["!cols"] = [
@@ -788,6 +809,7 @@ function ProdukPage() {
     const today = new Date().toISOString().slice(0, 10);
     XLSX.writeFile(wb, `produk-${today}.xlsx`);
     toast.success(`${rows.length} produk diexport`);
+    setExporting(false);
   };
 
 
@@ -805,8 +827,8 @@ function ProdukPage() {
         <Button variant="outline" onClick={downloadTemplate}>
           <Download className="mr-2 h-4 w-4" /> Template Excel
         </Button>
-        <Button variant="outline" onClick={exportExcel} disabled={products.length === 0}>
-          <FileSpreadsheet className="mr-2 h-4 w-4" /> Export Excel
+        <Button variant="outline" onClick={exportExcel} disabled={products.length === 0 || unitsLoading || exporting}>
+          <FileSpreadsheet className="mr-2 h-4 w-4" /> {exporting ? "Menyiapkan..." : unitsLoading ? "Memuat Satuan..." : "Export Excel"}
         </Button>
         <Button variant="outline" onClick={() => fileRef.current?.click()}>
           <Upload className="mr-2 h-4 w-4" /> Import Excel
