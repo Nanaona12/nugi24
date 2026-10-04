@@ -687,8 +687,7 @@ function ProdukPage() {
         const upserted: { id: string; code: string }[] = [];
         const IMPORT_CHUNK = 150;
         const withUnits = final.filter((r) => r.units && r.units.length > 0);
-        const total = dbRows.length + withUnits.length;
-        setImportProgress({ done: 0, total, stage: "Menyimpan barang" });
+        setImportProgress({ done: 0, total: dbRows.length, stage: "Menyimpan barang" });
         for (let i = 0; i < dbRows.length; i += IMPORT_CHUNK) {
           const { data, error } = await supabase
             .from("products")
@@ -705,13 +704,13 @@ function ProdukPage() {
           }
           upserted.push(...((data || []) as { id: string; code: string }[]));
           wroteProducts = true;
-          setImportProgress({ done: Math.min(i + IMPORT_CHUNK, dbRows.length), total, stage: "Menyimpan barang" });
+          setImportProgress({ done: Math.min(i + IMPORT_CHUNK, dbRows.length), total: dbRows.length, stage: "Menyimpan barang" });
         }
         const idByCode = new Map((upserted || []).map((p: any) => [p.code, p.id]));
         let unitsApplied = 0;
         let unitsCompleted = 0;
         const unitFailures: string[] = [];
-        setImportProgress({ done: dbRows.length, total, stage: "Menyimpan satuan & harga" });
+        setImportProgress({ done: 0, total: withUnits.length, stage: "Menyimpan satuan & harga" });
         await runImportWorkers(withUnits, async (r) => {
           const pid = idByCode.get(r.code);
           try {
@@ -723,7 +722,7 @@ function ProdukPage() {
           } finally {
             unitsCompleted++;
             if (unitsCompleted % 5 === 0 || unitsCompleted === withUnits.length) {
-              setImportProgress({ done: dbRows.length + unitsCompleted, total, stage: "Menyimpan satuan & harga" });
+              setImportProgress({ done: unitsCompleted, total: withUnits.length, stage: "Menyimpan satuan & harga" });
             }
           }
         });
