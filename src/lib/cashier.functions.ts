@@ -462,16 +462,7 @@ async function applyShortageResolution(
   }
 
   if (resolution === "store_loss") {
-    // Kas keluar + mengurangi keuntungan
-    const { error: entryError } = await context.supabase.from("bookkeeping_entries").insert({
-      tenant_id: tenantId,
-      entry_date: new Date().toISOString(),
-      kind: "out",
-      description: `Selisih kurang kasir ditanggung toko (closing shift ${shortId})${cashierName ? " - " + cashierName : ""}`,
-      ref: shiftId,
-      amount: shortage,
-    } as any);
-    if (entryError) throw new Error(entryError.message);
+    // Kas keluar sudah dibukukan pada saat shift ditutup; hanya status kerugian berubah.
     const { error: activityError } = await context.supabase.from("profit_activity_log").insert({
       tenant_id: tenantId,
       user_id: context.userId ?? null,
@@ -482,7 +473,7 @@ async function applyShortageResolution(
     } as any);
     if (activityError) throw new Error(activityError.message);
   } else if (resolution === "salary_deduction" || resolution === "cashier_debt") {
-    // Jadi hutang kasir (kas keluar dicatat otomatis oleh pencatatan kasbon), tidak mengurangi keuntungan
+    // Jadi piutang kasir; kas keluar sudah dibukukan saat closing.
     const label = resolution === "salary_deduction" ? "potong gaji" : "kasbon dicicil";
     const { data: debt, error } = await context.supabase.from("debts").insert({
       tenant_id: tenantId,
@@ -697,6 +688,15 @@ export const closeShift = createServerFn({ method: "POST" })
 
     // Selisih kurang kasir: tindak lanjut sesuai pilihan (gaji / kasbon / toko / admin)
     if (difference < 0) {
+      const { error: shortageError } = await context.supabase.from("bookkeeping_entries").insert({
+        tenant_id: tenantId,
+        entry_date: new Date().toISOString(),
+        kind: "out",
+        description: `Selisih kurang kasir (closing shift ${shortId})`,
+        ref: `cashier-shortage:${data.shift_id}`,
+        amount: Math.abs(difference),
+      } as any);
+      if (shortageError) throw new Error(shortageError.message);
       await applyShortageResolution(context, tenantId, data.shift_id, Math.abs(difference), resolution, data.notes);
     }
 
