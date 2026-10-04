@@ -539,14 +539,34 @@ export const approveShiftExpense = createServerFn({ method: "POST" })
     const tenantId = await getTenantId(context);
     if (data.action !== "approve" && data.action !== "reject") throw new Error("Pilihan tidak valid");
     const { data: expense } = await context.supabase.from("shift_expenses")
-      .select("approval_status, po_id").eq("id", data.id).eq("tenant_id", tenantId).maybeSingle();
+      .select("approval_status, po_id, amount, category").eq("id", data.id).eq("tenant_id", tenantId).maybeSingle();
     if (!expense || (expense as any).approval_status !== "pending") throw new Error("Catatan ini sudah diproses");
+    if ((expense as any).category !== "supplier") throw new Error("Hanya pembayaran supplier yang perlu konfirmasi");
     const selectedPo = data.po_id || (expense as any).po_id;
     if (data.action === "approve") {
       if (!selectedPo) throw new Error("Pilih PO supplier terlebih dahulu (wajib PO)");
       const { data: po } = await context.supabase
-        .from("purchase_orders").select("id").eq("id", selectedPo).eq("tenant_id", tenantId).maybeSingle();
+        .from("purchase_orders").select("id, total, payment_terms").eq("id", selectedPo).eq("tenant_id", tenantId).maybeSingle();
       if (!po) throw new Error("PO tidak ditemukan");
+      if ((po as any).payment_terms !== "credit" && Number((po as any).total) !== Number((expense as any).amount)) {
+        throw new Error("Nominal pengeluaran harus sama dengan total PO tunai agar pembukuan tidak dobel");
+      }
+      if ((po as any).payment_terms === "credit") {
+        const { data: debt } = await context.supabase.from("supplier_debts")
+          .select("id, total, paid_amount").eq("po_id", selectedPo).eq("tenant_id", tenantId).maybeSingle();
+        if (!debt) throw new Error("Hutang PO belum tercatat. Terima PO terlebih dahulu sebelum konfirmasi pembayaran");
+        const remaining = Number(debt.total) - Number(debt.paid_amount);
+        if (Number((expense as any).amount) > remaining) throw new Error("Nominal melebihi sisa hutang supplier");
+        const { error: paymentError } = await context.supabase.from("supplier_debt_payments").insert({
+          tenant_id: tenantId,
+          debt_id: debt.id,
+          amount: Number((expense as any).amount),
+          method: "cash",
+          note: `Dari pengeluaran shift:${data.id}`,
+          created_by: context.userId,
+        } as any);
+        if (paymentError) throw new Error(paymentError.message);
+      }
     }
     const { error } = await context.supabase.from("shift_expenses").update({
       approval_status: data.action === "approve" ? "approved" : "rejected",

@@ -120,7 +120,7 @@ function PembukuanPage() {
         .limit(5000),
       supabase
         .from("shift_expenses")
-        .select("po_id, approval_status")
+        .select("po_id, approval_status, amount")
         .eq("tenant_id", tenant)
         .eq("category", "supplier")
         .not("po_id", "is", null)
@@ -135,6 +135,11 @@ function PembukuanPage() {
         .filter((e) => e.approval_status === "approved" && e.po_id)
         .map((e) => String(e.po_id)),
     );
+    const paidFromShiftAmounts = new Map<string, number>();
+    for (const e of ((shiftExpenseRes.data || []) as any[])) {
+      if (e.approval_status !== "approved" || !e.po_id) continue;
+      paidFromShiftAmounts.set(String(e.po_id), (paidFromShiftAmounts.get(String(e.po_id)) || 0) + Number(e.amount || 0));
+    }
 
     // Shift yang sudah ditutup menuliskan setoran resmi (tunai/QRIS/non-tunai lain)
     // ke pembukuan. Transaksi di shift tsb TIDAK boleh dihitung lagi, kalau tidak
@@ -176,7 +181,7 @@ function PembukuanPage() {
     const bkRefs = new Set(bkRows.map((b) => String(b.ref || "")));
     for (const p of (poRes.data || []) as any[]) {
       if (p.payment_terms === "credit") continue; // tempo: kas tidak berkurang, masuk Hutang Supplier
-      if (paidFromShiftPoIds.has(String(p.id))) continue; // sudah dibayar dari uang shift
+      if ((paidFromShiftAmounts.get(String(p.id)) || 0) >= Number(p.total)) continue; // sudah dibayar penuh dari uang shift
       if (bkRefs.has(String(p.id))) continue; // tunai: sudah tercatat sebagai entri pembukuan
       list.push({
         id: "p-" + p.id,
@@ -190,7 +195,12 @@ function PembukuanPage() {
       });
     }
     for (const b of bkRows) {
-      if (b.ref && paidFromShiftPoIds.has(String(b.ref)) && String(b.description || "").startsWith("Pembelian tunai:")) continue;
+      if (b.ref && paidFromShiftPoIds.has(String(b.ref)) && String(b.description || "").startsWith("Pembelian tunai:")) {
+        const covered = Math.min(Number(b.amount) || 0, paidFromShiftAmounts.get(String(b.ref)) || 0);
+        paidFromShiftAmounts.set(String(b.ref), (paidFromShiftAmounts.get(String(b.ref)) || 0) - covered);
+        if (covered >= Number(b.amount)) continue;
+        b = { ...b, amount: Number(b.amount) - covered };
+      }
       if (b.ref && skippedDebtIds.has(String(b.ref)) && String(b.description || "").startsWith("Kasbon")) continue;
       const amt = Number(b.amount) || 0;
       list.push({
