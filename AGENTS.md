@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Product codes are unique within a tenant, not globally, because each store owns an independent catalog and Excel imports must never target another store's row.
