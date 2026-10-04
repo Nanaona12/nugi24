@@ -389,11 +389,12 @@ export const getShiftSummary = createServerFn({ method: "POST" })
 
 export const addShiftExpense = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { shift_id: string; label: string; amount: number }) => d)
+  .inputValidator((d: { shift_id: string; label: string; amount: number; category?: "supplier" | "shopping" | "other"; po_id?: string | null }) => d)
   .handler(async ({ data, context }) => {
-    if (!data.label?.trim()) throw new Error("Label wajib");
+    if (!data.label?.trim()) throw new Error("Keterangan wajib");
     const amt = Math.max(0, Number(data.amount) || 0);
     if (amt <= 0) throw new Error("Nominal harus > 0");
+    const category = ["supplier", "shopping", "other"].includes(data.category || "") ? data.category! : "other";
     const tenantId = await getTenantId(context);
     await assertActiveSubscription(tenantId);
     // Confirm shift belongs to tenant & open
@@ -401,9 +402,18 @@ export const addShiftExpense = createServerFn({ method: "POST" })
       .from("cashier_shifts").select("id, status").eq("id", data.shift_id).eq("tenant_id", tenantId).maybeSingle();
     if (!s) throw new Error("Shift tidak ditemukan");
     if (s.status !== "open") throw new Error("Shift sudah ditutup");
+    let po_id: string | null = null;
+    if (category === "supplier" && data.po_id) {
+      const { data: po } = await context.supabase
+        .from("purchase_orders").select("id").eq("id", data.po_id).eq("tenant_id", tenantId).maybeSingle();
+      if (!po) throw new Error("PO tidak ditemukan");
+      po_id = po.id;
+    }
+    // Bayar supplier tanpa PO wajib dikonfirmasi admin
+    const approval_status = category === "supplier" && !po_id ? "pending" : "approved";
     const { error } = await context.supabase
       .from("shift_expenses")
-      .insert({ tenant_id: tenantId, shift_id: data.shift_id, label: data.label.trim(), amount: amt });
+      .insert({ tenant_id: tenantId, shift_id: data.shift_id, label: data.label.trim(), amount: amt, category, po_id, approval_status } as any);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -419,9 +429,131 @@ export const deleteShiftExpense = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+export const SHORTAGE_RESOLUTIONS = ["salary_deduction", "cashier_debt", "store_loss", "pending"] as const;
+export type ShortageResolution = (typeof SHORTAGE_RESOLUTIONS)[number];
+
+async function applyShortageResolution(
+  context: any,
+  tenantId: string,
+  shiftId: string,
+  shortage: number,
+  resolution: ShortageResolution,
+  notes?: string | null,
+) {
+  const shortId = String(shiftId).slice(0, 8).toUpperCase();
+  const { data: shiftRow } = await context.supabase
+    .from("cashier_shifts").select("cashier_id").eq("id", shiftId).maybeSingle();
+  let cashierName = "";
+  if (shiftRow?.cashier_id) {
+    const { data: cRow } = await context.supabase.from("cashiers").select("name").eq("id", shiftRow.cashier_id).maybeSingle();
+    cashierName = cRow?.name || "";
+  }
+  const update: Record<string, any> = { shortage_resolution: resolution };
+  if (resolution !== "pending") {
+    update.shortage_resolved_at = new Date().toISOString();
+    update.shortage_resolved_by = context.userId ?? null;
+  }
+
+  if (resolution === "store_loss") {
+    // Kas keluar + mengurangi keuntungan
+    await context.supabase.from("bookkeeping_entries").insert({
+      tenant_id: tenantId,
+      entry_date: new Date().toISOString(),
+      kind: "out",
+      description: `Selisih kurang kasir ditanggung toko (closing shift ${shortId})${cashierName ? " - " + cashierName : ""}`,
+      ref: shiftId,
+      amount: shortage,
+    } as any);
+    await context.supabase.from("profit_activity_log").insert({
+      tenant_id: tenantId,
+      user_id: context.userId ?? null,
+      actor_name: cashierName || null,
+      action: "shift_shortage",
+      amount: shortage,
+      note: `Selisih kurang closing shift ${shortId}${notes?.trim() ? " - " + notes.trim() : ""}`,
+    } as any);
+  } else if (resolution === "salary_deduction" || resolution === "cashier_debt") {
+    // Jadi hutang kasir (kas keluar dicatat otomatis oleh pencatatan kasbon), tidak mengurangi keuntungan
+    const label = resolution === "salary_deduction" ? "potong gaji" : "kasbon dicicil";
+    const { data: debt, error } = await context.supabase.from("debts").insert({
+      tenant_id: tenantId,
+      debtor_name: cashierName || "Kasir",
+      debtor_type: "employee",
+      original_amount: shortage,
+      cashier_id: shiftRow?.cashier_id ?? null,
+      note: `Selisih kurang closing shift ${shortId} - ${label}`,
+    } as any).select("id").single();
+    if (error) throw new Error(error.message);
+    update.shortage_debt_id = debt?.id ?? null;
+  }
+  // pending: belum dicatat, menunggu keputusan admin di Riwayat Shift
+  await context.supabase.from("cashier_shifts").update(update as any).eq("id", shiftId).eq("tenant_id", tenantId);
+}
+
+export const resolveShiftShortage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { shift_id: string; resolution: ShortageResolution }) => d)
+  .handler(async ({ data, context }) => {
+    if (await isCashierSession(context)) throw new Error("Hanya admin/pemilik toko yang bisa memutuskan");
+    if (!["salary_deduction", "cashier_debt", "store_loss"].includes(data.resolution)) throw new Error("Pilihan tidak valid");
+    const tenantId = await getTenantId(context);
+    const { data: s } = await context.supabase
+      .from("cashier_shifts").select("id, difference, status, shortage_resolution")
+      .eq("id", data.shift_id).eq("tenant_id", tenantId).maybeSingle();
+    if (!s) throw new Error("Shift tidak ditemukan");
+    const diff = Number((s as any).difference) || 0;
+    if ((s as any).status !== "closed" || diff >= 0) throw new Error("Shift ini tidak punya kas kurang");
+    if ((s as any).shortage_resolution !== "pending") throw new Error("Kas kurang shift ini sudah diputuskan");
+    await applyShortageResolution(context, tenantId, data.shift_id, Math.abs(diff), data.resolution, null);
+    return { ok: true };
+  });
+
+export const listPOsForExpense = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const tenantId = await getTenantId(context);
+    const { data } = await context.supabase
+      .from("purchase_orders").select("id, supplier, total, created_at, status")
+      .eq("tenant_id", tenantId).order("created_at", { ascending: false }).limit(50);
+    return (data ?? []) as { id: string; supplier: string; total: number; created_at: string; status: string }[];
+  });
+
+export const listPendingShiftExpenses = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const tenantId = await getTenantId(context);
+    const { data } = await context.supabase
+      .from("shift_expenses").select("id, shift_id, label, amount, category, po_id, approval_status, created_at")
+      .eq("tenant_id", tenantId).eq("approval_status", "pending").order("created_at", { ascending: false });
+    return (data ?? []) as any[];
+  });
+
+export const approveShiftExpense = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { id: string; po_id?: string | null; action: "approve" | "reject"; note?: string }) => d)
+  .handler(async ({ data, context }) => {
+    if (await isCashierSession(context)) throw new Error("Hanya admin/pemilik toko yang bisa menyetujui");
+    const tenantId = await getTenantId(context);
+    if (data.action === "approve") {
+      if (!data.po_id) throw new Error("Pilih PO supplier terlebih dahulu (wajib PO)");
+      const { data: po } = await context.supabase
+        .from("purchase_orders").select("id").eq("id", data.po_id).eq("tenant_id", tenantId).maybeSingle();
+      if (!po) throw new Error("PO tidak ditemukan");
+    }
+    const { error } = await context.supabase.from("shift_expenses").update({
+      approval_status: data.action === "approve" ? "approved" : "rejected",
+      po_id: data.action === "approve" ? data.po_id : null,
+      approved_by: context.userId ?? null,
+      approved_at: new Date().toISOString(),
+      admin_note: data.note?.trim() || null,
+    } as any).eq("id", data.id).eq("tenant_id", tenantId);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
 export const closeShift = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((d: { shift_id: string; actual_cash: number; notes?: string }) => d)
+  .inputValidator((d: { shift_id: string; actual_cash: number; notes?: string; shortage_resolution?: ShortageResolution }) => d)
   .handler(async ({ data, context }) => {
     const tenantId = await getTenantId(context);
     // Recompute totals server-side for trust
@@ -537,41 +669,12 @@ export const closeShift = createServerFn({ method: "POST" })
 
 
 
-    // Selisih kurang kasir: catat sebagai kas keluar + kurangi keuntungan
+    // Selisih kurang kasir: tindak lanjut sesuai pilihan (gaji / kasbon / toko / admin)
     if (difference < 0) {
-      const shortage = Math.abs(difference);
-      const shortId = String(data.shift_id).slice(0, 8).toUpperCase();
-      // Ambil nama kasir untuk deskripsi
-      let cashierName = "";
-      const { data: shiftRow } = await context.supabase
-        .from("cashier_shifts")
-        .select("cashier_id")
-        .eq("id", data.shift_id)
-        .maybeSingle();
-      if (shiftRow?.cashier_id) {
-        const { data: cRow } = await context.supabase
-          .from("cashiers")
-          .select("name")
-          .eq("id", (shiftRow as any).cashier_id)
-          .maybeSingle();
-        cashierName = (cRow as any)?.name || "";
-      }
-      await context.supabase.from("bookkeeping_entries").insert({
-        tenant_id: tenantId,
-        entry_date: new Date().toISOString(),
-        kind: "out",
-        description: `Selisih kurang kasir (closing shift ${shortId})${cashierName ? " - " + cashierName : ""}`,
-        ref: data.shift_id,
-        amount: shortage,
-      } as any);
-      await (context.supabase as any).from("profit_activity_log").insert({
-        tenant_id: tenantId,
-        user_id: context.userId ?? null,
-        actor_name: cashierName || null,
-        action: "shift_shortage",
-        amount: shortage,
-        note: `Selisih kurang closing shift ${shortId}${data.notes?.trim() ? " - " + data.notes.trim() : ""}`,
-      });
+      const resolution = (SHORTAGE_RESOLUTIONS as readonly string[]).includes(data.shortage_resolution || "")
+        ? (data.shortage_resolution as ShortageResolution)
+        : "pending";
+      await applyShortageResolution(context, tenantId, data.shift_id, Math.abs(difference), resolution, data.notes);
     }
 
     // Selisih lebih kasir: hanya catat di pembukuan sebagai kas masuk,
