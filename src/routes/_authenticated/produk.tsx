@@ -579,6 +579,15 @@ function ProdukPage() {
         );
         const final = rows.filter((r) => r.code);
 
+        const duplicateCodes = Array.from(
+          final.reduce((counts, row) => counts.set(row.code, (counts.get(row.code) || 0) + 1), new Map<string, number>()),
+        ).filter(([, count]) => count > 1).map(([code]) => code);
+        if (duplicateCodes.length > 0) {
+          toast.error(`Kode duplikat di dalam file Excel: ${duplicateCodes.slice(0, 5).join(", ")}${duplicateCodes.length > 5 ? ` (+${duplicateCodes.length - 5} lainnya)` : ""}`);
+          setImporting(false);
+          return;
+        }
+
         // Deteksi duplikat di dalam file Excel sendiri
         const seenBarcode = new Map<string, string>(); // barcode -> nama
         const dupInFile: { barcode: string; a: string; b: string }[] = [];
@@ -620,22 +629,34 @@ function ProdukPage() {
           }
         }
 
-        // Strip non-DB fields before upsert
-        const dbRows = final.map(({ units, satuanStr, ...rest }) => rest);
-        const { data: upserted, error } = await supabase
-          .from("products")
-          .upsert(dbRows, { onConflict: "code" })
-          .select("id, code");
-        if (error) {
-          // Fallback: coba deteksi barcode penyebab dari pesan Postgres
-          if (error.code === "23505" && /barcode/i.test(error.message)) {
-            const m = error.message.match(/\(barcode\)=\(([^)]+)\)/i);
-            toast.error(m ? `Barcode duplikat: "${m[1]}" — cek baris di Excel dengan barcode tsb` : `Barcode duplikat: ${error.message}`);
-          } else {
-            toast.error(error.message);
-          }
+        const { data: tenantId, error: tenantError } = await supabase.rpc("current_tenant_id");
+        if (tenantError || !tenantId) {
+          toast.error("Toko aktif tidak ditemukan. Silakan masuk ulang lalu coba impor lagi.");
           setImporting(false);
           return;
+        }
+
+        // Kode barang unik per toko. Kirim tenant_id secara eksplisit agar upsert
+        // tidak pernah mencoba memperbarui produk milik toko lain.
+        const dbRows = final.map(({ units, satuanStr, ...rest }) => ({ ...rest, tenant_id: tenantId }));
+        const upserted: { id: string; code: string }[] = [];
+        const IMPORT_CHUNK = 150;
+        for (let i = 0; i < dbRows.length; i += IMPORT_CHUNK) {
+          const { data, error } = await supabase
+            .from("products")
+            .upsert(dbRows.slice(i, i + IMPORT_CHUNK), { onConflict: "tenant_id,code" })
+            .select("id, code");
+          if (error) {
+            if (error.code === "23505" && /barcode/i.test(error.message)) {
+              const m = error.message.match(/\(tenant_id, barcode\)=\([^,]+, ([^)]+)\)/i);
+              toast.error(m ? `Barcode duplikat: "${m[1]}" — cek baris di Excel dengan barcode tersebut` : `Barcode duplikat: ${error.message}`);
+            } else {
+              toast.error(`Impor berhenti pada baris ${i + 2}–${Math.min(i + IMPORT_CHUNK + 1, dbRows.length + 1)}: ${error.message}`);
+            }
+            setImporting(false);
+            return;
+          }
+          upserted.push(...((data || []) as { id: string; code: string }[]));
         }
         const idByCode = new Map((upserted || []).map((p: any) => [p.code, p.id]));
         let unitsApplied = 0;
