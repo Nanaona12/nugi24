@@ -294,7 +294,7 @@ export const getShiftSummary = createServerFn({ method: "POST" })
         .order("created_at"),
       context.supabase
         .from("shift_expenses")
-        .select("id, label, amount, created_at")
+        .select("id, label, amount, created_at, category, po_id, approval_status")
         .eq("shift_id", data.shift_id)
         .eq("tenant_id", tenantId)
         .order("created_at"),
