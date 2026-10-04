@@ -559,6 +559,16 @@ function ProdukPage() {
           toast.error("Mode Update: semua baris harus punya Kode");
           return;
         }
+        const seenCodes = new Set<string>();
+        const repeated = withCode.find((r) => {
+          if (seenCodes.has(r.code)) return true;
+          seenCodes.add(r.code);
+          return false;
+        });
+        if (repeated) {
+          toast.error(`Kode ${repeated.code} muncul lebih dari sekali di Excel. Perbaiki agar satuan tidak saling tertimpa.`);
+          return;
+        }
         let updated = 0;
         let skipped = 0;
         let unitsApplied = 0;
@@ -617,7 +627,7 @@ function ProdukPage() {
         toast.success(`${updated} produk diupdate${unitsApplied ? `, ${unitsApplied} dgn satuan` : ""}${skipped ? `, ${skipped} dilewati` : ""}`);
       } else {
         // Upsert: auto-generate code for rows missing one
-        const rows = named.filter((r) => r.name);
+        const rows = named.filter((r) => r.name).map((r) => ({ ...r }));
         const missingCode = rows.filter((r) => !r.code);
         setImportProgress({ done: 0, total: missingCode.length, stage: "Membuat kode barang kosong" });
         let generated = 0;
