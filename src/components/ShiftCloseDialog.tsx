@@ -8,10 +8,18 @@ import { Card } from "@/components/ui/card";
 import { toast } from "sonner";
 import { FileText, ListTree, Loader2, Plus, Printer, Trash2 } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { addShiftExpense, closeShift, deleteShiftExpense, getShiftSummary } from "@/lib/cashier.functions";
+import { addShiftExpense, closeShift, deleteShiftExpense, getShiftSummary, listPOsForExpense, type ShortageResolution } from "@/lib/cashier.functions";
 import { formatRupiah, parseNumber } from "@/lib/format";
 import type { ActiveShift } from "@/components/CashierLock";
 import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-scroll";
+
+const CATEGORY_LABEL: Record<string, string> = { supplier: "Supplier", shopping: "Belanja", other: "Lainnya" };
+const SHORTAGE_OPTIONS: { value: ShortageResolution; label: string; desc: string }[] = [
+  { value: "pending", label: "Diputuskan admin nanti", desc: "Admin memilih penyelesaiannya di Riwayat Shift." },
+  { value: "salary_deduction", label: "Potong gaji kasir", desc: "Dicatat sebagai hutang kasir, dipotong saat gajian. Tidak mengurangi keuntungan." },
+  { value: "cashier_debt", label: "Kasbon kasir (dicicil)", desc: "Kasir mengganti bertahap lewat menu Hutang. Tidak mengurangi keuntungan." },
+  { value: "store_loss", label: "Ditanggung toko", desc: "Dicatat sebagai kerugian dan mengurangi keuntungan." },
+];
 
 type Summary = {
   shift: any;
@@ -21,7 +29,7 @@ type Summary = {
     total_transactions: number; total_expenses: number; expected_cash: number; opening_cash: number;
     total_debt?: number; debts_new?: number; debt_payments_cash?: number; debt_payments_other?: number;
   };
-  expenses: { id: string; label: string; amount: number; created_at: string }[];
+  expenses: { id: string; label: string; amount: number; created_at: string; category?: string; po_id?: string | null; approval_status?: string }[];
   transactions?: {
     id: string; created_at: string; method: string; total: number;
     cash: number; qris: number; other: number; debt: number; counted_as_cash: boolean;
@@ -51,11 +59,16 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
   const [addingExp, setAddingExp] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
   const [closed, setClosed] = useState<null | (Summary["totals"] & { actual_cash: number; difference: number })>(null);
+  const [newExpCategory, setNewExpCategory] = useState<"supplier" | "shopping" | "other">("shopping");
+  const [newExpPo, setNewExpPo] = useState("");
+  const [pos, setPos] = useState<{ id: string; supplier: string; total: number; created_at: string }[]>([]);
+  const [resolution, setResolution] = useState<ShortageResolution>("pending");
 
   const summaryFn = useServerFn(getShiftSummary);
   const addExpFn = useServerFn(addShiftExpense);
   const delExpFn = useServerFn(deleteShiftExpense);
   const closeFn = useServerFn(closeShift);
+  const posFn = useServerFn(listPOsForExpense);
 
   const reload = async () => {
     setLoading(true);
@@ -68,17 +81,21 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
   };
 
   useEffect(() => {
-    if (open) { setActualCash(""); setNotes(""); setClosed(null); reload(); }
+    if (open) {
+      setActualCash(""); setNotes(""); setClosed(null); setResolution("pending"); reload();
+      posFn().then((r) => setPos(r as any)).catch(() => {});
+    }
   }, [open, shift.shift_id]);
 
   const addExpense = async () => {
-    if (!newExpLabel.trim()) { toast.error("Label wajib"); return; }
+    if (!newExpLabel.trim()) { toast.error("Catatan wajib diisi"); return; }
     const amt = parseNumber(newExpAmount);
     if (amt <= 0) { toast.error("Nominal harus > 0"); return; }
     setAddingExp(true);
     try {
-      await addExpFn({ data: { shift_id: shift.shift_id, label: newExpLabel.trim(), amount: amt } });
-      setNewExpLabel(""); setNewExpAmount("");
+      await addExpFn({ data: { shift_id: shift.shift_id, label: newExpLabel.trim(), amount: amt, category: newExpCategory, po_id: newExpPo || null } });
+      if (newExpCategory === "supplier" && !newExpPo) toast.info("Dikirim ke admin untuk konfirmasi & dibuatkan PO");
+      setNewExpLabel(""); setNewExpAmount(""); setNewExpPo("");
       await reload();
     } catch (e: any) { toast.error(e.message); }
     finally { setAddingExp(false); }
@@ -96,7 +113,7 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
     if (actual < 0) { toast.error("Fisik kas tidak valid"); return; }
     setSubmitting(true);
     try {
-      const res = (await closeFn({ data: { shift_id: shift.shift_id, actual_cash: actual, notes: notes.trim() || undefined } })) as any;
+      const res = (await closeFn({ data: { shift_id: shift.shift_id, actual_cash: actual, notes: notes.trim() || undefined, shortage_resolution: resolution } })) as any;
       setClosed(res.totals);
       toast.success("Shift ditutup");
       onClosed();
@@ -400,8 +417,13 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                 {summary.expenses.length > 0 && (
                   <ul className="space-y-1">
                     {summary.expenses.map((e) => (
-                      <li key={e.id} className="flex items-center justify-between rounded bg-muted/40 px-2 py-1 text-xs">
-                        <span className="truncate">{e.label}</span>
+                      <li key={e.id} className="flex items-center justify-between gap-2 rounded bg-muted/40 px-2 py-1 text-xs">
+                        <span className="min-w-0 truncate">
+                          <span className="mr-1 font-semibold">[{CATEGORY_LABEL[e.category || "other"] || "Lainnya"}]</span>
+                          {e.label}
+                          {e.approval_status === "pending" && <span className="ml-1 text-destructive">· menunggu konfirmasi admin (wajib PO)</span>}
+                          {e.po_id && <span className="ml-1 text-success">· PO terhubung</span>}
+                        </span>
                         <span className="flex items-center gap-2">
                           <span className="font-medium">{formatRupiah(Number(e.amount))}</span>
                           <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => removeExpense(e.id)}>
@@ -413,12 +435,40 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                   </ul>
                 )}
                 <div className="flex flex-wrap gap-2">
-                  <Input placeholder="Label (mis. beli kresek)" value={newExpLabel} onChange={(e) => setNewExpLabel(e.target.value)} className="h-8 flex-1 min-w-[120px]" />
+                  <select
+                    value={newExpCategory}
+                    onChange={(e) => { setNewExpCategory(e.target.value as any); setNewExpPo(""); }}
+                    className="h-8 rounded-md border bg-background px-2 text-xs"
+                  >
+                    <option value="shopping">Belanja</option>
+                    <option value="supplier">Bayar supplier</option>
+                    <option value="other">Lainnya</option>
+                  </select>
+                  {newExpCategory === "supplier" && (
+                    <select
+                      value={newExpPo}
+                      onChange={(e) => setNewExpPo(e.target.value)}
+                      className="h-8 min-w-[160px] flex-1 rounded-md border bg-background px-2 text-xs"
+                    >
+                      <option value="">Belum ada PO (minta admin)</option>
+                      {pos.map((p) => (
+                        <option key={p.id} value={p.id}>
+                          {p.supplier} · {formatRupiah(Number(p.total) || 0)} · {new Date(p.created_at).toLocaleDateString("id-ID")}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Input placeholder={newExpCategory === "supplier" ? "Catatan (mis. bayar sales aqua)" : "Catatan (mis. beli kresek)"} value={newExpLabel} onChange={(e) => setNewExpLabel(e.target.value)} className="h-8 flex-1 min-w-[120px]" />
                   <Input placeholder="Nominal" value={newExpAmount} inputMode="numeric" onChange={(e) => setNewExpAmount(e.target.value)} className="h-8 w-32" />
                   <Button size="sm" onClick={addExpense} disabled={addingExp}>
                     {addingExp ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
+                {newExpCategory === "supplier" && !newExpPo && (
+                  <p className="text-[11px] text-muted-foreground">Uang laci untuk supplier wajib punya PO. Tanpa PO, catatan ini dikirim ke admin untuk dikonfirmasi dan dibuatkan PO.</p>
+                )}
               </div>
             )}
 
@@ -437,8 +487,24 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                     Selisih: {diff === 0 ? "Pas" : diff > 0 ? `Lebih ${formatRupiah(diff)}` : `Kurang ${formatRupiah(Math.abs(diff))}`}
                   </div>
                 )}
+                {actualCash !== "" && diff > 0 && (
+                  <p className="text-[11px] text-muted-foreground">Kelebihan hanya dicatat di Pembukuan sebagai uang masuk, tidak menambah keuntungan.</p>
+                )}
+                {actualCash !== "" && diff < 0 && (
+                  <div className="space-y-1">
+                    <Label className="text-xs">Kekurangan {formatRupiah(Math.abs(diff))} diselesaikan dengan</Label>
+                    <div className="grid gap-1">
+                      {SHORTAGE_OPTIONS.map((o) => (
+                        <label key={o.value} className={`flex cursor-pointer items-start gap-2 rounded border p-2 text-xs ${resolution === o.value ? "border-primary bg-primary/5" : ""}`}>
+                          <input type="radio" name="shortage" className="mt-0.5" checked={resolution === o.value} onChange={() => setResolution(o.value)} />
+                          <span><b>{o.label}</b><br /><span className="text-muted-foreground">{o.desc}</span></span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <Label className="text-xs">Catatan (opsional)</Label>
-                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="mis. ada selisih krn tip karyawan" rows={2} />
+                <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="mis. uang laci dipakai bayar supplier / belanja" rows={2} />
               </div>
             ) : (
               <Card className="space-y-1 p-3 text-sm">

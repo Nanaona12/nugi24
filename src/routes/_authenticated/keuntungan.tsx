@@ -204,6 +204,8 @@ function KeuntunganPage() {
       .select("closed_at, difference")
       .eq("status", "closed")
       .lt("difference", 0)
+      // Hanya kas kurang yang ditanggung toko (atau data lama) yang mengurangi keuntungan
+      .or("shortage_resolution.is.null,shortage_resolution.eq.store_loss")
       .order("closed_at", { ascending: false })
       .limit(500);
     const rows = ((data || []) as any[])

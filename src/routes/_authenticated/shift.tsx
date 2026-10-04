@@ -8,7 +8,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { listShifts, reviseShiftClosing } from "@/lib/cashier.functions";
+import { listShifts, reviseShiftClosing, resolveShiftShortage, listPendingShiftExpenses, approveShiftExpense, listPOsForExpense, type ShortageResolution } from "@/lib/cashier.functions";
+
+const RESOLUTION_LABEL: Record<string, string> = {
+  pending: "Menunggu keputusan admin",
+  salary_deduction: "Kas kurang: potong gaji",
+  cashier_debt: "Kas kurang: kasbon kasir",
+  store_loss: "Kas kurang: ditanggung toko",
+};
 import { formatRupiah } from "@/lib/format";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Receipt as ReceiptIcon, FileText, FileDown, PencilLine } from "lucide-react";
@@ -47,6 +54,7 @@ type ShiftRow = {
   total_expenses: number;
   notes: string | null;
   status: string;
+  shortage_resolution?: string | null;
   cashiers: { name: string } | null;
 };
 
@@ -61,16 +69,40 @@ function ShiftHistoryPage() {
   const [reviseNote, setReviseNote] = useState("");
   const [saving, setSaving] = useState(false);
 
+  const resolveFn = useServerFn(resolveShiftShortage);
+  const pendingFn = useServerFn(listPendingShiftExpenses);
+  const approveFn = useServerFn(approveShiftExpense);
+  const posFn = useServerFn(listPOsForExpense);
+  const [pending, setPending] = useState<any[]>([]);
+  const [pos, setPos] = useState<{ id: string; supplier: string; total: number; created_at: string }[]>([]);
+  const [poPick, setPoPick] = useState<Record<string, string>>({});
+
   const reload = async () => {
     try { setRows(((await listFn()) as ShiftRow[]) || []); }
     catch (e: any) { toast.error(e.message); }
     finally { setLoading(false); }
+    pendingFn().then((r) => setPending(r as any[])).catch(() => {});
   };
 
   const [isAdmin, setIsAdmin] = useState(false);
 
+  const resolveShortage = async (s: ShiftRow, resolution: ShortageResolution) => {
+    if (!confirm(`Selesaikan kas kurang ${formatRupiah(Math.abs(Number(s.difference)))} dengan "${RESOLUTION_LABEL[resolution]}"?`)) return;
+    try { await resolveFn({ data: { shift_id: s.id, resolution } }); toast.success("Kas kurang sudah diputuskan"); await reload(); }
+    catch (e: any) { toast.error(e.message); }
+  };
+
+  const decideExpense = async (id: string, action: "approve" | "reject") => {
+    try {
+      await approveFn({ data: { id, action, po_id: poPick[id] || null } });
+      toast.success(action === "approve" ? "Disetujui & terhubung ke PO" : "Ditolak");
+      await reload();
+    } catch (e: any) { toast.error(e.message); }
+  };
+
   useEffect(() => {
     reload();
+    posFn().then((r) => setPos(r as any)).catch(() => {});
     (async () => {
       const { data } = await supabase.rpc("current_tenant_info");
       const row = Array.isArray(data) ? data[0] : data;
@@ -299,6 +331,32 @@ ${otherNotes ? `<div class="notes"><b>Catatan:</b>\n${esc(otherNotes)}</div>` : 
           <FileDown className="mr-2 h-4 w-4" /> Unduh PDF Semua
         </Button>
       </div>
+      {isAdmin && pending.length > 0 && (
+        <Card className="space-y-2 border-destructive/40 p-3">
+          <div className="text-sm font-semibold">Perlu konfirmasi admin: uang laci untuk supplier ({pending.length})</div>
+          <p className="text-xs text-muted-foreground">Wajib dihubungkan ke PO. Buat PO dulu di menu PO bila belum ada.</p>
+          {pending.map((e) => (
+            <div key={e.id} className="flex flex-wrap items-center gap-2 rounded border p-2 text-xs">
+              <div className="min-w-[160px] flex-1">
+                <div className="font-medium">{e.label}</div>
+                <div className="text-muted-foreground">{formatRupiah(Number(e.amount))} · {new Date(e.created_at).toLocaleString("id-ID")}</div>
+              </div>
+              <select
+                className="h-8 min-w-[180px] rounded-md border bg-background px-2"
+                value={poPick[e.id] ?? ""}
+                onChange={(ev) => setPoPick((p) => ({ ...p, [e.id]: ev.target.value }))}
+              >
+                <option value="">Pilih PO…</option>
+                {pos.map((p) => (
+                  <option key={p.id} value={p.id}>{p.supplier} · {formatRupiah(Number(p.total) || 0)} · {new Date(p.created_at).toLocaleDateString("id-ID")}</option>
+                ))}
+              </select>
+              <Button size="sm" onClick={() => decideExpense(e.id, "approve")}>Setujui</Button>
+              <Button size="sm" variant="outline" onClick={() => decideExpense(e.id, "reject")}>Tolak</Button>
+            </div>
+          ))}
+        </Card>
+      )}
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -344,6 +402,26 @@ ${otherNotes ? `<div class="notes"><b>Catatan:</b>\n${esc(otherNotes)}</div>` : 
                       <Badge variant={s.status === "open" ? "default" : "secondary"}>
                         {s.status === "open" ? "Berjalan" : "Ditutup"}
                       </Badge>
+                      {s.status === "closed" && diff < 0 && s.shortage_resolution && (
+                        <div className="mt-1 text-[10px]">
+                          {s.shortage_resolution === "pending" ? (
+                            isAdmin ? (
+                              <select
+                                className="rounded border bg-background px-1 py-0.5 text-[11px] text-destructive"
+                                defaultValue=""
+                                onChange={(e) => e.target.value && resolveShortage(s, e.target.value as ShortageResolution)}
+                              >
+                                <option value="">Putuskan kas kurang…</option>
+                                <option value="salary_deduction">Potong gaji</option>
+                                <option value="cashier_debt">Kasbon kasir</option>
+                                <option value="store_loss">Ditanggung toko</option>
+                              </select>
+                            ) : <span className="text-destructive">Menunggu keputusan admin</span>
+                          ) : (
+                            <span className="text-muted-foreground">{RESOLUTION_LABEL[s.shortage_resolution] ?? ""}</span>
+                          )}
+                        </div>
+                      )}
                       {(() => {
                         const revs = parseRevisions(s.notes);
                         const last = revs[revs.length - 1];
