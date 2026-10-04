@@ -15,7 +15,7 @@ import { Gift, PercentCircle, Plus, Trash2, Power, Search, AlertTriangle } from 
 
 export const Route = createFileRoute("/_authenticated/promo")({
   component: PromoPage,
-  errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error instanceof Error ? error.message : "Halaman gagal dimuat"}</div>,
   notFoundComponent: () => <div className="p-6 text-sm">Tidak ditemukan</div>,
 });
 

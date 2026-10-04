@@ -22,7 +22,7 @@ import { Switch } from "@/components/ui/switch";
 
 export const Route = createFileRoute("/_authenticated/pengaturan")({
   component: PengaturanPage,
-  errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error instanceof Error ? error.message : "Halaman gagal dimuat"}</div>,
   notFoundComponent: () => <div className="p-6 text-sm">Tidak ditemukan</div>,
 });
 

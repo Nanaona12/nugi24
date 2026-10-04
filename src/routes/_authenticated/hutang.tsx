@@ -20,7 +20,7 @@ import { AlertTriangle, Wallet, Search, CheckCircle2, Trash2, User, Users } from
 
 export const Route = createFileRoute("/_authenticated/hutang")({
   component: HutangPage,
-  errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error instanceof Error ? error.message : "Halaman gagal dimuat"}</div>,
   notFoundComponent: () => <div className="p-6 text-sm">Tidak ditemukan</div>,
 });
 

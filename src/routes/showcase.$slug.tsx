@@ -19,7 +19,7 @@ export const Route = createFileRoute("/showcase/$slug")({
     ],
   }),
   component: ShowcaseDetail,
-  errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error.message}</div>,
+  errorComponent: ({ error }) => <div className="p-6 text-sm text-destructive">{error instanceof Error ? error.message : "Halaman gagal dimuat"}</div>,
   notFoundComponent: () => (
     <div className="mx-auto max-w-lg p-8 text-center">
       <div className="mb-2 text-lg font-semibold">Toko tidak ditemukan</div>
