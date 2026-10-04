@@ -9,48 +9,39 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as ShowcaseRouteImport } from './routes/showcase'
-import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
-import { Route as AuthenticatedBackupRouteImport } from './routes/_authenticated/backup'
-import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
-import { Route as AuthenticatedHutangRouteImport } from './routes/_authenticated/hutang'
-import { Route as AuthenticatedHutangSupplierRouteImport } from './routes/_authenticated/hutang-supplier'
-import { Route as AuthenticatedKadaluarsaRouteImport } from './routes/_authenticated/kadaluarsa'
-import { Route as AuthenticatedKaryawanRouteImport } from './routes/_authenticated/karyawan'
-import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
-import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authenticated/keuntungan'
-import { Route as AuthenticatedLanggananRouteImport } from './routes/_authenticated/langganan'
-import { Route as AuthenticatedPelangganRouteImport } from './routes/_authenticated/pelanggan'
-import { Route as AuthenticatedPembukuanRouteImport } from './routes/_authenticated/pembukuan'
-import { Route as AuthenticatedPengambilanRouteImport } from './routes/_authenticated/pengambilan'
-import { Route as AuthenticatedPengaturanRouteImport } from './routes/_authenticated/pengaturan'
-import { Route as AuthenticatedPoRouteImport } from './routes/_authenticated/po'
-import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated/produk'
-import { Route as AuthenticatedPromoRouteImport } from './routes/_authenticated/promo'
-import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
-import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
-import { Route as AuthenticatedStokLogRouteImport } from './routes/_authenticated/stok-log'
-import { Route as AuthenticatedSupplierRouteImport } from './routes/_authenticated/supplier'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as IndexRouteImport } from './routes/index'
 import { Route as ShowcaseSlugRouteImport } from './routes/showcase.$slug'
-import { Route as ApiPublicMidtransWebhookRouteImport } from './routes/api/public/midtrans-webhook'
+import { Route as AuthenticatedSupplierRouteImport } from './routes/_authenticated/supplier'
+import { Route as AuthenticatedStokLogRouteImport } from './routes/_authenticated/stok-log'
+import { Route as AuthenticatedShiftRouteImport } from './routes/_authenticated/shift'
+import { Route as AuthenticatedRiwayatRouteImport } from './routes/_authenticated/riwayat'
+import { Route as AuthenticatedPromoRouteImport } from './routes/_authenticated/promo'
+import { Route as AuthenticatedProdukRouteImport } from './routes/_authenticated/produk'
+import { Route as AuthenticatedPoRouteImport } from './routes/_authenticated/po'
+import { Route as AuthenticatedPengaturanRouteImport } from './routes/_authenticated/pengaturan'
+import { Route as AuthenticatedPengambilanRouteImport } from './routes/_authenticated/pengambilan'
+import { Route as AuthenticatedPembukuanRouteImport } from './routes/_authenticated/pembukuan'
+import { Route as AuthenticatedPelangganRouteImport } from './routes/_authenticated/pelanggan'
+import { Route as AuthenticatedLanggananRouteImport } from './routes/_authenticated/langganan'
+import { Route as AuthenticatedKeuntunganRouteImport } from './routes/_authenticated/keuntungan'
+import { Route as AuthenticatedKasirRouteImport } from './routes/_authenticated/kasir'
+import { Route as AuthenticatedKaryawanRouteImport } from './routes/_authenticated/karyawan'
+import { Route as AuthenticatedKadaluarsaRouteImport } from './routes/_authenticated/kadaluarsa'
+import { Route as AuthenticatedHutangSupplierRouteImport } from './routes/_authenticated/hutang-supplier'
+import { Route as AuthenticatedHutangRouteImport } from './routes/_authenticated/hutang'
+import { Route as AuthenticatedCekKoneksiRouteImport } from './routes/_authenticated/cek-koneksi'
+import { Route as AuthenticatedBackupRouteImport } from './routes/_authenticated/backup'
+import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as OauthGoogleSheetsReturnRouteImport } from './routes/oauth.google-sheets.return'
+import { Route as ApiPublicMidtransWebhookRouteImport } from './routes/api/public/midtrans-webhook'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
-  id: '/_authenticated',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const ShowcaseRoute = ShowcaseRouteImport.update({
+  id: '/showcase',
+  path: '/showcase',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
@@ -58,70 +49,63 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ShowcaseRoute = ShowcaseRouteImport.update({
-  id: '/showcase',
-  path: '/showcase',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
-  id: '/admin',
-  path: '/admin',
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShowcaseSlugRoute = ShowcaseSlugRouteImport.update({
+  id: '/$slug',
+  path: '/$slug',
+  getParentRoute: () => ShowcaseRoute,
+} as any)
+const AuthenticatedSupplierRoute = AuthenticatedSupplierRouteImport.update({
+  id: '/supplier',
+  path: '/supplier',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedBackupRoute = AuthenticatedBackupRouteImport.update({
-  id: '/backup',
-  path: '/backup',
+const AuthenticatedStokLogRoute = AuthenticatedStokLogRouteImport.update({
+  id: '/stok-log',
+  path: '/stok-log',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCekKoneksiRoute = AuthenticatedCekKoneksiRouteImport.update({
-  id: '/cek-koneksi',
-  path: '/cek-koneksi',
+const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
+  id: '/shift',
+  path: '/shift',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedHutangRoute = AuthenticatedHutangRouteImport.update({
-  id: '/hutang',
-  path: '/hutang',
+const AuthenticatedRiwayatRoute = AuthenticatedRiwayatRouteImport.update({
+  id: '/riwayat',
+  path: '/riwayat',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedHutangSupplierRoute =
-  AuthenticatedHutangSupplierRouteImport.update({
-    id: '/hutang-supplier',
-    path: '/hutang-supplier',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedKadaluarsaRoute = AuthenticatedKadaluarsaRouteImport.update({
-  id: '/kadaluarsa',
-  path: '/kadaluarsa',
+const AuthenticatedPromoRoute = AuthenticatedPromoRouteImport.update({
+  id: '/promo',
+  path: '/promo',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedKaryawanRoute = AuthenticatedKaryawanRouteImport.update({
-  id: '/karyawan',
-  path: '/karyawan',
+const AuthenticatedProdukRoute = AuthenticatedProdukRouteImport.update({
+  id: '/produk',
+  path: '/produk',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedKasirRoute = AuthenticatedKasirRouteImport.update({
-  id: '/kasir',
-  path: '/kasir',
+const AuthenticatedPoRoute = AuthenticatedPoRouteImport.update({
+  id: '/po',
+  path: '/po',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedKeuntunganRoute = AuthenticatedKeuntunganRouteImport.update({
-  id: '/keuntungan',
-  path: '/keuntungan',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedLanggananRoute = AuthenticatedLanggananRouteImport.update({
-  id: '/langganan',
-  path: '/langganan',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPelangganRoute = AuthenticatedPelangganRouteImport.update({
-  id: '/pelanggan',
-  path: '/pelanggan',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedPembukuanRoute = AuthenticatedPembukuanRouteImport.update({
-  id: '/pembukuan',
-  path: '/pembukuan',
+const AuthenticatedPengaturanRoute = AuthenticatedPengaturanRouteImport.update({
+  id: '/pengaturan',
+  path: '/pengaturan',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedPengambilanRoute =
@@ -130,50 +114,71 @@ const AuthenticatedPengambilanRoute =
     path: '/pengambilan',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedPengaturanRoute = AuthenticatedPengaturanRouteImport.update({
-  id: '/pengaturan',
-  path: '/pengaturan',
+const AuthenticatedPembukuanRoute = AuthenticatedPembukuanRouteImport.update({
+  id: '/pembukuan',
+  path: '/pembukuan',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedPoRoute = AuthenticatedPoRouteImport.update({
-  id: '/po',
-  path: '/po',
+const AuthenticatedPelangganRoute = AuthenticatedPelangganRouteImport.update({
+  id: '/pelanggan',
+  path: '/pelanggan',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedProdukRoute = AuthenticatedProdukRouteImport.update({
-  id: '/produk',
-  path: '/produk',
+const AuthenticatedLanggananRoute = AuthenticatedLanggananRouteImport.update({
+  id: '/langganan',
+  path: '/langganan',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedPromoRoute = AuthenticatedPromoRouteImport.update({
-  id: '/promo',
-  path: '/promo',
+const AuthenticatedKeuntunganRoute = AuthenticatedKeuntunganRouteImport.update({
+  id: '/keuntungan',
+  path: '/keuntungan',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedRiwayatRoute = AuthenticatedRiwayatRouteImport.update({
-  id: '/riwayat',
-  path: '/riwayat',
+const AuthenticatedKasirRoute = AuthenticatedKasirRouteImport.update({
+  id: '/kasir',
+  path: '/kasir',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedShiftRoute = AuthenticatedShiftRouteImport.update({
-  id: '/shift',
-  path: '/shift',
+const AuthenticatedKaryawanRoute = AuthenticatedKaryawanRouteImport.update({
+  id: '/karyawan',
+  path: '/karyawan',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedStokLogRoute = AuthenticatedStokLogRouteImport.update({
-  id: '/stok-log',
-  path: '/stok-log',
+const AuthenticatedKadaluarsaRoute = AuthenticatedKadaluarsaRouteImport.update({
+  id: '/kadaluarsa',
+  path: '/kadaluarsa',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedSupplierRoute = AuthenticatedSupplierRouteImport.update({
-  id: '/supplier',
-  path: '/supplier',
+const AuthenticatedHutangSupplierRoute =
+  AuthenticatedHutangSupplierRouteImport.update({
+    id: '/hutang-supplier',
+    path: '/hutang-supplier',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedHutangRoute = AuthenticatedHutangRouteImport.update({
+  id: '/hutang',
+  path: '/hutang',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const ShowcaseSlugRoute = ShowcaseSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => ShowcaseRoute,
+const AuthenticatedCekKoneksiRoute = AuthenticatedCekKoneksiRouteImport.update({
+  id: '/cek-koneksi',
+  path: '/cek-koneksi',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedBackupRoute = AuthenticatedBackupRouteImport.update({
+  id: '/backup',
+  path: '/backup',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const OauthGoogleSheetsReturnRoute = OauthGoogleSheetsReturnRouteImport.update({
+  id: '/oauth/google-sheets/return',
+  path: '/oauth/google-sheets/return',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicMidtransWebhookRoute =
   ApiPublicMidtransWebhookRouteImport.update({
@@ -181,11 +186,6 @@ const ApiPublicMidtransWebhookRoute =
     path: '/api/public/midtrans-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
-const OauthGoogleSheetsReturnRoute = OauthGoogleSheetsReturnRouteImport.update({
-  id: '/oauth/google-sheets/return',
-  path: '/oauth/google-sheets/return',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -385,25 +385,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated': {
-      id: '/_authenticated'
-      path: ''
-      fullPath: '/'
-      preLoaderRoute: typeof AuthenticatedRouteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/showcase': {
+      id: '/showcase'
+      path: '/showcase'
+      fullPath: '/showcase'
+      preLoaderRoute: typeof ShowcaseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reset-password': {
@@ -413,144 +399,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/showcase': {
-      id: '/showcase'
-      path: '/showcase'
-      fullPath: '/showcase'
-      preLoaderRoute: typeof ShowcaseRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/admin': {
-      id: '/_authenticated/admin'
-      path: '/admin'
-      fullPath: '/admin'
-      preLoaderRoute: typeof AuthenticatedAdminRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/backup': {
-      id: '/_authenticated/backup'
-      path: '/backup'
-      fullPath: '/backup'
-      preLoaderRoute: typeof AuthenticatedBackupRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/cek-koneksi': {
-      id: '/_authenticated/cek-koneksi'
-      path: '/cek-koneksi'
-      fullPath: '/cek-koneksi'
-      preLoaderRoute: typeof AuthenticatedCekKoneksiRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
+    '/showcase/$slug': {
+      id: '/showcase/$slug'
+      path: '/$slug'
+      fullPath: '/showcase/$slug'
+      preLoaderRoute: typeof ShowcaseSlugRouteImport
+      parentRoute: typeof ShowcaseRoute
     }
-    '/_authenticated/hutang': {
-      id: '/_authenticated/hutang'
-      path: '/hutang'
-      fullPath: '/hutang'
-      preLoaderRoute: typeof AuthenticatedHutangRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/hutang-supplier': {
-      id: '/_authenticated/hutang-supplier'
-      path: '/hutang-supplier'
-      fullPath: '/hutang-supplier'
-      preLoaderRoute: typeof AuthenticatedHutangSupplierRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/kadaluarsa': {
-      id: '/_authenticated/kadaluarsa'
-      path: '/kadaluarsa'
-      fullPath: '/kadaluarsa'
-      preLoaderRoute: typeof AuthenticatedKadaluarsaRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/karyawan': {
-      id: '/_authenticated/karyawan'
-      path: '/karyawan'
-      fullPath: '/karyawan'
-      preLoaderRoute: typeof AuthenticatedKaryawanRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/kasir': {
-      id: '/_authenticated/kasir'
-      path: '/kasir'
-      fullPath: '/kasir'
-      preLoaderRoute: typeof AuthenticatedKasirRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/keuntungan': {
-      id: '/_authenticated/keuntungan'
-      path: '/keuntungan'
-      fullPath: '/keuntungan'
-      preLoaderRoute: typeof AuthenticatedKeuntunganRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/langganan': {
-      id: '/_authenticated/langganan'
-      path: '/langganan'
-      fullPath: '/langganan'
-      preLoaderRoute: typeof AuthenticatedLanggananRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/pelanggan': {
-      id: '/_authenticated/pelanggan'
-      path: '/pelanggan'
-      fullPath: '/pelanggan'
-      preLoaderRoute: typeof AuthenticatedPelangganRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/pembukuan': {
-      id: '/_authenticated/pembukuan'
-      path: '/pembukuan'
-      fullPath: '/pembukuan'
-      preLoaderRoute: typeof AuthenticatedPembukuanRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/pengambilan': {
-      id: '/_authenticated/pengambilan'
-      path: '/pengambilan'
-      fullPath: '/pengambilan'
-      preLoaderRoute: typeof AuthenticatedPengambilanRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/pengaturan': {
-      id: '/_authenticated/pengaturan'
-      path: '/pengaturan'
-      fullPath: '/pengaturan'
-      preLoaderRoute: typeof AuthenticatedPengaturanRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/po': {
-      id: '/_authenticated/po'
-      path: '/po'
-      fullPath: '/po'
-      preLoaderRoute: typeof AuthenticatedPoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/produk': {
-      id: '/_authenticated/produk'
-      path: '/produk'
-      fullPath: '/produk'
-      preLoaderRoute: typeof AuthenticatedProdukRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/promo': {
-      id: '/_authenticated/promo'
-      path: '/promo'
-      fullPath: '/promo'
-      preLoaderRoute: typeof AuthenticatedPromoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/riwayat': {
-      id: '/_authenticated/riwayat'
-      path: '/riwayat'
-      fullPath: '/riwayat'
-      preLoaderRoute: typeof AuthenticatedRiwayatRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/shift': {
-      id: '/_authenticated/shift'
-      path: '/shift'
-      fullPath: '/shift'
-      preLoaderRoute: typeof AuthenticatedShiftRouteImport
+    '/_authenticated/supplier': {
+      id: '/_authenticated/supplier'
+      path: '/supplier'
+      fullPath: '/supplier'
+      preLoaderRoute: typeof AuthenticatedSupplierRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/stok-log': {
@@ -560,32 +441,151 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStokLogRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/supplier': {
-      id: '/_authenticated/supplier'
-      path: '/supplier'
-      fullPath: '/supplier'
-      preLoaderRoute: typeof AuthenticatedSupplierRouteImport
+    '/_authenticated/shift': {
+      id: '/_authenticated/shift'
+      path: '/shift'
+      fullPath: '/shift'
+      preLoaderRoute: typeof AuthenticatedShiftRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/showcase/$slug': {
-      id: '/showcase/$slug'
-      path: '/$slug'
-      fullPath: '/showcase/$slug'
-      preLoaderRoute: typeof ShowcaseSlugRouteImport
-      parentRoute: typeof ShowcaseRoute
+    '/_authenticated/riwayat': {
+      id: '/_authenticated/riwayat'
+      path: '/riwayat'
+      fullPath: '/riwayat'
+      preLoaderRoute: typeof AuthenticatedRiwayatRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/api/public/midtrans-webhook': {
-      id: '/api/public/midtrans-webhook'
-      path: '/api/public/midtrans-webhook'
-      fullPath: '/api/public/midtrans-webhook'
-      preLoaderRoute: typeof ApiPublicMidtransWebhookRouteImport
-      parentRoute: typeof rootRouteImport
+    '/_authenticated/promo': {
+      id: '/_authenticated/promo'
+      path: '/promo'
+      fullPath: '/promo'
+      preLoaderRoute: typeof AuthenticatedPromoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/produk': {
+      id: '/_authenticated/produk'
+      path: '/produk'
+      fullPath: '/produk'
+      preLoaderRoute: typeof AuthenticatedProdukRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/po': {
+      id: '/_authenticated/po'
+      path: '/po'
+      fullPath: '/po'
+      preLoaderRoute: typeof AuthenticatedPoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pengaturan': {
+      id: '/_authenticated/pengaturan'
+      path: '/pengaturan'
+      fullPath: '/pengaturan'
+      preLoaderRoute: typeof AuthenticatedPengaturanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pengambilan': {
+      id: '/_authenticated/pengambilan'
+      path: '/pengambilan'
+      fullPath: '/pengambilan'
+      preLoaderRoute: typeof AuthenticatedPengambilanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pembukuan': {
+      id: '/_authenticated/pembukuan'
+      path: '/pembukuan'
+      fullPath: '/pembukuan'
+      preLoaderRoute: typeof AuthenticatedPembukuanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/pelanggan': {
+      id: '/_authenticated/pelanggan'
+      path: '/pelanggan'
+      fullPath: '/pelanggan'
+      preLoaderRoute: typeof AuthenticatedPelangganRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/langganan': {
+      id: '/_authenticated/langganan'
+      path: '/langganan'
+      fullPath: '/langganan'
+      preLoaderRoute: typeof AuthenticatedLanggananRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/keuntungan': {
+      id: '/_authenticated/keuntungan'
+      path: '/keuntungan'
+      fullPath: '/keuntungan'
+      preLoaderRoute: typeof AuthenticatedKeuntunganRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/kasir': {
+      id: '/_authenticated/kasir'
+      path: '/kasir'
+      fullPath: '/kasir'
+      preLoaderRoute: typeof AuthenticatedKasirRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/karyawan': {
+      id: '/_authenticated/karyawan'
+      path: '/karyawan'
+      fullPath: '/karyawan'
+      preLoaderRoute: typeof AuthenticatedKaryawanRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/kadaluarsa': {
+      id: '/_authenticated/kadaluarsa'
+      path: '/kadaluarsa'
+      fullPath: '/kadaluarsa'
+      preLoaderRoute: typeof AuthenticatedKadaluarsaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hutang-supplier': {
+      id: '/_authenticated/hutang-supplier'
+      path: '/hutang-supplier'
+      fullPath: '/hutang-supplier'
+      preLoaderRoute: typeof AuthenticatedHutangSupplierRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/hutang': {
+      id: '/_authenticated/hutang'
+      path: '/hutang'
+      fullPath: '/hutang'
+      preLoaderRoute: typeof AuthenticatedHutangRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cek-koneksi': {
+      id: '/_authenticated/cek-koneksi'
+      path: '/cek-koneksi'
+      fullPath: '/cek-koneksi'
+      preLoaderRoute: typeof AuthenticatedCekKoneksiRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/backup': {
+      id: '/_authenticated/backup'
+      path: '/backup'
+      fullPath: '/backup'
+      preLoaderRoute: typeof AuthenticatedBackupRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin': {
+      id: '/_authenticated/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AuthenticatedAdminRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/oauth/google-sheets/return': {
       id: '/oauth/google-sheets/return'
       path: '/oauth/google-sheets/return'
       fullPath: '/oauth/google-sheets/return'
       preLoaderRoute: typeof OauthGoogleSheetsReturnRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/midtrans-webhook': {
+      id: '/api/public/midtrans-webhook'
+      path: '/api/public/midtrans-webhook'
+      fullPath: '/api/public/midtrans-webhook'
+      preLoaderRoute: typeof ApiPublicMidtransWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
