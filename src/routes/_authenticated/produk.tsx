@@ -21,8 +21,29 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ProductUnit, loadUnitsForProducts, replaceProductUnits, fallbackUnitFromProduct } from "@/lib/product-pricing";
 
 export const Route = createFileRoute("/_authenticated/produk")({
+  head: () => ({
+    meta: [
+      { title: "Produk & Import Excel — Dagang Pintar" },
+      { name: "description", content: "Kelola produk, satuan, harga, dan stok toko melalui daftar barang atau impor Excel." },
+      { property: "og:title", content: "Produk & Import Excel — Dagang Pintar" },
+      { property: "og:description", content: "Kelola produk, satuan, harga, dan stok toko melalui daftar barang atau impor Excel." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   component: ProdukPage,
 });
+
+// Batasi permintaan bersamaan supaya impor cepat tanpa membanjiri koneksi toko.
+async function runImportWorkers<T>(items: T[], work: (item: T) => Promise<void>, count = 8) {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(count, items.length) }, async () => {
+    while (next < items.length) {
+      const item = items[next++];
+      await work(item);
+    }
+  }));
+}
 
 type Product = {
   id: string;
@@ -81,6 +102,7 @@ function ProdukPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<any[]>([]);
   const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState({ done: 0, total: 0, stage: "" });
   const [importMode, setImportMode] = useState<"upsert" | "update_only">("upsert");
   const [form, setForm] = useState<ProductForm>(emptyForm);
   const [formUnits, setFormUnits] = useState<ProductUnit[]>([]);
@@ -525,19 +547,25 @@ function ProdukPage() {
       return;
     }
     setImporting(true);
+    setImportProgress({ done: 0, total: named.length, stage: "Menyiapkan barang" });
     try {
+      const { data: tenantId, error: tenantError } = await supabase.rpc("current_tenant_id");
+      if (tenantError || !tenantId) throw new Error("Toko aktif tidak ditemukan. Silakan masuk ulang lalu coba impor lagi.");
       if (importMode === "update_only") {
         // Update existing rows only, matched by code. Skip rows without code.
         const withCode = named.filter((r) => r.code);
         if (withCode.length === 0) {
           toast.error("Mode Update: semua baris harus punya Kode");
-          setImporting(false);
           return;
         }
         let updated = 0;
         let skipped = 0;
         let unitsApplied = 0;
-        for (const r of withCode) {
+        const failures: string[] = [];
+        let completed = 0;
+        setImportProgress({ done: 0, total: withCode.length, stage: "Memperbarui barang & satuan" });
+        await runImportWorkers(withCode, async (r) => {
+          try {
           // Only send fields that have a value, so kolom kosong di Excel tidak menimpa data lama.
           const patch: Record<string, any> = {};
           if (r.name) patch.name = r.name;
@@ -549,37 +577,51 @@ function ProdukPage() {
           if (r.wholesale_min_qty != null) patch.wholesale_min_qty = r.wholesale_min_qty;
           if (r.stock || r.stock === 0) patch.stock = r.stock;
           const hasUnits = r.units && r.units.length > 0;
-          if (Object.keys(patch).length === 0 && !hasUnits) { skipped++; continue; }
+          if (Object.keys(patch).length === 0 && !hasUnits) { skipped++; return; }
           let prodId: string | null = null;
           if (Object.keys(patch).length > 0) {
             const { data, error } = await supabase
               .from("products")
               .update(patch as any)
+              .eq("tenant_id", tenantId)
               .eq("code", r.code)
               .select("id")
               .maybeSingle();
-            if (error) { toast.error(`${r.code}: ${error.message}`); skipped++; continue; }
-            if (!data) { skipped++; continue; }
+            if (error) { failures.push(`${r.code}: ${error.message}`); skipped++; return; }
+            if (!data) { skipped++; return; }
             prodId = data.id;
             updated++;
           } else {
-            const { data } = await supabase.from("products").select("id").eq("code", r.code).maybeSingle();
-            if (!data) { skipped++; continue; }
+            const { data, error } = await supabase.from("products").select("id").eq("tenant_id", tenantId).eq("code", r.code).maybeSingle();
+            if (error) { failures.push(`${r.code}: ${error.message}`); skipped++; return; }
+            if (!data) { skipped++; return; }
             prodId = data.id;
           }
           if (hasUnits && prodId) {
             try { await replaceProductUnits(prodId, r.units); unitsApplied++; }
-            catch (e: any) { toast.error(`${r.code} satuan: ${e.message}`); }
+            catch (e: any) { failures.push(`${r.code} satuan: ${e.message}`); }
           }
+          } finally {
+            completed++;
+            if (completed % 5 === 0 || completed === withCode.length) {
+              setImportProgress({ done: completed, total: withCode.length, stage: "Memperbarui barang & satuan" });
+            }
+          }
+        });
+        if (failures.length) {
+          toast.error(`${failures.length} barang/satuan gagal. ${failures.slice(0, 2).join(" | ")}`, { duration: 10000 });
+          return;
         }
         toast.success(`${updated} produk diupdate${unitsApplied ? `, ${unitsApplied} dgn satuan` : ""}${skipped ? `, ${skipped} dilewati` : ""}`);
       } else {
         // Upsert: auto-generate code for rows missing one
+        setImportProgress({ done: 0, total: named.length, stage: "Membuat kode barang kosong" });
         const rows = await Promise.all(
           named.filter((r) => r.name).map(async (r) => {
             if (r.code) return r;
-            const { data } = await supabase.rpc("next_product_code");
-            return { ...r, code: data ? String(data) : "" };
+            const { data, error } = await supabase.rpc("next_product_code");
+            if (error || !data) throw new Error(`Gagal membuat kode untuk ${r.name}: ${error?.message || "kode kosong"}`);
+            return { ...r, code: String(data) };
           }),
         );
         const final = rows.filter((r) => r.code);
@@ -591,7 +633,6 @@ function ProdukPage() {
           .map((entry) => entry[0]);
         if (duplicateCodes.length > 0) {
           toast.error(`Kode duplikat di dalam file Excel: ${duplicateCodes.slice(0, 5).join(", ")}${duplicateCodes.length > 5 ? ` (+${duplicateCodes.length - 5} lainnya)` : ""}`);
-          setImporting(false);
           return;
         }
 
@@ -610,7 +651,6 @@ function ProdukPage() {
         if (dupInFile.length > 0) {
           const msg = dupInFile.slice(0, 3).map((d) => `${d.barcode}: "${d.a}" vs "${d.b}"`).join(" | ");
           toast.error(`Barcode duplikat di dalam file Excel — ${msg}${dupInFile.length > 3 ? ` (+${dupInFile.length - 3} lainnya)` : ""}`);
-          setImporting(false);
           return;
         }
 
@@ -631,16 +671,8 @@ function ProdukPage() {
               return `${c.barcode}: sudah dipakai "${c.name}" (${c.code}) — di Excel: "${row?.name}" (${row?.code})`;
             }).join(" | ");
             toast.error(`Barcode sudah dipakai produk lain — ${msg}${conflicts.length > 3 ? ` (+${conflicts.length - 3} lainnya)` : ""}`);
-            setImporting(false);
             return;
           }
-        }
-
-        const { data: tenantId, error: tenantError } = await supabase.rpc("current_tenant_id");
-        if (tenantError || !tenantId) {
-          toast.error("Toko aktif tidak ditemukan. Silakan masuk ulang lalu coba impor lagi.");
-          setImporting(false);
-          return;
         }
 
         // Kode barang unik per toko. Kirim tenant_id secara eksplisit agar upsert
@@ -648,6 +680,9 @@ function ProdukPage() {
         const dbRows = final.map(({ units, satuanStr, ...rest }) => ({ ...rest, tenant_id: tenantId }));
         const upserted: { id: string; code: string }[] = [];
         const IMPORT_CHUNK = 150;
+        const withUnits = final.filter((r) => r.units && r.units.length > 0);
+        const total = dbRows.length + withUnits.length;
+        setImportProgress({ done: 0, total, stage: "Menyimpan barang" });
         for (let i = 0; i < dbRows.length; i += IMPORT_CHUNK) {
           const { data, error } = await supabase
             .from("products")
@@ -660,19 +695,34 @@ function ProdukPage() {
             } else {
               toast.error(`Impor berhenti pada baris ${i + 2}–${Math.min(i + IMPORT_CHUNK + 1, dbRows.length + 1)}: ${error.message}`);
             }
-            setImporting(false);
             return;
           }
           upserted.push(...((data || []) as { id: string; code: string }[]));
+          setImportProgress({ done: Math.min(i + IMPORT_CHUNK, dbRows.length), total, stage: "Menyimpan barang" });
         }
         const idByCode = new Map((upserted || []).map((p: any) => [p.code, p.id]));
         let unitsApplied = 0;
-        for (const r of final) {
-          if (!r.units || r.units.length === 0) continue;
+        let unitsCompleted = 0;
+        const unitFailures: string[] = [];
+        setImportProgress({ done: dbRows.length, total, stage: "Menyimpan satuan & harga" });
+        await runImportWorkers(withUnits, async (r) => {
           const pid = idByCode.get(r.code);
-          if (!pid) continue;
-          try { await replaceProductUnits(pid, r.units); unitsApplied++; }
-          catch (e: any) { toast.error(`${r.code} satuan: ${e.message}`); }
+          try {
+            if (!pid) throw new Error("Barang tidak ditemukan setelah disimpan");
+            await replaceProductUnits(pid, r.units);
+            unitsApplied++;
+          } catch (e: any) {
+            unitFailures.push(`${r.code}: ${e.message}`);
+          } finally {
+            unitsCompleted++;
+            if (unitsCompleted % 5 === 0 || unitsCompleted === withUnits.length) {
+              setImportProgress({ done: dbRows.length + unitsCompleted, total, stage: "Menyimpan satuan & harga" });
+            }
+          }
+        });
+        if (unitFailures.length) {
+          toast.error(`${unitFailures.length} satuan gagal disimpan. ${unitFailures.slice(0, 2).join(" | ")}`, { duration: 10000 });
+          return;
         }
         toast.success(`${final.length} produk diimport${unitsApplied ? `, ${unitsApplied} dgn satuan` : ""}`);
       }
@@ -680,6 +730,8 @@ function ProdukPage() {
       setImportOpen(false);
       setImportPreview([]);
       load();
+    } catch (e: any) {
+      toast.error(e?.message || "Gagal mengimpor barang");
     } finally {
       setImporting(false);
     }
@@ -1249,7 +1301,7 @@ function ProdukPage() {
       />
 
       {/* Import preview */}
-      <Dialog open={importOpen} onOpenChange={setImportOpen}>
+      <Dialog open={importOpen} onOpenChange={(open) => { if (!importing) setImportOpen(open); }}>
         <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Preview Import Excel</DialogTitle>
@@ -1323,11 +1375,25 @@ function ProdukPage() {
               </label>
             </div>
           </div>
+          {importing && (
+            <div className="space-y-1.5" role="status" aria-live="polite">
+              <div className="flex justify-between gap-3 text-sm font-medium">
+                <span>{importProgress.stage}</span>
+                <span className="tabular-nums">{importProgress.done} / {importProgress.total}</span>
+              </div>
+              <progress
+                aria-label="Progres impor Excel"
+                value={importProgress.done}
+                max={Math.max(importProgress.total, 1)}
+                className="h-2 w-full accent-primary"
+              />
+            </div>
+          )}
           <DialogFooter>
-            <Button variant="outline" onClick={() => setImportOpen(false)}>Batal</Button>
+            <Button variant="outline" onClick={() => setImportOpen(false)} disabled={importing}>Batal</Button>
             <Button onClick={confirmImport} disabled={importing}>
               {importing
-                ? "Memproses..."
+                ? `${importProgress.done} / ${importProgress.total}`
                 : importMode === "update_only"
                   ? `Update ${importPreview.filter((r) => r.code).length} produk`
                   : `Import ${importPreview.filter((r) => r.name).length} produk`}
