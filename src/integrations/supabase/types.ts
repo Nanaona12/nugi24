@@ -146,6 +146,10 @@ export type Database = {
           notes: string | null
           opened_at: string
           opening_cash: number
+          shortage_debt_id: string | null
+          shortage_resolution: string | null
+          shortage_resolved_at: string | null
+          shortage_resolved_by: string | null
           status: string
           tenant_id: string
           total_cash: number
@@ -167,6 +171,10 @@ export type Database = {
           notes?: string | null
           opened_at?: string
           opening_cash?: number
+          shortage_debt_id?: string | null
+          shortage_resolution?: string | null
+          shortage_resolved_at?: string | null
+          shortage_resolved_by?: string | null
           status?: string
           tenant_id: string
           total_cash?: number
@@ -188,6 +196,10 @@ export type Database = {
           notes?: string | null
           opened_at?: string
           opening_cash?: number
+          shortage_debt_id?: string | null
+          shortage_resolution?: string | null
+          shortage_resolved_at?: string | null
+          shortage_resolved_by?: string | null
           status?: string
           tenant_id?: string
           total_cash?: number
@@ -1452,30 +1464,55 @@ export type Database = {
       }
       shift_expenses: {
         Row: {
+          admin_note: string | null
           amount: number
+          approval_status: string
+          approved_at: string | null
+          approved_by: string | null
+          category: string
           created_at: string
           id: string
           label: string
+          po_id: string | null
           shift_id: string
           tenant_id: string
         }
         Insert: {
+          admin_note?: string | null
           amount?: number
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          category?: string
           created_at?: string
           id?: string
           label: string
+          po_id?: string | null
           shift_id: string
           tenant_id: string
         }
         Update: {
+          admin_note?: string | null
           amount?: number
+          approval_status?: string
+          approved_at?: string | null
+          approved_by?: string | null
+          category?: string
           created_at?: string
           id?: string
           label?: string
+          po_id?: string | null
           shift_id?: string
           tenant_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "shift_expenses_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "shift_expenses_shift_id_fkey"
             columns: ["shift_id"]
