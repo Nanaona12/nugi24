@@ -579,9 +579,11 @@ function ProdukPage() {
         );
         const final = rows.filter((r) => r.code);
 
-        const duplicateCodes = Array.from(
-          final.reduce((counts, row) => counts.set(row.code, (counts.get(row.code) || 0) + 1), new Map<string, number>()),
-        ).filter(([, count]) => count > 1).map(([code]) => code);
+        const codeCounts = new Map<string, number>();
+        for (const row of final) codeCounts.set(row.code, (codeCounts.get(row.code) || 0) + 1);
+        const duplicateCodes = Array.from(codeCounts.entries())
+          .filter((entry) => entry[1] > 1)
+          .map((entry) => entry[0]);
         if (duplicateCodes.length > 0) {
           toast.error(`Kode duplikat di dalam file Excel: ${duplicateCodes.slice(0, 5).join(", ")}${duplicateCodes.length > 5 ? ` (+${duplicateCodes.length - 5} lainnya)` : ""}`);
           setImporting(false);
