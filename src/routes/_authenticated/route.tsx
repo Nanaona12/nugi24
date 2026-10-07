@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users, AlarmClock, Home, UserCog, Layers, BookOpen, Wallet, History, Gift, DatabaseBackup, Truck, Landmark } from "lucide-react";
+import { ShoppingCart, Package, Receipt, LogOut, Store, ClipboardList, TrendingUp, Wifi, CreditCard, Shield, Settings, Users, AlarmClock, Home, UserCog, Layers, BookOpen, Wallet, History, Gift, DatabaseBackup, Truck, Landmark, Bot } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import {
@@ -269,6 +269,7 @@ function AuthedLayout() {
     {
       label: "Operasional",
       items: [
+        { to: "/ai-admin", icon: Bot, label: "AI Admin" },
         { to: "/riwayat", icon: Receipt, label: "Riwayat" },
         { to: "/shift", icon: Layers, label: "Riwayat Shift" },
         { to: "/hutang", icon: Wallet, label: "Hutang" },
