@@ -14,6 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_ai_conversations: {
+        Row: {
+          blocked_message: string | null
+          blocked_status: number | null
+          created_at: string
+          id: string
+          messages: Json
+          tenant_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blocked_message?: string | null
+          blocked_status?: number | null
+          created_at?: string
+          id?: string
+          messages?: Json
+          tenant_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blocked_message?: string | null
+          blocked_status?: number | null
+          created_at?: string
+          id?: string
+          messages?: Json
+          tenant_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_ai_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_ai_conversations_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      admin_ai_po_drafts: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          draft: Json
+          id: string
+          po_id: string | null
+          status: string
+          tenant_id: string
+          tool_call_id: string
+          updated_at: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          draft: Json
+          id?: string
+          po_id?: string | null
+          status?: string
+          tenant_id: string
+          tool_call_id: string
+          updated_at?: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          draft?: Json
+          id?: string
+          po_id?: string | null
+          status?: string
+          tenant_id?: string
+          tool_call_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_ai_po_drafts_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "admin_ai_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_ai_po_drafts_po_id_fkey"
+            columns: ["po_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_ai_po_drafts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "admin_ai_po_drafts_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       app_user_connections: {
         Row: {
           account_email: string | null
@@ -2289,6 +2402,7 @@ export type Database = {
       }
     }
     Functions: {
+      approve_admin_ai_po: { Args: { p_draft_id: string }; Returns: string }
       current_tenant_id: { Args: never; Returns: string }
       current_tenant_info: {
         Args: never

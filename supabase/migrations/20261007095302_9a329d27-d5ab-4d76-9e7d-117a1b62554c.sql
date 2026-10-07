@@ -1,0 +1,3 @@
+ALTER POLICY "Owner uploads AI media" ON storage.objects WITH CHECK (bucket_id='admin-ai-media' AND EXISTS(SELECT 1 FROM public.tenants t WHERE t.id::text=(storage.foldername(storage.objects.name))[1] AND t.owner_user_id=auth.uid()));
+ALTER POLICY "Owner reads AI media" ON storage.objects USING (bucket_id='admin-ai-media' AND EXISTS(SELECT 1 FROM public.tenants t WHERE t.id::text=(storage.foldername(storage.objects.name))[1] AND t.owner_user_id=auth.uid()));
+ALTER POLICY "Owner removes AI media" ON storage.objects USING (bucket_id='admin-ai-media' AND EXISTS(SELECT 1 FROM public.tenants t WHERE t.id::text=(storage.foldername(storage.objects.name))[1] AND t.owner_user_id=auth.uid()));
