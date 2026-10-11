@@ -8,15 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Download, DatabaseBackup } from "lucide-react";
 import { toast } from "sonner";
 import { GoogleSheetsBackupCard } from "@/components/GoogleSheetsBackupCard";
+import { MysqlBackupPanel } from "@/components/MysqlBackupPanel";
 
 
 export const Route = createFileRoute("/_authenticated/backup")({
   head: () => ({
     meta: [
-      { title: "Backup Data ke Spreadsheet - Dagang Pintar" },
-      { name: "description", content: "Unduh cadangan seluruh data toko (produk, transaksi, hutang, pembukuan) ke file spreadsheet Excel." },
-      { property: "og:title", content: "Backup Data ke Spreadsheet" },
-      { property: "og:description", content: "Unduh cadangan seluruh data toko ke file spreadsheet Excel." },
+      { title: "Backup MySQL & Spreadsheet - Dagang Pintar" },
+      { name: "description", content: "Cadangkan data toko ke MySQL lokal dengan riwayat permanen atau unduh spreadsheet Excel." },
+      { property: "og:title", content: "Backup MySQL & Spreadsheet - Dagang Pintar" },
+      { property: "og:description", content: "Backup MySQL lokal berversi dan cadangan spreadsheet untuk toko Anda." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -124,6 +125,7 @@ function BackupPage() {
 
   return (
     <div className="space-y-4">
+      <MysqlBackupPanel />
       <GoogleSheetsBackupCard />
       <Card>
 
