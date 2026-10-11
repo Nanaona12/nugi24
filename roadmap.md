@@ -1,6 +1,6 @@
 # Closing cashier
-- [ ] Exit to sign-in immediately after successful closing, without reopening a new shift.
-- [ ] Add a denomination counter to fill physical closing cash and verify it without altering real financial data.
+- [x] Exit to sign-in immediately after successful closing, without reopening a new shift. Verified using a real cashier sign-in and temporary shift; local identity cleared.
+- [x] Add a denomination counter to fill physical closing cash and verify it without altering real financial data. Three unit tests passed; Rp360,500 saved and read back with zero difference. Synthetic cashier and shift removed.
 
 # MySQL Backup
 - [x] Add permanent tenant journal, initial business snapshots, and owner-managed encrypted device access.
