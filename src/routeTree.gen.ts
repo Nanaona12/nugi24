@@ -40,6 +40,7 @@ import { Route as ApiAdminAiChatRouteImport } from './routes/api/admin-ai-chat'
 import { Route as ApiAdminAiTranscribeRouteImport } from './routes/api/admin-ai-transcribe'
 import { Route as ShowcaseSlugRouteImport } from './routes/showcase.$slug'
 import { Route as ApiPublicMidtransWebhookRouteImport } from './routes/api/public/midtrans-webhook'
+import { Route as ApiPublicMysqlBackupRouteImport } from './routes/api/public/mysql-backup'
 import { Route as OauthGoogleSheetsReturnRouteImport } from './routes/oauth.google-sheets.return'
 
 const IndexRoute = IndexRouteImport.update({
@@ -199,6 +200,11 @@ const ApiPublicMidtransWebhookRoute =
     path: '/api/public/midtrans-webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicMysqlBackupRoute = ApiPublicMysqlBackupRouteImport.update({
+  id: '/api/public/mysql-backup',
+  path: '/api/public/mysql-backup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const OauthGoogleSheetsReturnRoute = OauthGoogleSheetsReturnRouteImport.update({
   id: '/oauth/google-sheets/return',
   path: '/oauth/google-sheets/return',
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/api/admin-ai-transcribe': typeof ApiAdminAiTranscribeRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
+  '/api/public/mysql-backup': typeof ApiPublicMysqlBackupRoute
   '/oauth/google-sheets/return': typeof OauthGoogleSheetsReturnRoute
 }
 export interface FileRoutesByTo {
@@ -269,6 +276,7 @@ export interface FileRoutesByTo {
   '/api/admin-ai-transcribe': typeof ApiAdminAiTranscribeRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
+  '/api/public/mysql-backup': typeof ApiPublicMysqlBackupRoute
   '/oauth/google-sheets/return': typeof OauthGoogleSheetsReturnRoute
 }
 export interface FileRoutesById {
@@ -304,6 +312,7 @@ export interface FileRoutesById {
   '/api/admin-ai-transcribe': typeof ApiAdminAiTranscribeRoute
   '/showcase/$slug': typeof ShowcaseSlugRoute
   '/api/public/midtrans-webhook': typeof ApiPublicMidtransWebhookRoute
+  '/api/public/mysql-backup': typeof ApiPublicMysqlBackupRoute
   '/oauth/google-sheets/return': typeof OauthGoogleSheetsReturnRoute
 }
 export interface FileRouteTypes {
@@ -339,6 +348,7 @@ export interface FileRouteTypes {
     | '/api/admin-ai-transcribe'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
+    | '/api/public/mysql-backup'
     | '/oauth/google-sheets/return'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -372,6 +382,7 @@ export interface FileRouteTypes {
     | '/api/admin-ai-transcribe'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
+    | '/api/public/mysql-backup'
     | '/oauth/google-sheets/return'
   id:
     | '__root__'
@@ -406,6 +417,7 @@ export interface FileRouteTypes {
     | '/api/admin-ai-transcribe'
     | '/showcase/$slug'
     | '/api/public/midtrans-webhook'
+    | '/api/public/mysql-backup'
     | '/oauth/google-sheets/return'
   fileRoutesById: FileRoutesById
 }
@@ -418,6 +430,7 @@ export interface RootRouteChildren {
   ApiAdminAiChatRoute: typeof ApiAdminAiChatRoute
   ApiAdminAiTranscribeRoute: typeof ApiAdminAiTranscribeRoute
   ApiPublicMidtransWebhookRoute: typeof ApiPublicMidtransWebhookRoute
+  ApiPublicMysqlBackupRoute: typeof ApiPublicMysqlBackupRoute
   OauthGoogleSheetsReturnRoute: typeof OauthGoogleSheetsReturnRoute
 }
 
@@ -640,6 +653,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicMidtransWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/mysql-backup': {
+      id: '/api/public/mysql-backup'
+      path: '/api/public/mysql-backup'
+      fullPath: '/api/public/mysql-backup'
+      preLoaderRoute: typeof ApiPublicMysqlBackupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/oauth/google-sheets/return': {
       id: '/oauth/google-sheets/return'
       path: '/oauth/google-sheets/return'
@@ -724,6 +744,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminAiChatRoute: ApiAdminAiChatRoute,
   ApiAdminAiTranscribeRoute: ApiAdminAiTranscribeRoute,
   ApiPublicMidtransWebhookRoute: ApiPublicMidtransWebhookRoute,
+  ApiPublicMysqlBackupRoute: ApiPublicMysqlBackupRoute,
   OauthGoogleSheetsReturnRoute: OauthGoogleSheetsReturnRoute,
 }
 export const routeTree = rootRouteImport

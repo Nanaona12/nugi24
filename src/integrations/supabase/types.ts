@@ -2552,6 +2552,10 @@ export type Database = {
         Returns: boolean
       }
       is_cashier_session: { Args: never; Returns: boolean }
+      mysql_backup_read_page: {
+        Args: { p_after: string; p_tenant: string }
+        Returns: Json
+      }
       mysql_backup_safe_payload: { Args: { p: Json }; Returns: Json }
       next_product_code: { Args: never; Returns: string }
       slugify: { Args: { input: string }; Returns: string }

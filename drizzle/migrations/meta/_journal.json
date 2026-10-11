@@ -15,6 +15,13 @@
       "when": 1791692174714,
       "tag": "0001_mysql_backup_permanent_journal",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791692279879,
+      "tag": "0002_mysql_backup_exact_cursor_reader",
+      "breakpoints": true
     }
   ]
 }
