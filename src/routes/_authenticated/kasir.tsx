@@ -64,9 +64,9 @@ import { parseNumber } from "@/lib/format";
 export const Route = createFileRoute("/_authenticated/kasir")({
   head: () => ({ meta: [
     { title: "Kasir & Closing Shift — Dagang Pintar" },
-    { name: "description", content: "Transaksi toko dan closing shift dengan hitungan pecahan uang tunai." },
+    { name: "description", content: "Transaksi toko dan closing shift dengan penjumlahan uang tunai dan catatan." },
     { property: "og:title", content: "Kasir & Closing Shift — Dagang Pintar" },
-    { property: "og:description", content: "Transaksi toko dan closing shift dengan hitungan pecahan uang tunai." },
+    { property: "og:description", content: "Transaksi toko dan closing shift dengan penjumlahan uang tunai dan catatan." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary" },
   ] }),
