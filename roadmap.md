@@ -1,3 +1,9 @@
+# MySQL Backup
+- [ ] Add permanent tenant journal, initial business snapshots, and owner-managed encrypted device access.
+- [ ] Add Backup MySQL controls and downloadable local sync package with setup/scheduling instructions.
+- [ ] Test insert/update/delete retention, retry/offline recovery, denied access, and local MySQL readback.
+- [ ] Verify the user's own computer connection after installation (requires their computer).
+
 # AI Admin
 - [x] Persist one owner-only conversation with private attachments.
 - [x] Add streaming agent tools for profit, suppliers, products, and confirmation-gated PO drafts.
