@@ -9,7 +9,7 @@ Memerlukan Python 3.10+, MySQL 8.0+, internet, dan komputer menyala. VS Code unt
 4. Buat akun MySQL khusus `backup_sync` dengan password kuat pilihan sendiri. Berikan HANYA SELECT dan INSERT pada `dagangpintar_backup.backup_history` seperti komentar di schema.sql. Jangan gunakan root untuk sinkron.
 5. Terminal: `.venv\Scripts\python sync.py --setup https://www.dagangpintar.app` (gunakan alamat aplikasi yang sudah memuat fitur Backup MySQL).
 6. Buka `pairing.json`. Salin isi ke halaman Backup Data → Backup MySQL, beri nama komputer, lalu Setujui Perangkat. Pairing berisi kunci publik, bukan password. JANGAN bagikan `.device.json`: file itu berisi kunci privat dan izin backup; lindungi folder dengan izin Windows hanya untuk akun Anda.
-7. Di PowerShell, atur untuk sesi terminal: `$env:MYSQL_USER='backup_sync'`, `$env:MYSQL_PASSWORD=Read-Host 'Password MySQL'` (input tidak menyembunyikan ketikan; alternatif set lewat pengelola kredensial Anda), `$env:MYSQL_DATABASE='dagangpintar_backup'`. MYSQL_HOST default 127.0.0.1, MYSQL_PORT default 3306. Jangan menaruh password di source/Git.
+7. Di PowerShell, atur untuk sesi terminal: `$env:MYSQL_USER='backup_sync'`, `$cred=Get-Credential -UserName backup_sync; $env:MYSQL_PASSWORD=$cred.GetNetworkCredential().Password` (dialog menyembunyikan password), `$env:MYSQL_DATABASE='dagangpintar_backup'`. MYSQL_HOST default 127.0.0.1, MYSQL_PORT default 3306. Jangan menaruh password di source/Git.
 8. Jalankan `.venv\Scripts\python sync.py`. Biarkan berjalan: setiap 60 detik menarik data baru; koneksi gagal dicoba ulang. `--once` untuk sekali sinkron. Tutup dengan Ctrl+C.
 
 ## Otomatis setelah komputer menyala
