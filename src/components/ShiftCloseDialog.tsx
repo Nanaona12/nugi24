@@ -490,8 +490,8 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                   placeholder="0"
                   className="text-lg"
                 />
-                <Button type="button" variant="outline" size="sm" aria-expanded={showCashCount} onClick={() => setShowCashCount(value => !value)}>{showCashCount ? "Tutup hitungan uang" : "Hitung pecahan uang"}</Button>
-                {showCashCount && <ClosingCashCount onApply={total => setActualCash(String(total))} />}
+                <Button type="button" variant="outline" size="sm" aria-expanded={showCashCount} onClick={() => setShowCashCount(value => !value)}>{showCashCount ? "Tutup hitungan uang" : "Jumlahkan uang"}</Button>
+                <div hidden={!showCashCount}><ClosingCashCount onApply={total => setActualCash(String(total))} /></div>
                 {actualCash !== "" && (
                   <div className={`text-sm font-semibold ${diff === 0 ? "text-foreground" : diff > 0 ? "text-success" : "text-destructive"}`}>
                     Selisih: {diff === 0 ? "Pas" : diff > 0 ? `Lebih ${formatRupiah(diff)}` : `Kurang ${formatRupiah(Math.abs(diff))}`}

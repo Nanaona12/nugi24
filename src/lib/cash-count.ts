@@ -1,9 +1,8 @@
-export const CASH_DENOMINATIONS = [100000, 75000, 50000, 20000, 10000, 5000, 2000, 1000, 500, 200, 100] as const;
-
-export function cashCountTotal(counts: Record<number, string>): number {
-  return CASH_DENOMINATIONS.reduce((total, denomination) => {
-    const raw = counts[denomination] ?? "";
-    const count = /^\d+$/.test(raw) ? Number(raw) : 0;
-    return total + (Number.isSafeInteger(count) ? denomination * count : 0);
+export function cashCountTotal(amounts: readonly string[]): number {
+  return amounts.reduce((total, raw) => {
+    const normalized = raw.trim();
+    const valid = /^\d+$/.test(normalized) || /^\d{1,3}(\.\d{3})+$/.test(normalized);
+    const amount = valid ? Number(normalized.replace(/\./g, "")) : 0;
+    return total + (Number.isSafeInteger(amount) ? amount : 0);
   }, 0);
 }
