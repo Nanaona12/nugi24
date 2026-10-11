@@ -1,6 +1,6 @@
 # Closing cashier
 - [x] Exit to sign-in immediately after successful closing, without reopening a new shift. Verified using a real cashier sign-in and temporary shift; local identity cleared.
-- [ ] Replace denomination counting with arbitrary amounts and optional temporary notes; verify Rp150,000 + Rp20,000 + Rp30,000 = Rp200,000 and application to physical cash.
+- [x] Replace denomination counting with arbitrary amounts and optional temporary notes. Four tests passed; authenticated closing dialog verified Rp200,000 total, apply, edit, delete, reset, and note retention on collapse without closing the existing shift.
 
 # MySQL Backup
 - [x] Add permanent tenant journal, initial business snapshots, and owner-managed encrypted device access.
