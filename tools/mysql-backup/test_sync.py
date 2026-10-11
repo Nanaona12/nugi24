@@ -1,11 +1,15 @@
 import unittest
+import mysql.connector
 from sync import persist_page
 class Cursor:
  def __init__(self,db): self.db=db
  def execute(self,sql,args):
-  assert sql.startswith('INSERT IGNORE INTO backup_history')
+  assert sql.startswith('INSERT INTO backup_history')
   if self.db.fail: raise RuntimeError('disconnect')
-  self.db.pending.setdefault((args[0],args[1]),args)
+  key=(args[0],args[1])
+  if key in self.db.rows or key in self.db.pending:
+   raise mysql.connector.IntegrityError('Duplicate', errno=1062)
+  self.db.pending[key]=args
  def close(self): pass
 class Db:
  def __init__(self): self.rows={};self.pending={};self.fail=False

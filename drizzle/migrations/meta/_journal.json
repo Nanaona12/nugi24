@@ -22,6 +22,13 @@
       "when": 1791692279879,
       "tag": "0002_mysql_backup_exact_cursor_reader",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1791693429594,
+      "tag": "0003_mysql_backup_explicit_least_privilege",
+      "breakpoints": true
     }
   ]
 }
