@@ -1,7 +1,7 @@
 # MySQL Backup
-- [ ] Add permanent tenant journal, initial business snapshots, and owner-managed encrypted device access.
-- [ ] Add Backup MySQL controls and downloadable local sync package with setup/scheduling instructions.
-- [ ] Test insert/update/delete retention, retry/offline recovery, denied access, and local MySQL readback.
+- [x] Add permanent tenant journal, initial business snapshots, and owner-managed encrypted device access.
+- [x] Add Backup MySQL controls and downloadable local sync package with setup/scheduling instructions.
+- [x] Test insert/update/delete retention, retry/offline recovery, denied access, and local MySQL readback. Full sync resumed after interruption and retained 21,363 versions; repeat sync did not duplicate. Test devices revoked.
 - [ ] Verify the user's own computer connection after installation (requires their computer).
 
 # AI Admin
