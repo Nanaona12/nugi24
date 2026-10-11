@@ -8,6 +8,13 @@
       "when": 1791691585607,
       "tag": "0000_preserve_sales_history_when_deleting_products",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791692174714,
+      "tag": "0001_mysql_backup_permanent_journal",
+      "breakpoints": true
     }
   ]
 }
