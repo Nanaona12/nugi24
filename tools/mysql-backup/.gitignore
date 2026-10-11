@@ -1,0 +1,5 @@
+.device.json
+pairing.json
+.venv/
+__pycache__/
+*.env
