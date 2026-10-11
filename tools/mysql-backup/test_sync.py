@@ -6,10 +6,10 @@ class Cursor:
  def execute(self,sql,args):
   assert sql.startswith('INSERT INTO backup_history')
   if self.db.fail: raise RuntimeError('disconnect')
-   key=(args[0],args[1])
-   if key in self.db.rows or key in self.db.pending:
-    raise mysql.connector.IntegrityError('Duplicate', errno=1062)
-   self.db.pending[key]=args
+  key=(args[0],args[1])
+  if key in self.db.rows or key in self.db.pending:
+   raise mysql.connector.IntegrityError('Duplicate', errno=1062)
+  self.db.pending[key]=args
  def close(self): pass
 class Db:
  def __init__(self): self.rows={};self.pending={};self.fail=False
