@@ -744,6 +744,135 @@ export type Database = {
           },
         ]
       }
+      mysql_backup_counters: {
+        Row: {
+          last_seq: number
+          tenant_id: string
+        }
+        Insert: {
+          last_seq?: number
+          tenant_id: string
+        }
+        Update: {
+          last_seq?: number
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mysql_backup_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mysql_backup_counters_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mysql_backup_devices: {
+        Row: {
+          created_at: string
+          id: string
+          label: string
+          last_ack: number
+          last_seen_at: string | null
+          public_key: Json
+          revoked_at: string | null
+          tenant_id: string
+          token_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          label: string
+          last_ack?: number
+          last_seen_at?: string | null
+          public_key: Json
+          revoked_at?: string | null
+          tenant_id: string
+          token_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          label?: string
+          last_ack?: number
+          last_seen_at?: string | null
+          public_key?: Json
+          revoked_at?: string | null
+          tenant_id?: string
+          token_hash?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mysql_backup_devices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mysql_backup_devices_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mysql_backup_events: {
+        Row: {
+          operation: string
+          payload: Json
+          previous_payload: Json | null
+          record_id: string
+          recorded_at: string
+          seq: number
+          table_name: string
+          tenant_id: string
+        }
+        Insert: {
+          operation: string
+          payload: Json
+          previous_payload?: Json | null
+          record_id: string
+          recorded_at?: string
+          seq: number
+          table_name: string
+          tenant_id: string
+        }
+        Update: {
+          operation?: string
+          payload?: Json
+          previous_payload?: Json | null
+          record_id?: string
+          recorded_at?: string
+          seq?: number
+          table_name?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mysql_backup_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "mysql_backup_events_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number
@@ -2423,6 +2552,11 @@ export type Database = {
         Returns: boolean
       }
       is_cashier_session: { Args: never; Returns: boolean }
+      mysql_backup_read_page: {
+        Args: { p_after: string; p_tenant: string }
+        Returns: Json
+      }
+      mysql_backup_safe_payload: { Args: { p: Json }; Returns: Json }
       next_product_code: { Args: never; Returns: string }
       slugify: { Args: { input: string }; Returns: string }
       tenant_qris_month_usage: { Args: { _tenant: string }; Returns: number }
