@@ -12,6 +12,7 @@ import { addShiftExpense, closeShift, deleteShiftExpense, getShiftSummary, listP
 import { formatRupiah, parseNumber } from "@/lib/format";
 import type { ActiveShift } from "@/components/CashierLock";
 import { DialogScrollBody, dialogScrollContent } from "@/components/ui/dialog-scroll";
+import { ClosingCashCount } from "@/components/ClosingCashCount";
 
 const CATEGORY_LABEL: Record<string, string> = { supplier: "Supplier", shopping: "Belanja", other: "Lainnya" };
 const SHORTAGE_OPTIONS: { value: ShortageResolution; label: string; desc: string }[] = [
@@ -63,6 +64,7 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
   const [newExpPo, setNewExpPo] = useState("");
   const [pos, setPos] = useState<{ id: string; supplier: string; total: number; created_at: string }[]>([]);
   const [resolution, setResolution] = useState<ShortageResolution>("pending");
+  const [showCashCount, setShowCashCount] = useState(false);
 
   const summaryFn = useServerFn(getShiftSummary);
   const addExpFn = useServerFn(addShiftExpense);
@@ -82,7 +84,7 @@ export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: 
 
   useEffect(() => {
     if (open) {
-      setActualCash(""); setNotes(""); setClosed(null); setResolution("pending"); reload();
+      setActualCash(""); setNotes(""); setClosed(null); setResolution("pending"); setShowCashCount(false); reload();
       posFn().then((r) => setPos(r as any)).catch(() => {});
     }
   }, [open, shift.shift_id]);
@@ -292,8 +294,8 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
   const diff = actual - cashExpected;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className={`${dialogScrollContent} max-w-xl`}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !submitting) onClose(); }}>
+      <DialogContent className={`${dialogScrollContent} max-w-xl`} onInteractOutside={event => { if (submitting) event.preventDefault(); }} onEscapeKeyDown={event => { if (submitting) event.preventDefault(); }}>
         <DialogHeader>
           <DialogTitle>{closed ? "Shift Ditutup" : "Closing Shift"}</DialogTitle>
           <DialogDescription>
@@ -481,12 +483,15 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
               <div className="space-y-2 rounded-md border p-3">
                 <Label className="text-xs">Fisik Kas Akhir (uang tunai di laci)</Label>
                 <Input
+                  aria-label="Fisik Kas Akhir"
                   inputMode="numeric"
                   value={actualCash}
                   onChange={(e) => setActualCash(e.target.value)}
                   placeholder="0"
                   className="text-lg"
                 />
+                <Button type="button" variant="outline" size="sm" aria-expanded={showCashCount} onClick={() => setShowCashCount(value => !value)}>{showCashCount ? "Tutup hitungan uang" : "Hitung pecahan uang"}</Button>
+                {showCashCount && <ClosingCashCount onApply={total => setActualCash(String(total))} />}
                 {actualCash !== "" && (
                   <div className={`text-sm font-semibold ${diff === 0 ? "text-foreground" : diff > 0 ? "text-success" : "text-destructive"}`}>
                     Selisih: {diff === 0 ? "Pas" : diff > 0 ? `Lebih ${formatRupiah(diff)}` : `Kurang ${formatRupiah(Math.abs(diff))}`}
