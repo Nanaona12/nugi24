@@ -626,7 +626,7 @@ function KasirPage() {
     setActiveCashier(null);
     persistShift(null);
     await supabase.auth.signOut({ scope: "local" });
-    router.navigate({ to: "/auth", replace: true });
+    window.location.replace("/auth");
   };
 
   const shiftClosedRef = useRef(false);
