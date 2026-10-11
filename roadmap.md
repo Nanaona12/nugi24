@@ -1,3 +1,7 @@
+# Closing cashier
+- [ ] Exit to sign-in immediately after successful closing, without reopening a new shift.
+- [ ] Add a denomination counter to fill physical closing cash and verify it without altering real financial data.
+
 # MySQL Backup
 - [x] Add permanent tenant journal, initial business snapshots, and owner-managed encrypted device access.
 - [x] Add Backup MySQL controls and downloadable local sync package with setup/scheduling instructions.

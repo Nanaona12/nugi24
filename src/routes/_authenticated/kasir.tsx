@@ -490,6 +490,8 @@ function KasirPage() {
   const [syncing, setSyncing] = useState(false);
   const [rtStatus, setRtStatus] = useState<RealtimeStatus>("connecting");
   const activeShiftRef = useRef<ActiveShift | null>(activeShift);
+  const closingDialogRef = useRef(closeOpen);
+  closingDialogRef.current = closeOpen;
   useEffect(() => { activeShiftRef.current = activeShift; }, [activeShift]);
 
   const persistShift = (s: ActiveShift | null) => {
@@ -502,11 +504,13 @@ function KasirPage() {
 
   // Sinkron shift lintas device: selalu percaya data server
   const syncShift = async (opts?: { silent?: boolean }) => {
+    if (closingDialogRef.current || shiftClosedRef.current) return;
     if (!opts?.silent) setSyncing(true);
     try {
       const res = (await getMyOpenShiftCb({
         data: { cashier_id: activeCashier?.id ?? null },
       })) as { shift: ActiveShift | null };
+      if (closingDialogRef.current || shiftClosedRef.current) return;
       if (res?.shift) {
         const prevId = activeShiftRef.current?.shift_id;
         persistShift(res.shift);
@@ -566,7 +570,7 @@ function KasirPage() {
 
   // Tentukan dialog buka shift hanya setelah pengecekan server selesai
   useEffect(() => {
-    if (!shiftChecked) return;
+    if (!shiftChecked || closeOpen || shiftClosedRef.current) return;
     if (activeShift) {
       setLockOpen(false);
       setOpeningDialogOpen(false);
@@ -575,7 +579,7 @@ function KasirPage() {
     } else {
       setLockOpen(true);
     }
-  }, [shiftChecked, activeShift, isCashierSession]);
+  }, [shiftChecked, activeShift, isCashierSession, closeOpen]);
 
 
 
@@ -619,14 +623,17 @@ function KasirPage() {
 
   const shiftClosedRef = useRef(false);
   const handleShiftClosed = async () => {
-    // Shift sudah ditutup di server. Jangan tutup dialog dulu supaya user
-    // masih bisa cetak struk / PDF A4. Cleanup dilakukan saat user klik Selesai.
     shiftClosedRef.current = true;
+    await exitToAuth();
   };
 
   const handleCloseDialogDismiss = async () => {
     setCloseOpen(false);
-    if (!shiftClosedRef.current) return;
+    if (!shiftClosedRef.current) {
+      closingDialogRef.current = false;
+      void syncShift({ silent: true });
+      return;
+    }
     shiftClosedRef.current = false;
     persistShift(null);
     if (isCashierSession) {
