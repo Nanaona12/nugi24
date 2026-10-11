@@ -1,0 +1,2 @@
+ALTER TABLE public.transaction_items DROP CONSTRAINT transaction_items_product_id_fkey;
+ALTER TABLE public.transaction_items ADD CONSTRAINT transaction_items_product_id_fkey FOREIGN KEY (product_id) REFERENCES public.products(id) ON DELETE SET NULL;

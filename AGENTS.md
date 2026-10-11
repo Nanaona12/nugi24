@@ -10,5 +10,6 @@
 <!-- LOVABLE:END -->
 
 - Product codes are unique within a tenant, not globally, because each store owns an independent catalog and Excel imports must never target another store's row.
+- Deleting a catalog product must preserve transaction item snapshots and financial history; transaction_items.product_id uses ON DELETE SET NULL so old receipts remain readable.
 - Admin AI uses one tenant-scoped, owner-only persisted UIMessage conversation and user-scoped server clients; database-locked draft approval is the only PO write path to prevent forged tool approvals and duplicate purchases.
 - Admin AI streaming and transcription use TanStack server routes with bearer verification; model/provider setup remains server-only and existing standalone AI features are not migrated implicitly.
