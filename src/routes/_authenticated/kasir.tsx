@@ -36,6 +36,10 @@ import {
   AlertTriangle,
   Sparkles,
   Package,
+  LayoutGrid,
+  List as ListIcon,
+  ShoppingCart,
+  ChevronDown,
 } from "lucide-react";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
@@ -179,6 +183,16 @@ function KasirPage() {
 
   const [bxgyPromos, setBxgyPromos] = useState<{ id: string; name: string; buy_product_id: string; buy_qty: number; free_product_id: string; free_qty: number }[]>([]);
   const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const [mobileCartOpen, setMobileCartOpen] = useState(false);
+  useEffect(() => {
+    const v = localStorage.getItem("dp.kasir_view");
+    if (v === "list" || v === "grid") setViewMode(v);
+  }, []);
+  const changeViewMode = (v: "grid" | "list") => {
+    setViewMode(v);
+    localStorage.setItem("dp.kasir_view", v);
+  };
   const [cart, setCart] = useState<CartLine[]>([]);
   const [paid, setPaid] = useState("");
   const [payOpen, setPayOpen] = useState(false);
@@ -1534,7 +1548,8 @@ function KasirPage() {
       <div className={`grid gap-4 lg:grid-cols-[1fr_420px] ${!activeShift ? "pointer-events-none opacity-50" : ""}`}>
         {/* Product picker */}
         <Card className="flex flex-col p-4">
-          <div className="relative mb-3">
+          <div className="mb-3 flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               ref={searchRef}
@@ -1544,14 +1559,23 @@ function KasirPage() {
               onKeyDown={handleSearchKey}
               className="pl-9"
             />
+            </div>
+            <div className="flex shrink-0 rounded-md border p-0.5">
+              <Button type="button" size="icon" variant={viewMode === "grid" ? "default" : "ghost"} className="h-8 w-8" onClick={() => changeViewMode("grid")} aria-label="Tampilan kartu">
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
+              <Button type="button" size="icon" variant={viewMode === "list" ? "default" : "ghost"} className="h-8 w-8" onClick={() => changeViewMode("list")} aria-label="Tampilan daftar">
+                <ListIcon className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <ScrollArea className="h-[calc(100vh-260px)] pr-2">
+          <ScrollArea className="h-[calc(100vh-300px)] pr-2 lg:h-[calc(100vh-260px)]">
             {filtered.length === 0 ? (
               <div className="flex h-40 items-center justify-center text-sm text-muted-foreground">
                 {products.length === 0 ? "Belum ada produk. Import dari Excel di menu Produk." : "Tidak ada hasil"}
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+              <div className={viewMode === "grid" ? "grid grid-cols-2 gap-2 pb-24 sm:grid-cols-3 lg:pb-0 xl:grid-cols-4" : "flex flex-col gap-1.5 pb-24 lg:pb-0"}>
                 {filtered.map((p) => {
                   const units = getUnits(p, unitsByProduct);
                   const base = units.find((u) => u.is_base) || units[0];
@@ -1583,6 +1607,32 @@ function KasirPage() {
                         txt: `≤${ex.minDays}h`,
                         title: `Exp terdekat ${dateStr} (${ex.minDays} hari lagi) • ${ex.totalQty} unit`,
                       };
+                  }
+                  if (viewMode === "list") {
+                    return (
+                      <button
+                        key={p.id}
+                        onClick={() => onPickProduct(p)}
+                        disabled={(p.stock || 0) <= 0}
+                        className="flex w-full min-w-0 items-center gap-3 rounded-lg border bg-card px-3 py-2 text-left transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate text-sm font-medium" title={p.name}>{p.name}</div>
+                          <div className="truncate text-[11px] text-muted-foreground">
+                            {p.code}{grosirCount > 0 ? " • grosir" : ""}
+                          </div>
+                        </div>
+                        {expBadge && (
+                          <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold ${expBadge.cls}`} title={expBadge.title}>{expBadge.txt}</span>
+                        )}
+                        <div className="shrink-0 text-right">
+                          <div className="text-sm font-semibold text-primary">{formatRupiah(Number(ecer))}</div>
+                          <div className={`text-[10px] ${(p.stock || 0) <= 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                            {(p.stock || 0) <= 0 ? "Habis" : `stok ${p.stock}`}
+                          </div>
+                        </div>
+                      </button>
+                    );
                   }
                   return (
                     <button
@@ -1652,9 +1702,18 @@ function KasirPage() {
           </ScrollArea>
         </Card>
 
-        {/* Cart */}
-        <Card className="flex flex-col p-4">
-          <div className="mb-3 flex items-center justify-between gap-2">
+        {/* Cart: side panel on desktop, liquid bottom sheet on phones */}
+        {mobileCartOpen && (
+          <div className="fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm lg:hidden" onClick={() => setMobileCartOpen(false)} />
+        )}
+        <Card
+          className={`${mobileCartOpen ? "liquid-sheet fixed inset-x-0 bottom-0 z-50 flex max-h-[88vh] flex-col overflow-y-auto rounded-b-none rounded-t-3xl p-4 shadow-elegant" : "hidden"} lg:static lg:z-auto lg:flex lg:max-h-none lg:flex-col lg:overflow-visible lg:rounded-xl lg:bg-card lg:p-4 lg:shadow-none lg:backdrop-filter-none`}
+        >
+          <button type="button" onClick={() => setMobileCartOpen(false)} className="mx-auto -mt-1 mb-2 flex flex-col items-center lg:hidden" aria-label="Tutup keranjang">
+            <span className="h-1.5 w-12 rounded-full bg-muted-foreground/40" />
+            <ChevronDown className="mt-0.5 h-4 w-4 text-muted-foreground" />
+          </button>
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-lg font-semibold">Keranjang</h2>
             <div className="flex items-center gap-1">
               <Button
@@ -1705,7 +1764,7 @@ function KasirPage() {
               onChangePhone={(v) => setCustomerPhone(v.replace(/[^\d+]/g, ""))}
             />
           </div>
-          <ScrollArea className="h-[calc(100vh-540px)] pr-2">
+          <ScrollArea className="h-[38vh] pr-2 lg:h-[calc(100vh-540px)]">
             {cart.length === 0 ? (
               <div className="flex h-32 items-center justify-center text-sm text-muted-foreground">
                 Pilih produk untuk mulai
@@ -1835,11 +1894,32 @@ function KasirPage() {
               <span>Total</span>
               <span className="text-primary">{formatRupiah(totals.total)}</span>
             </div>
-            <Button className="h-12 w-full text-base" disabled={cart.length === 0} onClick={() => setPayOpen(true)}>
+            <Button className="h-12 w-full text-base" disabled={cart.length === 0} onClick={() => { setMobileCartOpen(false); setPayOpen(true); }}>
               Bayar
             </Button>
           </div>
         </Card>
+
+        {/* Floating liquid cart bar (phones/tablets) */}
+        {activeShift && cart.length > 0 && !mobileCartOpen && (
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden">
+            <div className="liquid-glass pointer-events-auto mx-auto flex max-w-xl items-center gap-2 rounded-2xl p-2 text-primary-foreground">
+              <button type="button" onClick={() => setMobileCartOpen(true)} className="flex min-w-0 flex-1 items-center gap-3 rounded-xl px-2 py-1.5 text-left">
+                <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-background/25">
+                  <ShoppingCart className="h-5 w-5" />
+                  <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-background px-1 text-[10px] font-bold text-primary">{totals.items}</span>
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[11px] opacity-90">{totals.items} item • lihat keranjang</span>
+                  <span className="block truncate text-lg font-bold leading-tight">{formatRupiah(totals.total)}</span>
+                </span>
+              </button>
+              <Button className="h-11 shrink-0 rounded-xl bg-background px-5 font-semibold text-primary hover:bg-background/90" onClick={() => setPayOpen(true)}>
+                Bayar
+              </Button>
+            </div>
+          </div>
+        )}
 
         {/* Picker dialog (radio opsi harga + qty pcs) */}
         <PickerDialog
