@@ -288,7 +288,7 @@ export const getShiftSummary = createServerFn({ method: "POST" })
     const [{ data: txs }, { data: exps }, { data: dbts }, { data: dpays }] = await Promise.all([
       context.supabase
         .from("transactions")
-        .select("id, total, payment_method, qris_amount, created_at, customer_phone")
+        .select("id, total, paid, change_amount, item_count, payment_method, qris_amount, created_at, customer_phone")
         .eq("shift_id", data.shift_id)
         .eq("tenant_id", tenantId)
         .order("created_at"),
@@ -311,6 +311,25 @@ export const getShiftSummary = createServerFn({ method: "POST" })
         .eq("tenant_id", tenantId)
         .order("created_at"),
     ]);
+    const transactionItems = new Map<string, any[]>();
+    const transactionIds = ((txs ?? []) as any[]).map((transaction) => String(transaction.id));
+    for (let index = 0; index < transactionIds.length; index += 100) {
+      const ids = transactionIds.slice(index, index + 100);
+      const { data: itemRows, error: itemsError } = await context.supabase
+        .from("transaction_items")
+        .select("id, transaction_id, product_name, qty, unit_price, is_wholesale, subtotal, unit_name, unit_qty, receipt_detail, is_free")
+        .in("transaction_id", ids)
+        .eq("tenant_id", tenantId)
+        .order("id");
+      if (itemsError) throw new Error(itemsError.message);
+      for (const item of (itemRows ?? []) as any[]) {
+        const key = String(item.transaction_id);
+        const current = transactionItems.get(key) ?? [];
+        current.push(item);
+        transactionItems.set(key, current);
+      }
+    }
+
     let total_sales = 0, total_cash = 0, total_qris = 0, total_other = 0, total_transactions = 0, total_debt = 0;
     // Hutang yang menempel pada transaksi (bayar sebagian) → bukan uang masuk
     const debtByTx: Record<string, number> = {};
@@ -329,7 +348,10 @@ export const getShiftSummary = createServerFn({ method: "POST" })
         total_debt += amt;
         transactions.push({
           id: t.id, created_at: t.created_at, method, total: amt,
+          paid: Number(t.paid) || 0, change: Number(t.change_amount) || 0,
+          item_count: Number(t.item_count) || 0, customer_phone: t.customer_phone || null,
           cash: 0, qris: 0, other: 0, debt: amt, counted_as_cash: false,
+          items: transactionItems.get(String(t.id)) ?? [],
         });
         continue;
       }
@@ -358,8 +380,11 @@ export const getShiftSummary = createServerFn({ method: "POST" })
       total_other += other_portion;
       transactions.push({
         id: t.id, created_at: t.created_at, method, total: amt,
+        paid: Number(t.paid) || 0, change: Number(t.change_amount) || 0,
+        item_count: Number(t.item_count) || 0, customer_phone: t.customer_phone || null,
         cash: cash_portion, qris: qris_portion, other: other_portion, debt: linkedDebt,
         counted_as_cash: cash_portion > 0,
+        items: transactionItems.get(String(t.id)) ?? [],
       });
     }
 

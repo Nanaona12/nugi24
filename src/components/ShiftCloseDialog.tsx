@@ -33,7 +33,13 @@ type Summary = {
   expenses: { id: string; label: string; amount: number; created_at: string; category?: string; po_id?: string | null; approval_status?: string }[];
   transactions?: {
     id: string; created_at: string; method: string; total: number;
+    paid: number; change: number; item_count: number; customer_phone?: string | null;
     cash: number; qris: number; other: number; debt: number; counted_as_cash: boolean;
+    items: {
+      id: string; product_name: string; qty: number; unit_price: number; is_wholesale: boolean;
+      subtotal: number; unit_name?: string | null; unit_qty?: number | null;
+      receipt_detail?: string | null; is_free?: boolean;
+    }[];
   }[];
   debts?: { id: string; debtor_name: string; original_amount: number; paid_amount: number; status: string; created_at: string }[];
   debt_payments?: { id: string; amount: number; method: string; created_at: string }[];
@@ -45,11 +51,13 @@ type Props = {
   shift: ActiveShift;
   storeName: string;
   onClose: () => void;
-  /** Called after shift successfully closed. */
+  /** Called after shift successfully closed so background synchronization stays paused. */
   onClosed: () => void;
+  /** Called after the cashier has reviewed the closing report and chooses to exit. */
+  onFinish: () => void;
 };
 
-export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed }: Props) {
+export function ShiftCloseDialog({ open, shift, storeName, onClose, onClosed, onFinish }: Props) {
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
   const [actualCash, setActualCash] = useState("");
@@ -196,6 +204,43 @@ ${notes.trim() ? `<div class="note"><b>Catatan:</b> ${notes.replace(/</g, "&lt;"
           <td class="r">${formatRupiah(Number(e.amount))}</td>
         </tr>`).join("")
       : `<tr><td colspan="4" class="c muted">Tidak ada pengeluaran shift</td></tr>`;
+    const escapeHtml = (value: unknown) => String(value ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+    const receiptSections = (summary.transactions ?? []).map((transaction, index) => {
+      const itemRows = transaction.items.length
+        ? transaction.items.map((item) => {
+            const detail = (item.receipt_detail || "").trim()
+              || `${Number(item.unit_qty) > 0 ? Number(item.unit_qty) : Number(item.qty)} ${item.unit_name || "pcs"} × ${formatRupiah(Number(item.unit_price) || 0)}`;
+            return `<tr>
+              <td><b>${escapeHtml(item.product_name)}${item.is_free ? " (GRATIS)" : ""}</b><br/><span class="muted">${escapeHtml(detail)}</span></td>
+              <td class="r">${formatRupiah(Number(item.subtotal) || 0)}</td>
+            </tr>`;
+          }).join("")
+        : `<tr><td colspan="2" class="c muted">Rincian barang tidak tersedia</td></tr>`;
+      const method = String(transaction.method || "-").toUpperCase();
+      const splitRows = transaction.method === "split"
+        ? `<div class="receipt-row"><span>Tunai</span><span>${formatRupiah(transaction.cash)}</span></div>
+           <div class="receipt-row"><span>QRIS</span><span>${formatRupiah(transaction.qris)}</span></div>`
+        : "";
+      return `<section class="receipt-page">
+        <div class="receipt-head">
+          <div><b>Struk ${index + 1} dari ${summary.transactions?.length ?? 0}</b><br/><span class="muted">#${escapeHtml(transaction.id.slice(0, 8).toUpperCase())}</span></div>
+          <div class="r">${new Date(transaction.created_at).toLocaleString("id-ID")}<br/><b>${method}</b></div>
+        </div>
+        ${transaction.customer_phone ? `<div class="receipt-customer">Pelanggan: ${escapeHtml(transaction.customer_phone)}</div>` : ""}
+        <table class="receipt-items"><tbody>${itemRows}</tbody></table>
+        <div class="receipt-totals">
+          <div class="receipt-row strong"><span>Total</span><span>${formatRupiah(transaction.total)}</span></div>
+          ${splitRows}
+          <div class="receipt-row"><span>Dibayar</span><span>${formatRupiah(transaction.paid)}</span></div>
+          <div class="receipt-row"><span>Kembali</span><span>${formatRupiah(transaction.change)}</span></div>
+        </div>
+      </section>`;
+    }).join("");
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Laporan Closing Shift - ${summary.cashier_name}</title>
 <style>
@@ -224,6 +269,14 @@ ${notes.trim() ? `<div class="note"><b>Catatan:</b> ${notes.replace(/</g, "&lt;"
   .sign .line { margin-top: 60px; border-top: 1px solid #333; padding-top: 4px; }
   .notes { margin-top: 12px; padding: 10px; border:1px dashed #999; font-size: 12px; white-space: pre-wrap; }
   .foot { margin-top: 24px; text-align:center; font-size: 11px; color:#777; }
+  .receipts-title { page-break-before: always; margin-top: 0; }
+  .receipt-page { border:1px solid #bbb; padding:14px; margin: 0 0 14px; break-inside:avoid; page-break-inside:avoid; }
+  .receipt-head { display:flex; justify-content:space-between; gap:16px; font-size:12px; border-bottom:1px dashed #888; padding-bottom:8px; margin-bottom:8px; }
+  .receipt-customer { font-size:11px; margin-bottom:6px; }
+  .receipt-items td { border-width:0 0 1px; border-style:dashed; border-color:#ddd; }
+  .receipt-totals { margin:8px 0 0 auto; width:min(100%, 300px); font-size:12px; }
+  .receipt-row { display:flex; justify-content:space-between; gap:12px; padding:2px 0; }
+  .receipt-row.strong { font-size:14px; font-weight:800; border-bottom:1px solid #333; padding-bottom:5px; margin-bottom:3px; }
   @media print { body { padding: 0; } .noprint { display:none; } }
   .toolbar { position:fixed; top:8px; right:8px; }
   .toolbar button { padding:6px 12px; font-size:12px; cursor:pointer; }
@@ -282,6 +335,9 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
 </div>
 
 <div class="foot">Dokumen ini dihasilkan otomatis dari sistem kasir ${storeName || ""}.</div>
+<h1 class="receipts-title">Kumpulan Struk Shift</h1>
+<div class="sub">${summary.transactions?.length ?? 0} struk dari shift ${escapeHtml(summary.cashier_name)}</div>
+${receiptSections || `<div class="c muted">Tidak ada struk pada shift ini.</div>`}
 <script>window.onload = () => { setTimeout(() => window.print(), 300); };</script>
 </body></html>`;
     w.document.write(html);
@@ -294,12 +350,12 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
   const diff = actual - cashExpected;
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o && !submitting) onClose(); }}>
+    <Dialog open={open} onOpenChange={(o) => { if (!o && !submitting) { if (closed) onFinish(); else onClose(); } }}>
       <DialogContent className={`${dialogScrollContent} max-w-xl`} onInteractOutside={event => { if (submitting) event.preventDefault(); }} onEscapeKeyDown={event => { if (submitting) event.preventDefault(); }}>
         <DialogHeader>
           <DialogTitle>{closed ? "Shift Ditutup" : "Closing Shift"}</DialogTitle>
           <DialogDescription>
-            {closed ? "Shift sudah ditutup. Cetak struk closing atau tutup dialog." : "Periksa ringkasan, catat pengeluaran shift jika ada, lalu input fisik kas."}
+            {closed ? "Periksa laporan closing dan kumpulan struk sebelum keluar dari kasir." : "Periksa ringkasan, catat pengeluaran shift jika ada, lalu input fisik kas."}
           </DialogDescription>
         </DialogHeader>
 
@@ -518,15 +574,26 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                 <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="mis. uang laci dipakai bayar supplier / belanja" rows={2} />
               </div>
             ) : (
-              <Card className="space-y-1 p-3 text-sm">
-                <Row label="Fisik kas" value={formatRupiah(closed.actual_cash)} />
-                <Row
-                  label="Selisih"
-                  value={closed.difference === 0 ? "Pas" : closed.difference > 0 ? `Lebih ${formatRupiah(closed.difference)}` : `Kurang ${formatRupiah(Math.abs(closed.difference))}`}
-                  tone={closed.difference === 0 ? "default" : closed.difference > 0 ? "ok" : "bad"}
-                  bold
-                />
-              </Card>
+              <div className="space-y-3">
+                <Card className="space-y-1 p-3 text-sm">
+                  <Row label="Fisik kas" value={formatRupiah(closed.actual_cash)} />
+                  <Row
+                    label="Selisih"
+                    value={closed.difference === 0 ? "Pas" : closed.difference > 0 ? `Lebih ${formatRupiah(closed.difference)}` : `Kurang ${formatRupiah(Math.abs(closed.difference))}`}
+                    tone={closed.difference === 0 ? "default" : closed.difference > 0 ? "ok" : "bad"}
+                    bold
+                  />
+                </Card>
+                <Card className="p-3 text-sm">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="font-semibold">Laporan closing + kumpulan struk</div>
+                      <div className="text-xs text-muted-foreground">{summary.transactions?.length ?? 0} struk · lengkap dengan rincian barang dan pembayaran</div>
+                    </div>
+                    <FileText className="h-5 w-5 shrink-0 text-primary" />
+                  </div>
+                </Card>
+              </div>
             )}
           </>
         )}
@@ -547,9 +614,9 @@ ${notes.trim() ? `<div class="notes"><b>Catatan:</b>\n${notes.replace(/</g, "&lt
                 <Printer className="mr-2 h-4 w-4" /> Cetak Struk
               </Button>
               <Button variant="outline" onClick={printPdfA4}>
-                <FileText className="mr-2 h-4 w-4" /> Cetak PDF (A4)
+                <FileText className="mr-2 h-4 w-4" /> Lihat / Cetak PDF
               </Button>
-              <Button onClick={onClose}>Selesai</Button>
+              <Button onClick={onFinish}>Selesai & Keluar</Button>
 
             </>
           )}

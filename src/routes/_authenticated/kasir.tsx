@@ -644,8 +644,12 @@ function KasirPage() {
   };
 
   const shiftClosedRef = useRef(false);
-  const handleShiftClosed = async () => {
+  const handleShiftClosed = () => {
     shiftClosedRef.current = true;
+  };
+
+  const handleClosingFinished = async () => {
+    if (!shiftClosedRef.current) return;
     await exitToAuth();
   };
 
@@ -1527,6 +1531,7 @@ function KasirPage() {
           storeName={storeName}
           onClose={handleCloseDialogDismiss}
           onClosed={handleShiftClosed}
+          onFinish={handleClosingFinished}
         />
       )}
 
