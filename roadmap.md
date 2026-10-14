@@ -1,5 +1,5 @@
 # Closing cashier
-- [x] Exit to sign-in immediately after successful closing, without reopening a new shift. Verified using a real cashier sign-in and temporary shift; local identity cleared.
+- [x] Keep the completed closing result open for review, include the closing report and all shift receipts in one printable PDF, then exit to sign-in only after the cashier finishes; verified with two temporary receipts including saved unit details, and all test data was removed.
 - [x] Replace denomination counting with arbitrary amounts and optional temporary notes. Four tests passed; authenticated closing dialog verified Rp200,000 total, apply, edit, delete, reset, and note retention on collapse without closing the existing shift.
 
 # MySQL Backup
