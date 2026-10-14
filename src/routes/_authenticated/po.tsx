@@ -1474,7 +1474,7 @@ function POPage() {
                           <Input type="number" inputMode="numeric" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-10 text-sm text-right" />
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Modal/{it.unit_name || "satuan"}</div>
+                          <div className="text-xs text-muted-foreground mb-1">Modal baru/{it.unit_name || "satuan"}</div>
                           <Input type="number" inputMode="decimal" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-10 text-sm text-right" />
                           {(parseInt(it.unit_conversion || "1", 10) || 1) > 1 && (
                             <div className="mt-1 text-[10px] text-right text-muted-foreground">= {formatRupiah(parseNumber(it.unit_cost) / Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1))}/pcs</div>
@@ -1495,7 +1495,7 @@ function POPage() {
                           })()}
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Modal/pcs</div>
+                          <div className="text-xs text-muted-foreground mb-1">Modal baru/pcs</div>
                           <Input
                             type="number"
                             inputMode="decimal"
@@ -1588,7 +1588,7 @@ function POPage() {
           </div>
 
 
-          <div ref={poActionsRef} className="sticky bottom-0 -mx-3 border-t bg-background/95 px-3 py-3 sm:-mx-5 sm:px-5 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+          <div ref={poActionsRef} className="border-t bg-background pt-3">
             <DialogFooter className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-3 sm:flex sm:flex-wrap sm:space-x-0 [&>button]:min-w-0 [&>button]:whitespace-normal">
               <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
                 Batal
