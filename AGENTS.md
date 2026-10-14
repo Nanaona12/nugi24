@@ -15,3 +15,4 @@
 - Admin AI uses one tenant-scoped, owner-only persisted UIMessage conversation and user-scoped server clients; database-locked draft approval is the only PO write path to prevent forged tool approvals and duplicate purchases.
 - Admin AI streaming and transcription use TanStack server routes with bearer verification; model/provider setup remains server-only and existing standalone AI features are not migrated implicitly.
 - Closing cash counting is a browser-only sum of arbitrary amounts with optional temporary notes that fills the existing physical-cash input without extra ledger entries; successful closing exits via the shared local sign-out flow, while shift synchronization is paused during the dialog to prevent a new-shift prompt racing closing.
+- PO creation uses one responsive grouped item editor with shrinkable grid tracks instead of a wide desktop-only table, so all item fields remain accessible without horizontal scrolling on any device.

@@ -58,6 +58,14 @@ import { id as idLocale } from "date-fns/locale";
 
 
 export const Route = createFileRoute("/_authenticated/po")({
+  head: () => ({ meta: [
+    { title: "Purchase Order Supplier — Dagang Pintar" },
+    { name: "description", content: "Susun pesanan supplier, harga modal, satuan, dan penerimaan barang toko." },
+    { property: "og:title", content: "Purchase Order Supplier — Dagang Pintar" },
+    { property: "og:description", content: "Kelola pesanan supplier dan detail pembelian barang toko." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: POPage,
 });
 
@@ -1208,7 +1216,7 @@ function POPage() {
         }}
       >
         <DialogContent
-          className="max-h-[calc(100dvh-2rem)] w-[98vw] max-w-[98vw] sm:max-w-[96vw] overflow-y-auto pb-4"
+          className="max-h-[calc(100dvh-2rem)] w-[calc(100vw-1rem)] max-w-[1440px] sm:w-[calc(100vw-2rem)] sm:max-w-[1440px] overflow-y-auto overflow-x-hidden p-3 sm:p-5"
           onInteractOutside={(e) => { if (aiOpen) e.preventDefault(); }}
           onPointerDownOutside={(e) => { if (aiOpen) e.preventDefault(); }}
           onFocusOutside={(e) => { if (aiOpen) e.preventDefault(); }}
@@ -1352,9 +1360,9 @@ function POPage() {
           </div>
 
 
-          <div className="mt-3 grid gap-4 md:grid-cols-[240px_1fr]">
+          <div className="mt-3 grid min-w-0 gap-4 xl:grid-cols-[220px_minmax(0,1fr)]">
             {/* Product picker */}
-            <div className="space-y-2">
+            <div className="min-w-0 space-y-2">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -1364,7 +1372,7 @@ function POPage() {
                   className="pl-9"
                 />
               </div>
-              <div className="max-h-64 overflow-auto rounded border">
+              <div className="max-h-40 xl:max-h-64 overflow-y-auto overflow-x-hidden rounded border">
                 {filteredProducts.length === 0 ? (
                   <div className="p-4 text-center text-sm text-muted-foreground">Tidak ada produk</div>
                 ) : (
@@ -1375,15 +1383,15 @@ function POPage() {
                       onClick={() => addProduct(p)}
                       className="block w-full border-b p-3 text-left text-sm hover:bg-muted last:border-b-0"
                     >
-                      <div className="font-semibold">{p.name}</div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
+                      <div className="break-words font-semibold">{p.name}</div>
+                      <div className="break-words text-xs text-muted-foreground mt-0.5">
                         {p.code}{p.barcode ? ` • ${p.barcode}` : ""} • Stok {p.stock} • {formatRupiah(p.price)}
                       </div>
                     </button>
                   ))
                 )}
               </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
+              <div className="grid grid-cols-2 gap-2 xl:grid-cols-1">
                 <Button type="button" variant="outline" size="default" onClick={addManual} className="flex-1">
                   <Plus className="mr-2 h-5 w-5" /> Item Manual
                 </Button>
@@ -1394,17 +1402,18 @@ function POPage() {
             </div>
 
 
-            {/* Items - Mobile cards */}
-            <div className="space-y-2 md:hidden">
+            {/* Responsive item editor */}
+            <div className="min-w-0 space-y-3">
               {items.length === 0 ? (
                 <div className="rounded border p-6 text-center text-sm text-muted-foreground">Belum ada item</div>
               ) : (
                 items.map((it, i) => {
                   const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
                   return (
-                    <div key={i} className="rounded-lg border bg-card p-3 space-y-2 shadow-sm">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0 space-y-1.5">
+                    <div key={i} className="min-w-0 rounded-lg border bg-card p-3 space-y-3">
+                      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2">
+                        <div className="grid min-w-0 gap-2 sm:grid-cols-[minmax(0,1fr)_140px_160px]">
+                          <div className="min-w-0 space-y-1">
                           <ProductNameCombobox
                             value={it.product_name}
                             disabled={!!it.product_id}
@@ -1415,6 +1424,7 @@ function POPage() {
                             placeholder="Nama barang / pilih"
                           />
                           <CheapestHint productId={it.product_id} />
+                          </div>
                           <Input
                             value={it.product_code}
                             onChange={(e) => updateItem(i, { product_code: e.target.value })}
@@ -1422,12 +1432,13 @@ function POPage() {
                             placeholder="Kode"
                             disabled={!!it.product_id}
                           />
+                          <Input list="po-cats" value={it.category} onChange={(e) => updateItem(i, { category: e.target.value })} className="h-9 min-w-0 text-sm" placeholder="Kategori" aria-label={`Kategori item ${i + 1}`} disabled={!!it.product_id} />
                         </div>
                         <Button size="icon" variant="ghost" onClick={() => removeItem(i)} className="h-9 w-9 text-destructive shrink-0">
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid min-w-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6 [&>div]:min-w-0">
                         <div>
                           <div className="text-xs text-muted-foreground mb-1">Qty</div>
                           <Input type="number" inputMode="decimal" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-10 text-sm text-right" />
@@ -1463,7 +1474,7 @@ function POPage() {
                           <Input type="number" inputMode="numeric" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-10 text-sm text-right" />
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Modal/{it.unit_name || "satuan"}</div>
+                          <div className="text-xs text-muted-foreground mb-1">Modal baru/{it.unit_name || "satuan"}</div>
                           <Input type="number" inputMode="decimal" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-10 text-sm text-right" />
                           {(parseInt(it.unit_conversion || "1", 10) || 1) > 1 && (
                             <div className="mt-1 text-[10px] text-right text-muted-foreground">= {formatRupiah(parseNumber(it.unit_cost) / Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1))}/pcs</div>
@@ -1484,7 +1495,7 @@ function POPage() {
                           })()}
                         </div>
                         <div>
-                          <div className="text-xs text-muted-foreground mb-1">Modal/pcs</div>
+                          <div className="text-xs text-muted-foreground mb-1">Modal baru/pcs</div>
                           <Input
                             type="number"
                             inputMode="decimal"
@@ -1506,7 +1517,7 @@ function POPage() {
                           <div className="text-xs text-muted-foreground mb-1">Jual/pcs</div>
                           <Input type="number" inputMode="decimal" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-10 text-sm text-right" placeholder="—" />
                         </div>
-                        <div className="col-span-3 flex items-center justify-between border-t pt-2 text-xs">
+                        <div className="col-span-full grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-t pt-2 text-xs">
                           <span className="text-muted-foreground">Stok masuk</span>
                           <span className="font-semibold text-primary">{(parseInt(it.qty || "0", 10) || 0) * (Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1))} pcs</span>
                         </div>
@@ -1537,8 +1548,6 @@ function POPage() {
               )}
             </div>
 
-            {/* Items - Desktop table */}
-            <div className="space-y-2 hidden md:block">
               <datalist id="po-cats">
                 {Array.from(new Set(products.map((p) => (p.category || "").trim()).filter(Boolean))).map((c) => (
                   <option key={c} value={c} />
@@ -1549,166 +1558,8 @@ function POPage() {
                   <option key={u} value={u} />
                 ))}
               </datalist>
-              <div className="max-h-80 overflow-auto rounded border">
-                <table className="w-full min-w-[1250px] text-sm">
 
-
-                  <thead className="sticky top-0 bg-muted text-left">
-                    <tr>
-                      <th className="p-2 w-20">Kode</th>
-                      <th className="p-2 min-w-[200px] w-[220px]">Nama</th>
-                      <th className="p-2 min-w-[140px] w-[150px]">Kategori</th>
-                      <th className="p-2 w-16 text-right">Qty</th>
-                      <th className="p-2 w-24">Satuan</th>
-                      <th className="p-2 w-16 text-right">Isi</th>
-                      <th className="p-2 w-24 text-right">Modal Lama</th>
-                      <th className="p-2 w-28 text-right">Modal Baru/satuan</th>
-                      <th className="p-2 w-28 text-right">Modal Baru/pcs</th>
-                      <th className="p-2 w-24 text-right">Jual/pcs</th>
-                      <th className="p-2 w-16 text-right">Stok +</th>
-                      <th className="p-2 w-24 text-right">Subtotal</th>
-                      <th className="p-2 w-10"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {items.length === 0 ? (
-                      <tr>
-                        <td colSpan={13} className="p-6 text-center text-muted-foreground">
-                          Belum ada item
-                        </td>
-                      </tr>
-
-                    ) : (
-                      items.map((it, i) => {
-                        const sub = parseNumber(it.qty) * parseNumber(it.unit_cost);
-                        const conv = Math.max(1, parseInt(it.unit_conversion || "1", 10) || 1);
-                        const stockAdd = (parseInt(it.qty || "0", 10) || 0) * conv;
-                        const existingProd = it.product_id ? products.find((p) => p.id === it.product_id) : null;
-                        const oldCostPcs = existingProd ? Number(existingProd.cost_price || 0) : 0;
-                        const newCostPcs = parseNumber(it.unit_cost) / conv;
-                        const costDiff = oldCostPcs > 0 && newCostPcs > 0 ? newCostPcs - oldCostPcs : 0;
-                        return (
-                          <tr key={i} className="border-t align-top">
-                            <td className="p-1">
-                              <Input value={it.product_code} onChange={(e) => updateItem(i, { product_code: e.target.value })} className="h-9 w-full text-xs px-2" disabled={!!it.product_id} title={it.product_code} />
-                            </td>
-                            <td className="p-1">
-                              <ProductNameCombobox
-                                value={it.product_name}
-                                disabled={!!it.product_id}
-                                products={products}
-                                onPick={(p) => pickExistingProduct(i, p)}
-                                onChangeText={(v) => updateItem(i, { product_name: v })}
-                                className="h-9 w-full text-sm px-2 pr-8"
-                                placeholder="Nama / pilih"
-                              />
-                              <CheapestHint productId={it.product_id} />
-                            </td>
-                            <td className="p-1">
-                              <Input list="po-cats" value={it.category} onChange={(e) => updateItem(i, { category: e.target.value })} className="h-9 w-full text-xs px-2" placeholder="Pilih/ketik" disabled={!!it.product_id} title={it.category} />
-                            </td>
-
-                            <td className="p-1">
-                              <Input type="number" value={it.qty} onChange={(e) => updateItem(i, { qty: e.target.value })} className="h-9 w-full text-sm text-right px-2" />
-                            </td>
-                            <td className="p-1">
-                              {(() => {
-                                const units = it.product_id ? unitsByProduct[it.product_id] : undefined;
-                                if (units && units.length > 0) {
-                                  const known = units.some((u) => u.name.toLowerCase() === (it.unit_name || "").toLowerCase());
-                                  return (
-                                    <select
-                                      className="h-9 w-full rounded-md border border-input bg-background px-2 text-sm"
-                                      value={known ? it.unit_name : "__custom"}
-                                      onChange={(e) => {
-                                        const v = e.target.value;
-                                        if (v === "__custom") { updateItem(i, { unit_name: "", unit_conversion: "1" }); return; }
-                                        changeUnit(i, v);
-                                      }}
-                                    >
-                                      {units.map((u) => (
-                                        <option key={u.id || u.name} value={u.name}>{u.name} (isi {u.conversion})</option>
-                                      ))}
-                                      <option value="__custom">Satuan lain…</option>
-                                    </select>
-                                  );
-                                }
-                                return <Input list="po-units" value={it.unit_name} onChange={(e) => updateItem(i, { unit_name: e.target.value })} className="h-9 w-full text-sm px-2" placeholder="pcs/dus/rcg" />;
-                              })()}
-                            </td>
-
-                            <td className="p-1">
-                              <Input type="number" value={it.unit_conversion} onChange={(e) => updateItem(i, { unit_conversion: e.target.value })} className="h-9 w-full text-sm text-right" />
-                            </td>
-                            <td className="p-1 text-right">
-                              {oldCostPcs > 0 ? (
-                                <div className="text-xs">
-                                  <div className="font-medium">{formatRupiah(oldCostPcs)}</div>
-                                  <div className="text-[10px] text-muted-foreground">/pcs</div>
-                                </div>
-                              ) : (
-                                <div className="text-[10px] text-muted-foreground">baru</div>
-                              )}
-                            </td>
-                            <td className="p-1">
-                              <Input type="number" value={it.unit_cost} onChange={(e) => updateItem(i, { unit_cost: e.target.value })} className="h-9 text-sm text-right" />
-                              {conv > 1 && (
-                                <div className="mt-0.5 text-[10px] text-right text-muted-foreground">= {formatRupiah(parseNumber(it.unit_cost) / conv)}/pcs</div>
-                              )}
-                            </td>
-                            <td className="p-1">
-                              <Input
-                                type="number"
-                                value={((): string => {
-                                  const perPcs = parseNumber(it.unit_cost) / conv;
-                                  return perPcs > 0 ? String(Math.round(perPcs * 100) / 100) : "";
-                                })()}
-                                onChange={(e) => {
-                                  const perPcs = parseNumber(e.target.value);
-                                  updateItem(i, { unit_cost: String(Math.round(perPcs * conv * 100) / 100) });
-                                }}
-                                className="h-9 text-sm text-right"
-                                placeholder="—"
-                              />
-                              {costDiff !== 0 && (
-                                <div className={`mt-0.5 text-[10px] text-right font-semibold ${costDiff > 0 ? "text-destructive" : "text-emerald-600"}`}>
-                                  {costDiff > 0 ? "+" : ""}{formatRupiah(costDiff)}/pcs
-                                </div>
-                              )}
-                            </td>
-                            <td className="p-1">
-                              <Input type="number" value={it.sell_price} onChange={(e) => updateItem(i, { sell_price: e.target.value })} className="h-9 text-sm text-right" placeholder="—" />
-                              {(() => {
-                                const cost = parseNumber(it.unit_cost);
-                                const sell = parseNumber(it.sell_price);
-                                if (!cost || !sell) return null;
-                                const perPcs = sell - cost / conv;
-                                const total = perPcs * (parseInt(it.qty || "0", 10) || 0) * conv;
-                                return (
-                                  <div className={`mt-0.5 text-[10px] text-right font-semibold ${perPcs >= 0 ? "text-emerald-600" : "text-destructive"}`}>
-                                    +{formatRupiah(perPcs)}/pcs • {formatRupiah(total)}
-                                  </div>
-                                );
-                              })()}
-                            </td>
-                            <td className="p-1 text-right text-xs text-primary font-semibold">{stockAdd}</td>
-                            <td className="p-1 text-right font-medium">{formatRupiah(sub)}</td>
-                            <td className="p-1 text-center">
-                              <Button size="icon" variant="ghost" onClick={() => removeItem(i)} className="h-8 w-8 text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-
-                </table>
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
+            <div className="xl:col-span-2">
               <AIInvoiceCapture
                 open={aiOpen}
                 inline
@@ -1721,9 +1572,9 @@ function POPage() {
 
             </div>
 
-            <div className="md:col-span-2 flex flex-wrap justify-between border-t pt-2 text-sm gap-2">
+            <div className="xl:col-span-2 grid grid-cols-[minmax(0,1fr)_auto] items-start gap-2 border-t pt-2 text-sm">
               <span className="text-muted-foreground">{itemCount} item</span>
-              <div className="flex items-center gap-4">
+              <div className="flex min-w-0 flex-col items-end gap-1 sm:flex-row sm:items-center sm:gap-4">
                 {totalProfitExpected > 0 && (
                   <span className="text-xs text-emerald-600 font-semibold">
                     Untung ekspektasi: {formatRupiah(totalProfitExpected)}
@@ -1737,8 +1588,8 @@ function POPage() {
           </div>
 
 
-          <div ref={poActionsRef} className="sticky bottom-0 -mx-6 border-t bg-background/95 px-6 pt-3 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-            <DialogFooter className="gap-2">
+          <div ref={poActionsRef} className="border-t bg-background pt-3">
+            <DialogFooter className="grid grid-cols-1 gap-2 min-[400px]:grid-cols-3 sm:flex sm:flex-wrap sm:space-x-0 [&>button]:min-w-0 [&>button]:whitespace-normal">
               <Button variant="outline" onClick={() => setCreateOpen(false)} disabled={saving}>
                 Batal
               </Button>
