@@ -211,6 +211,10 @@ function KeuntunganPage() {
     const rows = ((data || []) as any[])
       .filter((r) => r.closed_at)
       .map((r) => ({ closed_at: r.closed_at as string, amount: Math.abs(Number(r.difference) || 0) }));
+    // Biaya reward loyalitas pelanggan juga mengurangi keuntungan
+    const { data: rw } = await (supabase as any)
+      .from("customer_rewards").select("created_at, amount").order("created_at", { ascending: false }).limit(1000);
+    for (const r of (rw || []) as any[]) rows.push({ closed_at: r.created_at, amount: Number(r.amount) || 0 });
     setShiftShortages(rows);
   };
 

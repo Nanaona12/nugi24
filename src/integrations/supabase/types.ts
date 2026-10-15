@@ -434,6 +434,70 @@ export type Database = {
         }
         Relationships: []
       }
+      customer_rewards: {
+        Row: {
+          amount: number
+          bookkeeping_entry_id: string | null
+          created_at: string
+          created_by: string | null
+          customer_id: string | null
+          customer_name: string
+          description: string | null
+          id: string
+          points_used: number
+          reward_type: string
+          tenant_id: string
+        }
+        Insert: {
+          amount: number
+          bookkeeping_entry_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name: string
+          description?: string | null
+          id?: string
+          points_used?: number
+          reward_type: string
+          tenant_id: string
+        }
+        Update: {
+          amount?: number
+          bookkeeping_entry_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          customer_id?: string | null
+          customer_name?: string
+          description?: string | null
+          id?: string
+          points_used?: number
+          reward_type?: string
+          tenant_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_rewards_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_rewards_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_rewards_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -739,6 +803,48 @@ export type Database = {
             foreignKeyName: "household_withdrawals_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
+            referencedRelation: "tenants_showcase"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_settings: {
+        Row: {
+          gold_min: number
+          platinum_min: number
+          reward_cap_percent: number
+          silver_min: number
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          gold_min?: number
+          platinum_min?: number
+          reward_cap_percent?: number
+          silver_min?: number
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          gold_min?: number
+          platinum_min?: number
+          reward_cap_percent?: number
+          silver_min?: number
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
+            referencedRelation: "tenants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_settings_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: true
             referencedRelation: "tenants_showcase"
             referencedColumns: ["id"]
           },

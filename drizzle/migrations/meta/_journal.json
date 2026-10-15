@@ -29,6 +29,13 @@
       "when": 1791693429594,
       "tag": "0003_mysql_backup_explicit_least_privilege",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792073545578,
+      "tag": "0004_loyalty_program",
+      "breakpoints": true
     }
   ]
 }

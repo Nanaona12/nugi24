@@ -16,3 +16,4 @@
 - Admin AI streaming and transcription use TanStack server routes with bearer verification; model/provider setup remains server-only and existing standalone AI features are not migrated implicitly.
 - Closing cash counting is a browser-only sum of arbitrary amounts with optional temporary notes that fills the existing physical-cash input without extra ledger entries; after closing, keep synchronization paused while showing the closing report plus all shift receipts, then exit through the shared local sign-out flow only when the cashier finishes reviewing it.
 - PO creation uses one responsive grouped item editor with shrinkable grid tracks instead of a wide desktop-only table, so all item fields remain accessible without horizontal scrolling on any device.
+- Loyalty rewards are written only via an insert trigger on customer_rewards that deducts points and posts the bookkeeping entry, so points and ledger cannot drift apart.
