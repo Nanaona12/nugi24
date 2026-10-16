@@ -1806,7 +1806,7 @@ function KasirPage() {
                           </div>
                           {showPack ? (
                             <div className="mt-0.5 text-xs text-muted-foreground">
-                              {c.packs} {packUnitName} × {formatRupiah(c.packPrice)}
+                              {formatQty(c.packs)} {packUnitName} × {formatRupiah(c.packPrice)}
                               {c.remainder > 0 && (
                                 <>
                                   {" "}
@@ -2720,7 +2720,7 @@ function KasirPage() {
                           {showPack ? (
                             <>
                               <div className="flex justify-between">
-                                <span>{c.packs} {packUnitName} × {formatRupiah(c.packPrice)}</span>
+                                <span>{formatQty(c.packs)} {packUnitName} × {formatRupiah(c.packPrice)}</span>
                                 <span>{formatRupiah(c.packs * c.packPrice)}</span>
                               </div>
                               {c.remainder > 0 && (
