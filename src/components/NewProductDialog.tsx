@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { formatRupiah, parseNumber } from "@/lib/format";
 import { replaceProductUnits, type ProductUnit } from "@/lib/product-pricing";
 
-type UnitDraft = { name: string; conversion: string; tiers: { min_qty: string; price: string }[] };
+export type UnitDraft = { name: string; conversion: string; tiers: { min_qty: string; price: string }[] };
 
 export type CreatedProduct = {
   id: string;
@@ -29,11 +29,21 @@ const emptyUnits = (): UnitDraft[] => [{ name: "pcs", conversion: "1", tiers: [{
 export function NewProductDialog({
   open,
   initialName,
+  initial,
+  title,
+  description,
+  submitLabel,
+  cancelLabel,
   onClose,
   onCreated,
 }: {
   open: boolean;
   initialName?: string;
+  initial?: { name?: string; code?: string; barcode?: string; category?: string; cost?: number; units?: UnitDraft[] };
+  title?: string;
+  description?: string;
+  submitLabel?: string;
+  cancelLabel?: string;
   onClose: () => void;
   onCreated: (p: CreatedProduct, units: ProductUnit[]) => void;
 }) {
@@ -48,11 +58,13 @@ export function NewProductDialog({
 
   useEffect(() => {
     if (open) {
-      setName(initialName || "");
-      setCode(""); setBarcode(""); setCategory(""); setCost(""); setMinStock("");
-      setUnits(emptyUnits());
+      setName(initial?.name ?? initialName ?? "");
+      setCode(initial?.code || ""); setBarcode(initial?.barcode || ""); setCategory(initial?.category || "");
+      setCost(initial?.cost ? String(Math.round(initial.cost)) : ""); setMinStock("");
+      setUnits(initial?.units?.length ? initial.units : emptyUnits());
     }
-  }, [open, initialName]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialName, initial]);
 
   const patchUnit = (i: number, patch: Partial<UnitDraft>) =>
     setUnits((u) => u.map((x, idx) => (idx === i ? { ...x, ...patch } : x)));
@@ -106,7 +118,7 @@ export function NewProductDialog({
         throw new Error(error?.code === "23505" ? `Kode "${finalCode}" sudah dipakai` : error?.message || "Gagal simpan");
       }
       await replaceProductUnits(inserted.id, clean);
-      toast.success(`Produk ${inserted.name} dibuat & ditambahkan ke PO`);
+      toast.success(`Produk ${inserted.name} dibuat`);
       onCreated(inserted as CreatedProduct, clean);
     } catch (e: any) {
       toast.error(e.message);
@@ -119,8 +131,8 @@ export function NewProductDialog({
     <Dialog open={open} onOpenChange={(o) => !o && !saving && onClose()}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Produk Baru</DialogTitle>
-          <DialogDescription>Stok awal 0 — stok bertambah saat barang PO diterima.</DialogDescription>
+          <DialogTitle>{title || "Produk Baru"}</DialogTitle>
+          <DialogDescription>{description || "Stok awal 0 — stok bertambah saat barang PO diterima."}</DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="sm:col-span-2"><Label>Nama *</Label><Input value={name} onChange={(e) => setName(e.target.value)} autoFocus /></div>
@@ -164,8 +176,8 @@ export function NewProductDialog({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={saving}>Batal</Button>
-          <Button onClick={save} disabled={saving}>{saving ? "Menyimpan..." : "Simpan & Tambah ke PO"}</Button>
+          <Button variant="outline" onClick={onClose} disabled={saving}>{cancelLabel || "Batal"}</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "Menyimpan..." : submitLabel || "Simpan & Tambah ke PO"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
