@@ -19,7 +19,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { formatRupiah, barcodeIncludes, barcodeMatches } from "@/lib/format";
+import { formatRupiah, barcodeIncludes, barcodeMatches, formatQty, parseDecimalQty, toBaseQty } from "@/lib/format";
 import {
   Plus,
   Minus,
@@ -102,6 +102,7 @@ type CartLine = {
   unit: ProductUnit; // unit grosir untuk mode grosiran; base unit untuk eceran
   baseUnit: ProductUnit; // selalu unit dasar (untuk harga eceran sisa)
   qty: number; // dalam pcs (unit dasar)
+  decimalQty?: number; // jumlah desimal dalam satuan `unit`, mis. 1.2 (kg)
 };
 
 function getUnits(p: Product, map: Record<string, ProductUnit[]>): ProductUnit[] {
@@ -123,6 +124,12 @@ function computeLine(
     // Tidak auto-switch ke satuan grosir walau qty melebihi konversi.
     const ecerPrice = tierPriceFor(l.baseUnit, l.qty).price;
     return { total: ecerPrice * l.qty, packs: 0, remainder: l.qty, packPrice: 0, ecerPrice };
+  }
+
+  // Jumlah desimal (mis. 1,2 kg): harga = jumlah × harga satuan, tanpa sisa eceran.
+  if (l.decimalQty != null) {
+    const packPrice = tierPriceFor(l.unit, l.decimalQty).price;
+    return { total: Math.round(l.decimalQty * packPrice), packs: l.decimalQty, remainder: 0, packPrice, ecerPrice: 0 };
   }
 
   const conv = Math.max(1, l.unit.conversion);
@@ -147,17 +154,17 @@ function buildReceiptLine(
   const c = computeLine(l, allUnits);
   const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
   const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
-  const displayQty = l.mode === "grosiran" ? Math.max(1, c.packs) : l.qty;
+  const displayQty = l.mode === "grosiran" ? (l.decimalQty ?? Math.max(1, c.packs)) : l.qty;
   const displayUnitName = l.mode === "grosiran" ? l.unit.name : l.baseUnit.name;
 
   let detail = "";
   if (showPack) {
-    const parts = [`${c.packs} ${packUnitName} × ${formatRupiah(c.packPrice)}`];
+    const parts = [`${formatQty(c.packs)} ${packUnitName} × ${formatRupiah(c.packPrice)}`];
     if (c.remainder > 0) parts.push(`${c.remainder} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`);
     detail = parts.join(" + ");
   } else if (l.mode === "grosiran") {
     const perUnit = displayQty > 0 ? c.total / displayQty : c.total;
-    detail = `${displayQty} ${displayUnitName} × ${formatRupiah(perUnit)}`;
+    detail = `${formatQty(displayQty)} ${displayUnitName} × ${formatRupiah(perUnit)}`;
   } else {
     detail = `${l.qty} ${l.baseUnit.name} × ${formatRupiah(c.ecerPrice)}`;
   }
@@ -1013,8 +1020,12 @@ function KasirPage() {
   };
 
   const setDisplayQty = (line: CartLine, displayQty: number) => {
-    const multiplier = line.mode === "grosiran" ? Math.max(1, line.unit.conversion) : 1;
-    setQty(line.key, displayQty * multiplier);
+    const conv = line.mode === "grosiran" ? Math.max(1, line.unit.conversion) : 1;
+    const isDec = conv > 1 && !Number.isInteger(displayQty);
+    const n = conv > 1 ? displayQty : Math.round(displayQty);
+    const base = toBaseQty(n, conv);
+    setCart((c) => c.map((l) => (l.key === line.key ? { ...l, decimalQty: isDec ? n : undefined } : l)));
+    setQty(line.key, base);
   };
 
   const changeGrosirUnit = (key: string, unitName: string) => {
@@ -1023,7 +1034,7 @@ function KasirPage() {
         if (l.key !== key) return l;
         const units = getUnits(l.product, unitsByProduct);
         const u = units.find((x) => x.name === unitName) || l.unit;
-        return { ...l, unit: u, key: `${l.product.id}:grosir:${u.name}` };
+        return { ...l, unit: u, decimalQty: undefined, key: `${l.product.id}:grosir:${u.name}` };
       }),
     );
   };
@@ -1033,16 +1044,15 @@ function KasirPage() {
   const handleSearchKey = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key !== "Enter") return;
     const raw = query.trim();
-    // Shortcut: "*N" → ubah jumlah baris terakhir di keranjang menjadi N
-    const qtyMatch = raw.match(/^\*\s*(\d+)$/);
+    // Shortcut: "*N" → ubah jumlah baris terakhir di keranjang menjadi N (boleh desimal, mis. *1,2)
+    const qtyMatch = raw.match(/^\*\s*(\d+(?:[.,]\d+)?)$/);
     if (qtyMatch) {
       e.preventDefault();
-      const n = parseInt(qtyMatch[1], 10);
+      const n = parseDecimalQty(qtyMatch[1]);
       if (!n || n <= 0) { toast.error("Jumlah tidak valid"); return; }
       if (cart.length === 0) { toast.error("Keranjang masih kosong"); return; }
       const last = cart[cart.length - 1];
-      const multiplier = last.mode === "grosiran" ? Math.max(1, last.unit.conversion) : 1;
-      setQty(last.key, n * multiplier);
+      setDisplayQty(last, n);
       toast.success(`Jumlah ${last.product.name} → ${n} ${last.unit.name}`);
       setQuery("");
       return;
@@ -1782,7 +1792,7 @@ function KasirPage() {
                   const grosirUnits = allUnits.filter((u) => !u.is_base);
                   const packUnitName = l.mode === "grosiran" ? l.unit.name : c.autoUnit?.name || "";
                   const showPack = c.packs > 0 && (l.mode === "grosiran" || c.autoUnit);
-                  const displayQty = l.mode === "grosiran" ? Math.max(1, c.packs) : l.qty;
+                  const displayQty = l.mode === "grosiran" ? (l.decimalQty ?? Math.max(1, c.packs)) : l.qty;
                   const displayUnitName = l.mode === "grosiran" ? l.unit.name : l.baseUnit.name;
                   return (
                     <li key={l.key} className="rounded-lg border p-3">
@@ -1796,7 +1806,7 @@ function KasirPage() {
                           </div>
                           {showPack ? (
                             <div className="mt-0.5 text-xs text-muted-foreground">
-                              {c.packs} {packUnitName} × {formatRupiah(c.packPrice)}
+                              {formatQty(c.packs)} {packUnitName} × {formatRupiah(c.packPrice)}
                               {c.remainder > 0 && (
                                 <>
                                   {" "}
@@ -1823,17 +1833,16 @@ function KasirPage() {
                             size="icon"
                             variant="outline"
                             className="h-7 w-7"
-                            onClick={() => setDisplayQty(l, displayQty - 1)}
+                            onClick={() => setDisplayQty(l, Math.ceil(displayQty) - 1)}
                           >
                             <Minus className="h-3 w-3" />
                           </Button>
-                          <Input
+                          <DecimalQtyInput
                             id={`qty-input-${l.key}`}
-                            className="h-7 w-14 text-center"
-                            type="number"
+                            className="h-7 w-16 text-center"
                             value={displayQty}
-                            onFocus={(e) => e.currentTarget.select()}
-                            onChange={(e) => setDisplayQty(l, parseInt(e.target.value || "0", 10))}
+                            allowDecimal={l.mode === "grosiran" && l.unit.conversion > 1}
+                            onCommit={(n) => setDisplayQty(l, n)}
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
@@ -1846,7 +1855,7 @@ function KasirPage() {
                             size="icon"
                             variant="outline"
                             className="h-7 w-7"
-                            onClick={() => setDisplayQty(l, displayQty + 1)}
+                            onClick={() => setDisplayQty(l, Math.floor(displayQty) + 1)}
                           >
                             <Plus className="h-3 w-3" />
                           </Button>
@@ -1931,7 +1940,7 @@ function KasirPage() {
           product={modePicker}
           unitsByProduct={unitsByProduct}
           onClose={() => { setModePicker(null); setTimeout(() => searchRef.current?.focus(), 50); }}
-          onAdd={(p, mode, unit, qtyPcs) => {
+          onAdd={(p, mode, unit, qtyPcs, decimalQty) => {
             if (!canAddBase(p, qtyPcs)) {
               const sisa = Math.max(0, (p.stock || 0) - currentBaseQty(p.id));
               toast.error(`Stok ${p.name} tidak cukup (sisa ${sisa} ${(getUnits(p, unitsByProduct).find(u=>u.is_base)?.name)||"pcs"}, diminta ${qtyPcs})`);
@@ -1954,14 +1963,21 @@ function KasirPage() {
               const units = getUnits(p, unitsByProduct);
               const base = units.find((u) => u.is_base) || units[0];
               const key = `${p.id}:grosir:${unit.name}`;
+              const conv = Math.max(1, unit.conversion);
               setCart((c) => {
                 const idx = c.findIndex((x) => x.key === key);
                 if (idx >= 0) {
                   const copy = [...c];
-                  copy[idx] = { ...copy[idx], qty: copy[idx].qty + qtyPcs };
+                  const prev = copy[idx];
+                  if (decimalQty != null || prev.decimalQty != null) {
+                    const dec = (prev.decimalQty ?? prev.qty / conv) + (decimalQty ?? qtyPcs / conv);
+                    copy[idx] = { ...prev, decimalQty: dec, qty: toBaseQty(dec, conv) };
+                  } else {
+                    copy[idx] = { ...prev, qty: prev.qty + qtyPcs };
+                  }
                   return copy;
                 }
-                return [...c, { key, product: p, mode: "grosiran", unit, baseUnit: base, qty: qtyPcs }];
+                return [...c, { key, product: p, mode: "grosiran", unit, baseUnit: base, qty: qtyPcs, decimalQty }];
               });
             }
             setModePicker(null);
@@ -2704,7 +2720,7 @@ function KasirPage() {
                           {showPack ? (
                             <>
                               <div className="flex justify-between">
-                                <span>{c.packs} {packUnitName} × {formatRupiah(c.packPrice)}</span>
+                                <span>{formatQty(c.packs)} {packUnitName} × {formatRupiah(c.packPrice)}</span>
                                 <span>{formatRupiah(c.packs * c.packPrice)}</span>
                               </div>
                               {c.remainder > 0 && (
@@ -2791,6 +2807,47 @@ function buildOptions(units: ProductUnit[]): PickerOption[] {
   return opts;
 }
 
+/** Input jumlah yang menerima koma desimal (1,2) tanpa mengganggu saat mengetik. */
+function DecimalQtyInput({
+  value,
+  allowDecimal,
+  onCommit,
+  className,
+  id,
+  onKeyDown,
+}: {
+  value: number;
+  allowDecimal: boolean;
+  onCommit: (n: number) => void;
+  className?: string;
+  id?: string;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+}) {
+  const [text, setText] = useState(formatQty(value));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setText(formatQty(value));
+  }, [value, focused]);
+  return (
+    <Input
+      id={id}
+      className={className}
+      inputMode={allowDecimal ? "decimal" : "numeric"}
+      value={focused ? text : formatQty(value)}
+      onFocus={(e) => { setFocused(true); setText(formatQty(value)); e.currentTarget.select(); }}
+      onBlur={() => setFocused(false)}
+      onKeyDown={onKeyDown}
+      onChange={(e) => {
+        const raw = allowDecimal ? e.target.value : e.target.value.replace(/[^\d]/g, "");
+        setText(raw);
+        if (raw.trim() === "") return;
+        const n = parseDecimalQty(raw);
+        if (!Number.isNaN(n)) onCommit(allowDecimal ? n : Math.round(n));
+      }}
+    />
+  );
+}
+
 function PickerDialog({
   product,
   unitsByProduct,
@@ -2800,7 +2857,7 @@ function PickerDialog({
   product: Product | null;
   unitsByProduct: Record<string, ProductUnit[]>;
   onClose: () => void;
-  onAdd: (p: Product, mode: SaleMode, unit: ProductUnit, qtyPcs: number) => void;
+  onAdd: (p: Product, mode: SaleMode, unit: ProductUnit, qtyPcs: number, decimalQty?: number) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [qty, setQty] = useState<number>(1);
@@ -2822,9 +2879,15 @@ function PickerDialog({
   const baseUnit = units.find((u) => u.is_base) || units[0];
   const baseName = baseUnit?.name || "pcs";
 
-  const qtyPcs = opt ? qty * opt.unit.conversion : qty;
-  const minOk = opt ? qty >= opt.tier.min_qty : false;
-  const subtotal = opt ? qty * Number(opt.tier.price) : 0;
+  const isBaseOpt =
+    !!opt && !!baseUnit &&
+    (opt.unit.id ? opt.unit.id === baseUnit.id : opt.unit.name === baseUnit.name && opt.unit.conversion === baseUnit.conversion);
+  // Desimal (mis. 1,2 kg) hanya untuk satuan non-dasar; unit dasar (gram/butir) selalu bulat.
+  const allowDecimal = !!opt && !isBaseOpt && opt.unit.conversion > 1;
+  const effQty = allowDecimal ? qty : Math.max(1, Math.round(qty));
+  const qtyPcs = opt ? toBaseQty(effQty, opt.unit.conversion) : effQty;
+  const minOk = opt ? effQty >= opt.tier.min_qty || (allowDecimal && opt.tier.min_qty <= 1 && effQty > 0) : false;
+  const subtotal = opt ? effQty * Number(opt.tier.price) : 0;
 
   const submit = () => {
     if (!opt) return;
@@ -2832,14 +2895,11 @@ function PickerDialog({
       toast.error(`Minimal beli ${opt.tier.min_qty} ${opt.unit.name}`);
       return;
     }
-    if (qty <= 0) return;
+    if (effQty <= 0 || qtyPcs <= 0) return;
     // Satuan non-dasar tetap dihitung sebagai "grosiran" walau konversinya 1,
     // agar harga yang dipakai adalah tier satuan tsb (bukan tier satuan dasar).
-    const isBaseUnit =
-      !!baseUnit &&
-      (opt.unit.id ? opt.unit.id === baseUnit.id : opt.unit.name === baseUnit.name && opt.unit.conversion === baseUnit.conversion);
-    const mode: SaleMode = isBaseUnit ? "eceran" : "grosiran";
-    onAdd(product, mode, opt.unit, qtyPcs);
+    const mode: SaleMode = isBaseOpt ? "eceran" : "grosiran";
+    onAdd(product, mode, opt.unit, qtyPcs, Number.isInteger(effQty) ? undefined : effQty);
   };
 
   return (
@@ -2896,17 +2956,17 @@ function PickerDialog({
               size="icon"
               variant="outline"
               className="h-9 w-9 rounded-full"
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              onClick={() => setQty((q) => Math.max(1, Math.ceil(q) - 1))}
             >
               <Minus className="h-4 w-4" />
             </Button>
-            <Input
-              type="number"
-              className="h-9 w-16 text-center"
+            <DecimalQtyInput
+              className="h-9 w-20 text-center"
               value={qty}
-              onChange={(e) => setQty(Math.max(1, parseInt(e.target.value || "1", 10)))}
+              allowDecimal={allowDecimal}
+              onCommit={(n) => setQty(n > 0 ? n : 1)}
             />
-            <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => setQty((q) => q + 1)}>
+            <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => setQty((q) => Math.floor(q) + 1)}>
               <Plus className="h-4 w-4" />
             </Button>
             {opt && <span className="ml-1 text-xs text-muted-foreground">{opt.unit.name}</span>}
