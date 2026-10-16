@@ -461,12 +461,10 @@ export function ReceivingDialog({
       open={!!currentFormItem}
       initial={currentInitial}
       title={`Barang baru (${items.filter((i) => formQueue.includes(i.id)).length} tersisa)`}
-      description="Lengkapi satuan & harga grosir. Stok akan ditambah dari penerimaan ini."
+      description="Lengkapi satuan & harga grosir. Stok akan ditambah dari penerimaan ini. Jika dilewati, produk dibuat otomatis dengan harga dasar saja."
       submitLabel="Simpan Produk"
       cancelLabel="Lewati"
       onClose={() => {
-        const id = formQueue[0];
-        setNewCfg((c) => ({ ...c, [id]: { ...c[id], create: false } }));
         setFormQueue((q) => q.slice(1));
       }}
       onCreated={async (p) => {
