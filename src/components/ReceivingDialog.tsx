@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { NewProductDialog, type UnitDraft } from "@/components/NewProductDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -101,6 +102,47 @@ export function ReceivingDialog({
       setNewCfg(cfgMap);
     })();
   }, [open, poId]);
+
+  // Barang baru: tampilkan form produk lengkap satu per satu sebelum stok disimpan.
+  const [formQueue, setFormQueue] = useState<string[]>([]);
+  const pendingSubmit = useRef(false);
+  const startSubmit = () => {
+    const ids = items.filter((it) => !it.product_id && newCfg[it.id]?.create).map((it) => it.id);
+    if (ids.length === 0) return submit();
+    pendingSubmit.current = true;
+    setFormQueue(ids);
+  };
+  useEffect(() => {
+    if (formQueue.length === 0 && pendingSubmit.current) {
+      pendingSubmit.current = false;
+      submit();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formQueue, items, newCfg]);
+  const currentFormItem = items.find((it) => it.id === formQueue[0]) || null;
+  const currentInitial = useMemo(() => {
+    if (!currentFormItem) return undefined;
+    const it = currentFormItem;
+    const cfg = newCfg[it.id];
+    const conv = Math.max(1, Number(it.unit_conversion || 1));
+    const unitName = (it.unit_name || "pcs").trim() || "pcs";
+    const sellBase = cfg?.sell_price || "";
+    const units: UnitDraft[] = conv > 1
+      ? [
+          { name: "pcs", conversion: "1", tiers: [{ min_qty: "1", price: sellBase }] },
+          { name: unitName, conversion: String(conv), tiers: [{ min_qty: "1", price: it.sell_price ? String(Math.round(Number(it.sell_price))) : "" }] },
+        ]
+      : [{ name: unitName, conversion: "1", tiers: [{ min_qty: "1", price: sellBase }] }];
+    return {
+      name: it.product_name,
+      code: cfg?.code,
+      barcode: cfg?.barcode,
+      category: cfg?.category,
+      cost: it.unit_cost ? Number(it.unit_cost) / conv : 0,
+      units,
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentFormItem?.id]);
 
   const submit = async () => {
     if (!poId) return;
@@ -408,12 +450,32 @@ export function ReceivingDialog({
         )}
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={saving}>Batal</Button>
-          <Button onClick={submit} disabled={saving || loading}>
+          <Button onClick={startSubmit} disabled={saving || loading}>
             {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Simpan Penerimaan
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <NewProductDialog
+      open={!!currentFormItem}
+      initial={currentInitial}
+      title={`Barang baru (${items.filter((i) => formQueue.includes(i.id)).length} tersisa)`}
+      description="Lengkapi satuan & harga grosir. Stok akan ditambah dari penerimaan ini."
+      submitLabel="Simpan Produk"
+      cancelLabel="Lewati"
+      onClose={() => {
+        const id = formQueue[0];
+        setNewCfg((c) => ({ ...c, [id]: { ...c[id], create: false } }));
+        setFormQueue((q) => q.slice(1));
+      }}
+      onCreated={async (p) => {
+        const id = formQueue[0];
+        await supabase.from("purchase_order_items").update({ product_id: p.id, product_code: p.code }).eq("id", id);
+        setItems((list) => list.map((x) => (x.id === id ? { ...x, product_id: p.id, product_code: p.code } : x)));
+        setFormQueue((q) => q.slice(1));
+      }}
+    />
 
     <Dialog open={!!priceAlerts} onOpenChange={(o) => { if (!o) setPriceAlerts(null); }}>
       <DialogContent className="max-w-2xl">
