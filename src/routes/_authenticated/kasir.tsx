@@ -1931,7 +1931,7 @@ function KasirPage() {
           product={modePicker}
           unitsByProduct={unitsByProduct}
           onClose={() => { setModePicker(null); setTimeout(() => searchRef.current?.focus(), 50); }}
-          onAdd={(p, mode, unit, qtyPcs) => {
+          onAdd={(p, mode, unit, qtyPcs, decimalQty) => {
             if (!canAddBase(p, qtyPcs)) {
               const sisa = Math.max(0, (p.stock || 0) - currentBaseQty(p.id));
               toast.error(`Stok ${p.name} tidak cukup (sisa ${sisa} ${(getUnits(p, unitsByProduct).find(u=>u.is_base)?.name)||"pcs"}, diminta ${qtyPcs})`);
@@ -1954,14 +1954,21 @@ function KasirPage() {
               const units = getUnits(p, unitsByProduct);
               const base = units.find((u) => u.is_base) || units[0];
               const key = `${p.id}:grosir:${unit.name}`;
+              const conv = Math.max(1, unit.conversion);
               setCart((c) => {
                 const idx = c.findIndex((x) => x.key === key);
                 if (idx >= 0) {
                   const copy = [...c];
-                  copy[idx] = { ...copy[idx], qty: copy[idx].qty + qtyPcs };
+                  const prev = copy[idx];
+                  if (decimalQty != null || prev.decimalQty != null) {
+                    const dec = (prev.decimalQty ?? prev.qty / conv) + (decimalQty ?? qtyPcs / conv);
+                    copy[idx] = { ...prev, decimalQty: dec, qty: toBaseQty(dec, conv) };
+                  } else {
+                    copy[idx] = { ...prev, qty: prev.qty + qtyPcs };
+                  }
                   return copy;
                 }
-                return [...c, { key, product: p, mode: "grosiran", unit, baseUnit: base, qty: qtyPcs }];
+                return [...c, { key, product: p, mode: "grosiran", unit, baseUnit: base, qty: qtyPcs, decimalQty }];
               });
             }
             setModePicker(null);
