@@ -48,6 +48,7 @@ import { loadCheapestSupplierMap, type CheapestInfo } from "@/lib/supplier-compa
 import type { AiInvoiceResult } from "@/lib/ai-vision.functions";
 import { ReceivingDialog } from "@/components/ReceivingDialog";
 import { PackageCheck } from "lucide-react";
+import { NewProductDialog } from "@/components/NewProductDialog";
 import { loadUnitsForProducts, type ProductUnit } from "@/lib/product-pricing";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -176,6 +177,7 @@ function POPage() {
   const [aiOpen, setAiOpen] = useState(false);
   const [receiveFor, setReceiveFor] = useState<PO | null>(null);
   const [editingPoId, setEditingPoId] = useState<string | null>(null);
+  const [newProductOpen, setNewProductOpen] = useState(false);
   const [receiptFiles, setReceiptFiles] = useState<{ file: File; dataUrl: string }[]>([]);
   const [existingReceiptPaths, setExistingReceiptPaths] = useState<string[]>([]);
   const [receiptViewOpen, setReceiptViewOpen] = useState<{ urls: string[]; supplier: string } | null>(null);
@@ -1392,9 +1394,24 @@ function POPage() {
                 )}
               </div>
               <div className="grid grid-cols-2 gap-2 xl:grid-cols-1">
-                <Button type="button" variant="outline" size="default" onClick={addManual} className="flex-1">
+                <Button type="button" variant="outline" size="default" onClick={() => setNewProductOpen(true)} className="flex-1">
+                  <Plus className="mr-2 h-5 w-5" /> Produk Baru
+                </Button>
+                <Button type="button" variant="ghost" size="default" onClick={addManual} className="flex-1">
                   <Plus className="mr-2 h-5 w-5" /> Item Manual
                 </Button>
+                <NewProductDialog
+                  open={newProductOpen}
+                  initialName={pickQuery}
+                  onClose={() => setNewProductOpen(false)}
+                  onCreated={(p, units) => {
+                    setNewProductOpen(false);
+                    setProducts((prev) => [...prev, p as Product].sort((a, b) => a.name.localeCompare(b.name)));
+                    setUnitsByProduct((m) => ({ ...m, [p.id]: units }));
+                    addProduct(p as Product);
+                    setPickQuery("");
+                  }}
+                />
                 <Button type="button" size="default" onClick={() => setAiOpen((v) => !v)} className="flex-1">
                   <Sparkles className="mr-2 h-5 w-5" /> {aiOpen ? "Tutup Scan" : "Scan Struk/Faktur"}
                 </Button>
