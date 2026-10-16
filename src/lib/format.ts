@@ -13,6 +13,21 @@ export const parseNumber = (v: unknown): number => {
   return 0;
 };
 
+/** Parse jumlah yang boleh pakai koma/titik desimal: "1,2" -> 1.2. NaN bila tidak valid. */
+export const parseDecimalQty = (v: string): number => {
+  const s = v.trim().replace(/\s/g, "").replace(",", ".");
+  if (!/^\d*\.?\d*$/.test(s) || s === "" || s === ".") return NaN;
+  return Number(s);
+};
+
+/** Tampilkan jumlah desimal gaya Indonesia, maks 3 angka di belakang koma. */
+export const formatQty = (n: number): string =>
+  Number.isInteger(n) ? String(n) : n.toLocaleString("id-ID", { maximumFractionDigits: 3 });
+
+/** Konversi jumlah satuan (boleh desimal) ke unit dasar bulat, mis. 1,2 kg × 1000 = 1200 gram. */
+export const toBaseQty = (qty: number, conversion: number): number =>
+  Math.round(qty * Math.max(1, conversion));
+
 // Barcode dapat berisi lebih dari satu kode (mis. barcode dus & barcode pcs)
 // yang dipisahkan koma, titik-koma, spasi, atau baris baru.
 export const parseBarcodes = (raw: string | null | undefined): string[] => {
