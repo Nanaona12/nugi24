@@ -2791,6 +2791,47 @@ function buildOptions(units: ProductUnit[]): PickerOption[] {
   return opts;
 }
 
+/** Input jumlah yang menerima koma desimal (1,2) tanpa mengganggu saat mengetik. */
+function DecimalQtyInput({
+  value,
+  allowDecimal,
+  onCommit,
+  className,
+  id,
+  onKeyDown,
+}: {
+  value: number;
+  allowDecimal: boolean;
+  onCommit: (n: number) => void;
+  className?: string;
+  id?: string;
+  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+}) {
+  const [text, setText] = useState(formatQty(value));
+  const [focused, setFocused] = useState(false);
+  useEffect(() => {
+    if (!focused) setText(formatQty(value));
+  }, [value, focused]);
+  return (
+    <Input
+      id={id}
+      className={className}
+      inputMode={allowDecimal ? "decimal" : "numeric"}
+      value={focused ? text : formatQty(value)}
+      onFocus={(e) => { setFocused(true); setText(formatQty(value)); e.currentTarget.select(); }}
+      onBlur={() => setFocused(false)}
+      onKeyDown={onKeyDown}
+      onChange={(e) => {
+        const raw = allowDecimal ? e.target.value : e.target.value.replace(/[^\d]/g, "");
+        setText(raw);
+        if (raw.trim() === "") return;
+        const n = parseDecimalQty(raw);
+        if (!Number.isNaN(n)) onCommit(allowDecimal ? n : Math.round(n));
+      }}
+    />
+  );
+}
+
 function PickerDialog({
   product,
   unitsByProduct,
@@ -2800,7 +2841,7 @@ function PickerDialog({
   product: Product | null;
   unitsByProduct: Record<string, ProductUnit[]>;
   onClose: () => void;
-  onAdd: (p: Product, mode: SaleMode, unit: ProductUnit, qtyPcs: number) => void;
+  onAdd: (p: Product, mode: SaleMode, unit: ProductUnit, qtyPcs: number, decimalQty?: number) => void;
 }) {
   const [selected, setSelected] = useState<string | null>(null);
   const [qty, setQty] = useState<number>(1);
@@ -2822,9 +2863,15 @@ function PickerDialog({
   const baseUnit = units.find((u) => u.is_base) || units[0];
   const baseName = baseUnit?.name || "pcs";
 
-  const qtyPcs = opt ? qty * opt.unit.conversion : qty;
-  const minOk = opt ? qty >= opt.tier.min_qty : false;
-  const subtotal = opt ? qty * Number(opt.tier.price) : 0;
+  const isBaseOpt =
+    !!opt && !!baseUnit &&
+    (opt.unit.id ? opt.unit.id === baseUnit.id : opt.unit.name === baseUnit.name && opt.unit.conversion === baseUnit.conversion);
+  // Desimal (mis. 1,2 kg) hanya untuk satuan non-dasar; unit dasar (gram/butir) selalu bulat.
+  const allowDecimal = !!opt && !isBaseOpt && opt.unit.conversion > 1;
+  const effQty = allowDecimal ? qty : Math.max(1, Math.round(qty));
+  const qtyPcs = opt ? toBaseQty(effQty, opt.unit.conversion) : effQty;
+  const minOk = opt ? effQty >= opt.tier.min_qty || (allowDecimal && opt.tier.min_qty <= 1 && effQty > 0) : false;
+  const subtotal = opt ? effQty * Number(opt.tier.price) : 0;
 
   const submit = () => {
     if (!opt) return;
@@ -2832,14 +2879,11 @@ function PickerDialog({
       toast.error(`Minimal beli ${opt.tier.min_qty} ${opt.unit.name}`);
       return;
     }
-    if (qty <= 0) return;
+    if (effQty <= 0 || qtyPcs <= 0) return;
     // Satuan non-dasar tetap dihitung sebagai "grosiran" walau konversinya 1,
     // agar harga yang dipakai adalah tier satuan tsb (bukan tier satuan dasar).
-    const isBaseUnit =
-      !!baseUnit &&
-      (opt.unit.id ? opt.unit.id === baseUnit.id : opt.unit.name === baseUnit.name && opt.unit.conversion === baseUnit.conversion);
-    const mode: SaleMode = isBaseUnit ? "eceran" : "grosiran";
-    onAdd(product, mode, opt.unit, qtyPcs);
+    const mode: SaleMode = isBaseOpt ? "eceran" : "grosiran";
+    onAdd(product, mode, opt.unit, qtyPcs, Number.isInteger(effQty) ? undefined : effQty);
   };
 
   return (
@@ -2896,17 +2940,17 @@ function PickerDialog({
               size="icon"
               variant="outline"
               className="h-9 w-9 rounded-full"
-              onClick={() => setQty((q) => Math.max(1, q - 1))}
+              onClick={() => setQty((q) => Math.max(1, Math.ceil(q) - 1))}
             >
               <Minus className="h-4 w-4" />
             </Button>
-            <Input
-              type="number"
-              className="h-9 w-16 text-center"
+            <DecimalQtyInput
+              className="h-9 w-20 text-center"
               value={qty}
-              onChange={(e) => setQty(Math.max(1, parseInt(e.target.value || "1", 10)))}
+              allowDecimal={allowDecimal}
+              onCommit={(n) => setQty(n > 0 ? n : 1)}
             />
-            <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => setQty((q) => q + 1)}>
+            <Button size="icon" variant="outline" className="h-9 w-9 rounded-full" onClick={() => setQty((q) => Math.floor(q) + 1)}>
               <Plus className="h-4 w-4" />
             </Button>
             {opt && <span className="ml-1 text-xs text-muted-foreground">{opt.unit.name}</span>}
