@@ -1564,17 +1564,6 @@ function KasirPage() {
         {/* Product picker */}
         <Card className="flex flex-col p-4">
           <div className="mb-3 flex items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={searchRef}
-              placeholder="Cari/scan kode barang... (Enter = pilih • *2 Enter = ubah jumlah jadi 2)"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={handleSearchKey}
-              className="pl-9"
-            />
-            </div>
             <div className="flex shrink-0 rounded-md border p-0.5">
               <Button type="button" size="icon" variant={viewMode === "grid" ? "default" : "ghost"} className="h-8 w-8" onClick={() => changeViewMode("grid")} aria-label="Tampilan kartu">
                 <LayoutGrid className="h-4 w-4" />
@@ -1582,6 +1571,18 @@ function KasirPage() {
               <Button type="button" size="icon" variant={viewMode === "list" ? "default" : "ghost"} className="h-8 w-8" onClick={() => changeViewMode("list")} aria-label="Tampilan daftar">
                 <ListIcon className="h-4 w-4" />
               </Button>
+            </div>
+
+            <div className="relative min-w-0 flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchRef}
+                placeholder="Cari/scan kode barang... (Enter = pilih • *2 Enter = ubah jumlah jadi 2)"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                onKeyDown={handleSearchKey}
+                className="pl-9"
+              />
             </div>
           </div>
           <ScrollArea className="h-[calc(100vh-300px)] pr-2 lg:h-[calc(100vh-260px)]">
