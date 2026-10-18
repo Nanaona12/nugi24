@@ -7,7 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
-import { Store, ShieldCheck, ShoppingCart, ArrowLeft, KeyRound, UserCircle2, Loader2 } from "lucide-react";
+import {
+  Store,
+  ShieldCheck,
+  ShoppingCart,
+  ArrowLeft,
+  KeyRound,
+  UserCircle2,
+  Loader2,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import { listCashiersByCode, cashierSignIn } from "@/lib/cashier-auth.functions";
 
 export const Route = createFileRoute("/auth")({
@@ -184,6 +194,7 @@ function CashierPanel({ onBack, onSignedIn }: { onBack: () => void; onSignedIn: 
   const [cashiers, setCashiers] = useState<{ id: string; name: string }[]>([]);
   const [picked, setPicked] = useState<{ id: string; name: string } | null>(null);
   const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const listFn = useServerFn(listCashiersByCode);
@@ -241,6 +252,7 @@ function CashierPanel({ onBack, onSignedIn }: { onBack: () => void; onSignedIn: 
     } catch (e: any) {
       toast.error(e.message || "Gagal masuk");
       setPin("");
+      setShowPin(false);
     } finally { setLoading(false); }
   };
 
@@ -288,7 +300,7 @@ function CashierPanel({ onBack, onSignedIn }: { onBack: () => void; onSignedIn: 
               <button
                 key={c.id}
                 type="button"
-                onClick={() => { setPicked(c); setPin(""); setStep(3); }}
+                onClick={() => { setPicked(c); setPin(""); setShowPin(false); setStep(3); }}
                 className="flex flex-col items-center gap-1 rounded-lg border p-3 text-center transition hover:border-primary hover:bg-accent"
               >
                 <UserCircle2 className="h-7 w-7 text-muted-foreground" />
@@ -306,16 +318,27 @@ function CashierPanel({ onBack, onSignedIn }: { onBack: () => void; onSignedIn: 
           </div>
           <div className="space-y-2">
             <Label className="text-xs">PIN</Label>
-            <Input
-              autoFocus
-              type="password"
-              inputMode="numeric"
-              maxLength={6}
-              value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              placeholder="••••"
-              className="text-center text-2xl tracking-[0.5em]"
-            />
+            <div className="relative">
+              <Input
+                autoFocus
+                type={showPin ? "text" : "password"}
+                inputMode="numeric"
+                maxLength={6}
+                value={pin}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                placeholder="••••"
+                className="pr-10 text-center text-2xl tracking-[0.5em]"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPin((visible) => !visible)}
+                aria-label={showPin ? "Sembunyikan PIN" : "Tampilkan PIN"}
+                aria-pressed={showPin}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
           </div>
           <Button type="submit" className="w-full" disabled={loading || !pin}>
             {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Masuk
@@ -326,11 +349,42 @@ function CashierPanel({ onBack, onSignedIn }: { onBack: () => void; onSignedIn: 
   );
 }
 
-function Field({ label, value, onChange, type = "text" }: { label: string; value: string; onChange: (v: string) => void; type?: string }) {
+function Field({
+  label,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  type?: string;
+}) {
+  const [showPassword, setShowPassword] = useState(false);
+  const isPassword = type === "password";
+
   return (
     <div className="space-y-1.5">
       <Label>{label}</Label>
-      <Input type={type} value={value} onChange={(e) => onChange(e.target.value)} />
+      <div className={isPassword ? "relative" : undefined}>
+        <Input
+          type={isPassword && showPassword ? "text" : type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className={isPassword ? "pr-10" : undefined}
+        />
+        {isPassword && (
+          <button
+            type="button"
+            onClick={() => setShowPassword((visible) => !visible)}
+            aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
+            aria-pressed={showPassword}
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-sm p-1 text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
     </div>
   );
 }
