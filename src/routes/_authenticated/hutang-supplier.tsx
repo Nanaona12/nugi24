@@ -899,3 +899,101 @@ function SaveDialog({
     </Dialog>
   );
 }
+
+const CANCEL_REASONS = [
+  "Salah input (bukan pembelian tempo)",
+  "Sudah dibayar tunai di tempat",
+  "Barang dikembalikan / faktur batal",
+  "Lainnya",
+] as const;
+
+function CancelDialog({
+  debt,
+  onClose,
+  onDone,
+}: {
+  debt: SupplierDebt | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = useState<string>(CANCEL_REASONS[0]);
+  const [detail, setDetail] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (debt) {
+      setReason(CANCEL_REASONS[0]);
+      setDetail("");
+    }
+  }, [debt]);
+
+  if (!debt) return null;
+
+  const submit = async () => {
+    const text = detail.trim();
+    if (text.length < 3) return toast.error("Keterangan wajib diisi (min. 3 huruf)");
+    if (text.length > 300) return toast.error("Keterangan maksimal 300 huruf");
+    setSaving(true);
+    const { error } = await (supabase as any)
+      .from("supplier_debts")
+      .update({
+        status: "cancelled",
+        cancel_reason: `${reason}: ${text}`,
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq("id", debt.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Tempo dibatalkan");
+    onDone();
+  };
+
+  return (
+    <Dialog open={!!debt} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Batal Tempo — {debt.supplier}</DialogTitle>
+          <DialogDescription>
+            Faktur {debt.invoice_no || "-"} senilai {formatRupiah(debt.total)} akan dihapus dari daftar
+            hutang. Riwayat tetap tersimpan dan pembayaran yang sudah tercatat tidak berubah.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Alasan</Label>
+            <div className="mt-1 grid gap-1">
+              {CANCEL_REASONS.map((r) => (
+                <Button
+                  key={r}
+                  size="sm"
+                  variant={reason === r ? "default" : "outline"}
+                  className="justify-start"
+                  onClick={() => setReason(r)}
+                >
+                  {r}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label>Keterangan (wajib)</Label>
+            <Input
+              value={detail}
+              maxLength={300}
+              onChange={(e) => setDetail(e.target.value)}
+              placeholder="mis. seharusnya pembelian tunai, salah pilih termin"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Kembali
+          </Button>
+          <Button variant="destructive" onClick={submit} disabled={saving}>
+            {saving ? "Menyimpan..." : "Batalkan Tempo"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

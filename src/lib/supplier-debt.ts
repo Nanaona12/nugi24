@@ -10,7 +10,8 @@ export type SupplierDebt = {
   paid_amount: number;
   saved_amount: number;
   due_date: string | null;
-  status: "open" | "partial" | "paid";
+  status: "open" | "partial" | "paid" | "cancelled";
+  cancel_reason?: string | null;
   note: string | null;
   created_at: string;
 };
@@ -133,7 +134,7 @@ export async function loadDueSoonCount(): Promise<number> {
   const { data } = await (supabase as any)
     .from("supplier_debts")
     .select("id, due_date, status")
-    .neq("status", "paid");
+    .in("status", ["open", "partial"]);
   return ((data || []) as SupplierDebt[]).filter(
     (d) => d.due_date && new Date(d.due_date + "T00:00:00") <= limit,
   ).length;
@@ -143,7 +144,7 @@ export async function loadOutstandingSupplierDebt(): Promise<number> {
   const { data } = await (supabase as any)
     .from("supplier_debts")
     .select("total, paid_amount, status")
-    .neq("status", "paid");
+    .in("status", ["open", "partial"]);
   return ((data || []) as SupplierDebt[]).reduce(
     (s, d) => s + (Number(d.total) - Number(d.paid_amount)),
     0,
