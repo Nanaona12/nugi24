@@ -459,14 +459,16 @@ function PayDialog({
 
   useEffect(() => {
     if (debt) {
-      setAmount(String(Number(debt.total) - Number(debt.paid_amount)));
+      setAmount(String(Math.max(Math.ceil(Number(debt.total) - Number(debt.paid_amount) - 0.000001), 0)));
       setMethod("cash");
       setNote("");
     }
   }, [debt]);
 
   if (!debt) return null;
-  const sisa = Number(debt.total) - Number(debt.paid_amount);
+  const rawSisa = Math.max(Number(debt.total) - Number(debt.paid_amount), 0);
+  // Sisa dibulatkan ke atas ke rupiah penuh (pecahan sen tidak bisa dibayar)
+  const sisa = Math.ceil(rawSisa - 0.000001);
 
   const submit = async () => {
     const amt = Number(String(amount).replace(/[^\d]/g, ""));
