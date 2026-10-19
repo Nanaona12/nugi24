@@ -65,6 +65,7 @@ function SupplierDebtPage() {
   const [detail, setDetail] = useState<SupplierDebt | null>(null);
   const [payments, setPayments] = useState<SupplierDebtPayment[]>([]);
   const [saveDebt, setSaveDebt] = useState<SupplierDebt | null>(null);
+  const [cancelDebt, setCancelDebt] = useState<SupplierDebt | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -110,7 +111,13 @@ function SupplierDebtPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows
-      .filter((r) => (tab === "all" ? true : tab === "paid" ? r.status === "paid" : r.status !== "paid"))
+      .filter((r) =>
+        tab === "all"
+          ? true
+          : tab === "paid"
+            ? r.status === "paid"
+            : r.status === "open" || r.status === "partial",
+      )
       .filter(
         (r) =>
           !q ||
@@ -128,7 +135,7 @@ function SupplierDebtPage() {
       kurang = 0,
       perDay = 0;
     for (const r of rows) {
-      if (r.status === "paid") continue;
+      if (r.status !== "open" && r.status !== "partial") continue;
       openCount++;
       openAmount += Number(r.total) - Number(r.paid_amount);
       const info = debtDueInfo(r.due_date, r.status);
@@ -297,7 +304,8 @@ function SupplierDebtPage() {
                 </tr>
               ) : (
                 filtered.map((d) => {
-                  const sisa = Number(d.total) - Number(d.paid_amount);
+                  const isActive = d.status === "open" || d.status === "partial";
+                  const sisa = isActive ? Math.ceil(Number(d.total) - Number(d.paid_amount) - 0.000001) : 0;
                   const plan = savingPlan(d);
                   const info = debtDueInfo(d.due_date, d.status);
                   return (
@@ -369,6 +377,15 @@ function SupplierDebtPage() {
                           <Badge className="gap-1 bg-success text-white hover:bg-success/90">
                             <CheckCircle2 className="h-3 w-3" /> LUNAS
                           </Badge>
+                        ) : (d.status as string) === "cancelled" ? (
+                          <div>
+                            <Badge variant="outline">TEMPO DIBATALKAN</Badge>
+                            {(d as any).cancel_reason && (
+                              <div className="mt-1 max-w-[180px] text-[11px] text-muted-foreground">
+                                {(d as any).cancel_reason}
+                              </div>
+                            )}
+                          </div>
                         ) : d.status === "partial" ? (
                           <Badge variant="secondary">SEBAGIAN</Badge>
                         ) : (
@@ -377,7 +394,7 @@ function SupplierDebtPage() {
                       </td>
                       <td className="p-3">
                         <div className="flex justify-end gap-1">
-                          {d.status !== "paid" && (
+                          {isActive && (
                             <Button size="sm" variant="outline" onClick={() => setSaveDebt(d)}>
                               <PiggyBank className="mr-1 h-3.5 w-3.5" /> Nabung
                             </Button>
@@ -392,9 +409,19 @@ function SupplierDebtPage() {
                           >
                             Detail
                           </Button>
-                          {d.status !== "paid" && (
+                          {isActive && (
                             <Button size="sm" onClick={() => setPayDebt(d)}>
                               Bayar
+                            </Button>
+                          )}
+                          {isActive && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() => setCancelDebt(d)}
+                            >
+                              Batal Tempo
                             </Button>
                           )}
                         </div>
@@ -413,6 +440,15 @@ function SupplierDebtPage() {
         onClose={() => setPayDebt(null)}
         onPaid={() => {
           setPayDebt(null);
+          load();
+        }}
+      />
+
+      <CancelDialog
+        debt={cancelDebt}
+        onClose={() => setCancelDebt(null)}
+        onDone={() => {
+          setCancelDebt(null);
           load();
         }}
       />
@@ -459,14 +495,16 @@ function PayDialog({
 
   useEffect(() => {
     if (debt) {
-      setAmount(String(Number(debt.total) - Number(debt.paid_amount)));
+      setAmount(String(Math.max(Math.ceil(Number(debt.total) - Number(debt.paid_amount) - 0.000001), 0)));
       setMethod("cash");
       setNote("");
     }
   }, [debt]);
 
   if (!debt) return null;
-  const sisa = Number(debt.total) - Number(debt.paid_amount);
+  const rawSisa = Math.max(Number(debt.total) - Number(debt.paid_amount), 0);
+  // Sisa dibulatkan ke atas ke rupiah penuh (pecahan sen tidak bisa dibayar)
+  const sisa = Math.ceil(rawSisa - 0.000001);
 
   const submit = async () => {
     const amt = Number(String(amount).replace(/[^\d]/g, ""));
@@ -855,6 +893,104 @@ function SaveDialog({
           </Button>
           <Button onClick={submit} disabled={saving}>
             {saving ? "Menyimpan..." : "Simpan Tabungan"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+const CANCEL_REASONS = [
+  "Salah input (bukan pembelian tempo)",
+  "Sudah dibayar tunai di tempat",
+  "Barang dikembalikan / faktur batal",
+  "Lainnya",
+] as const;
+
+function CancelDialog({
+  debt,
+  onClose,
+  onDone,
+}: {
+  debt: SupplierDebt | null;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [reason, setReason] = useState<string>(CANCEL_REASONS[0]);
+  const [detail, setDetail] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (debt) {
+      setReason(CANCEL_REASONS[0]);
+      setDetail("");
+    }
+  }, [debt]);
+
+  if (!debt) return null;
+
+  const submit = async () => {
+    const text = detail.trim();
+    if (text.length < 3) return toast.error("Keterangan wajib diisi (min. 3 huruf)");
+    if (text.length > 300) return toast.error("Keterangan maksimal 300 huruf");
+    setSaving(true);
+    const { error } = await (supabase as any)
+      .from("supplier_debts")
+      .update({
+        status: "cancelled",
+        cancel_reason: `${reason}: ${text}`,
+        cancelled_at: new Date().toISOString(),
+      })
+      .eq("id", debt.id);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Tempo dibatalkan");
+    onDone();
+  };
+
+  return (
+    <Dialog open={!!debt} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Batal Tempo — {debt.supplier}</DialogTitle>
+          <DialogDescription>
+            Faktur {debt.invoice_no || "-"} senilai {formatRupiah(debt.total)} akan dihapus dari daftar
+            hutang. Riwayat tetap tersimpan dan pembayaran yang sudah tercatat tidak berubah.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <Label>Alasan</Label>
+            <div className="mt-1 grid gap-1">
+              {CANCEL_REASONS.map((r) => (
+                <Button
+                  key={r}
+                  size="sm"
+                  variant={reason === r ? "default" : "outline"}
+                  className="justify-start"
+                  onClick={() => setReason(r)}
+                >
+                  {r}
+                </Button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label>Keterangan (wajib)</Label>
+            <Input
+              value={detail}
+              maxLength={300}
+              onChange={(e) => setDetail(e.target.value)}
+              placeholder="mis. seharusnya pembelian tunai, salah pilih termin"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Kembali
+          </Button>
+          <Button variant="destructive" onClick={submit} disabled={saving}>
+            {saving ? "Menyimpan..." : "Batalkan Tempo"}
           </Button>
         </DialogFooter>
       </DialogContent>

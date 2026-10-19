@@ -220,7 +220,7 @@ function PembukuanPage() {
       .from("supplier_debts")
       .select("total, paid_amount")
       .eq("tenant_id", tenant)
-      .neq("status", "paid");
+      .in("status", ["open", "partial"]);
     setSupplierDebtOutstanding(
       ((sdRows || []) as any[]).reduce((s, d) => s + (Number(d.total) - Number(d.paid_amount)), 0),
     );
