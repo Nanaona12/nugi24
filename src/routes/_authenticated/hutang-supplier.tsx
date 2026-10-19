@@ -65,6 +65,7 @@ function SupplierDebtPage() {
   const [detail, setDetail] = useState<SupplierDebt | null>(null);
   const [payments, setPayments] = useState<SupplierDebtPayment[]>([]);
   const [saveDebt, setSaveDebt] = useState<SupplierDebt | null>(null);
+  const [cancelDebt, setCancelDebt] = useState<SupplierDebt | null>(null);
 
   const load = async () => {
     setLoading(true);
@@ -110,7 +111,13 @@ function SupplierDebtPage() {
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows
-      .filter((r) => (tab === "all" ? true : tab === "paid" ? r.status === "paid" : r.status !== "paid"))
+      .filter((r) =>
+        tab === "all"
+          ? true
+          : tab === "paid"
+            ? r.status === "paid"
+            : r.status === "open" || r.status === "partial",
+      )
       .filter(
         (r) =>
           !q ||
@@ -128,7 +135,7 @@ function SupplierDebtPage() {
       kurang = 0,
       perDay = 0;
     for (const r of rows) {
-      if (r.status === "paid") continue;
+      if (r.status !== "open" && r.status !== "partial") continue;
       openCount++;
       openAmount += Number(r.total) - Number(r.paid_amount);
       const info = debtDueInfo(r.due_date, r.status);
@@ -297,7 +304,8 @@ function SupplierDebtPage() {
                 </tr>
               ) : (
                 filtered.map((d) => {
-                  const sisa = Number(d.total) - Number(d.paid_amount);
+                  const isActive = d.status === "open" || d.status === "partial";
+                  const sisa = isActive ? Math.ceil(Number(d.total) - Number(d.paid_amount) - 0.000001) : 0;
                   const plan = savingPlan(d);
                   const info = debtDueInfo(d.due_date, d.status);
                   return (
@@ -369,6 +377,15 @@ function SupplierDebtPage() {
                           <Badge className="gap-1 bg-success text-white hover:bg-success/90">
                             <CheckCircle2 className="h-3 w-3" /> LUNAS
                           </Badge>
+                        ) : (d.status as string) === "cancelled" ? (
+                          <div>
+                            <Badge variant="outline">TEMPO DIBATALKAN</Badge>
+                            {(d as any).cancel_reason && (
+                              <div className="mt-1 max-w-[180px] text-[11px] text-muted-foreground">
+                                {(d as any).cancel_reason}
+                              </div>
+                            )}
+                          </div>
                         ) : d.status === "partial" ? (
                           <Badge variant="secondary">SEBAGIAN</Badge>
                         ) : (
@@ -377,7 +394,7 @@ function SupplierDebtPage() {
                       </td>
                       <td className="p-3">
                         <div className="flex justify-end gap-1">
-                          {d.status !== "paid" && (
+                          {isActive && (
                             <Button size="sm" variant="outline" onClick={() => setSaveDebt(d)}>
                               <PiggyBank className="mr-1 h-3.5 w-3.5" /> Nabung
                             </Button>
@@ -392,9 +409,19 @@ function SupplierDebtPage() {
                           >
                             Detail
                           </Button>
-                          {d.status !== "paid" && (
+                          {isActive && (
                             <Button size="sm" onClick={() => setPayDebt(d)}>
                               Bayar
+                            </Button>
+                          )}
+                          {isActive && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-destructive"
+                              onClick={() => setCancelDebt(d)}
+                            >
+                              Batal Tempo
                             </Button>
                           )}
                         </div>
@@ -413,6 +440,15 @@ function SupplierDebtPage() {
         onClose={() => setPayDebt(null)}
         onPaid={() => {
           setPayDebt(null);
+          load();
+        }}
+      />
+
+      <CancelDialog
+        debt={cancelDebt}
+        onClose={() => setCancelDebt(null)}
+        onDone={() => {
+          setCancelDebt(null);
           load();
         }}
       />
