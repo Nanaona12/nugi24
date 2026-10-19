@@ -2080,6 +2080,8 @@ export type Database = {
       }
       supplier_debts: {
         Row: {
+          cancel_reason: string | null
+          cancelled_at: string | null
           created_at: string
           created_by: string | null
           due_date: string | null
@@ -2096,6 +2098,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
@@ -2112,6 +2116,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          cancel_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
           created_by?: string | null
           due_date?: string | null
